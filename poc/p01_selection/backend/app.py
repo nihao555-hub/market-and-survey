@@ -24,7 +24,8 @@ from backend.storage import (get_or_create_thread, list_messages, set_active_str
                               assert_thread_owner, SessionLocal, Thread)
 from backend.stream_job import run_stream_job
 from backend.selection_job import run_selection_job
-from backend.auth import require_tenant, get_metrics, record_error, record_job_start
+from backend.auth import (require_tenant, require_tenant_query, get_metrics,
+                          record_error, record_job_start)
 
 app = FastAPI(title="选品 Agent — Backend Steering 对齐版")
 
@@ -70,9 +71,13 @@ class ChatBody(BaseModel):
 
 
 @app.post("/chat")
-async def chat(body: ChatBody):
+async def chat(body: ChatBody, tenant_id: str = Depends(require_tenant)):
     thread_id = body.thread_id or str(uuid.uuid4())
-    get_or_create_thread(thread_id)
+    # 多租户隔离：复用已有 thread 时校验归属
+    if not assert_thread_owner(thread_id, tenant_id):
+        record_error()
+        raise HTTPException(403, "thread belongs to another tenant")
+    get_or_create_thread(thread_id, tenant_id=tenant_id)
     stream_id = str(uuid.uuid4())
     set_active_stream(thread_id, stream_id)
 
@@ -84,10 +89,13 @@ async def chat(body: ChatBody):
 
 
 @app.post("/stop")
-async def stop(body: dict):
+async def stop(body: dict, tenant_id: str = Depends(require_tenant)):
     thread_id = body.get("thread_id")
     if not thread_id:
         raise HTTPException(400, "thread_id required")
+    if not assert_thread_owner(thread_id, tenant_id):
+        record_error()
+        raise HTTPException(403, "thread belongs to another tenant")
     await request_cancel(thread_id)
     return {"thread_id": thread_id, "cancelled": True}
 
@@ -142,10 +150,17 @@ async def selection_start(body: SelectionBody, tenant_id: str = Depends(require_
 
 # ─── SSE 订阅事件流 ───
 @app.get("/events")
-async def events(thread_id: str, last_seq: int = 0):
+async def events(thread_id: str, last_seq: int = 0,
+                 tenant_id: str = Depends(require_tenant_query)):
     """
     SSE 端点。客户端可传 last_seq 做 catch-up 衔接。
+    鉴权：EventSource 无法设请求头，故用 `?api_key=`（dev 模式可省略）。
+    多租户隔离：只能订阅本租户的 thread。
     """
+    if not assert_thread_owner(thread_id, tenant_id):
+        record_error()
+        raise HTTPException(403, "thread belongs to another tenant")
+
     async def event_gen():
         # 1. 先重放未消费的 chunk
         chunks = await get_accumulated_chunks(thread_id)
@@ -173,7 +188,10 @@ async def events(thread_id: str, last_seq: int = 0):
 
 
 @app.get("/catchup")
-async def catchup(thread_id: str):
+async def catchup(thread_id: str, tenant_id: str = Depends(require_tenant_query)):
+    if not assert_thread_owner(thread_id, tenant_id):
+        record_error()
+        raise HTTPException(403, "thread belongs to another tenant")
     chunks = await get_accumulated_chunks(thread_id)
     return {"thread_id": thread_id, "chunks": chunks}
 

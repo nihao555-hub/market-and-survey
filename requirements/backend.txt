@@ -1,0 +1,18 @@
+# 第一环节·选品/市场调研 — 后端服务栈（FastAPI 控制平面 + 队列 + 存储）
+# 安装：pip install -r requirements/backend.txt（会自动带上 core.txt）
+-r core.txt
+
+# Web 框架 + SSE
+fastapi==0.137.1
+uvicorn[standard]==0.49.0
+sse-starlette==3.4.4
+
+# GraphQL（Query/Mutation/Subscription over graphql-sse）
+strawberry-graphql==0.317.1
+
+# 队列 + pub/sub（任务持久化、cancel 信号、SSE 重放）
+redis==8.0.0
+dramatiq[redis]==2.2.0
+
+# 持久化（PoC 用 SQLite；生产换 Postgres 时再加 psycopg[binary]）
+SQLAlchemy==2.0.51

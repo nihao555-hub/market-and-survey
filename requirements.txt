@@ -1,32 +1,11 @@
-# 第一环节·市场调研/选品 — Python 依赖
-# 直接用 PyPI 上的稳定版本，不依赖 vendor/ 里的源码（vendor 仅作研究/借鉴/备份）
-
-# 采集层
-scrapling                # 主引擎：自适应解析+反检测
-pydoll-python            # 备用：无 webdriver 的 Chromium 自动化
-curl-cffi                # 快速通道：TLS/JA3 指纹伪装
-botasaurus               # 一体化反爬框架（备用）
-
-# 清洗层
-crawl4ai                 # 网页 → LLM-ready markdown/结构化
-markitdown               # 文档/PDF → 干净 markdown
-
-# 趋势层
-pytrends                 # Google Trends（注意：官方仓库已归档，pypi 包仍能用）
-thefuzz                  # 关键词模糊匹配
-
-# 编排层
-apscheduler              # 进程内定时调度
-tenacity                 # 失败重试/降级
-
-# 数据 & 工具
-pandas                   # 数据分析
-plotly                   # 图表（轻量展示）
-sqlalchemy               # 存储 ORM
-psycopg[binary]          # PostgreSQL 驱动（生产用）
-pydantic                 # 数据校验
-loguru                   # 日志
-httpx                    # 通用 HTTP 客户端（备用）
-beautifulsoup4           # HTML 解析（备用）
-lxml                     # 解析后端
-python-dotenv            # 环境变量
+# 第一环节·选品/市场调研 — 依赖入口（已按用途拆分到 requirements/ 目录）
+#
+#   requirements/core.txt      核心运行时：LLM + 分析 + 报告导出（必装）
+#   requirements/backend.txt   后端服务栈：FastAPI + 队列 + 存储（含 core）
+#   requirements/scrapers.txt  可选爬虫引擎：9 级降级链（不装也能跑后端/纯函数）
+#
+# 默认入口 = backend（含 core），即新克隆能直接把 Agent 后端跑起来：
+#   pip install -r requirements.txt
+# 需要真实抓取平台数据时再额外：
+#   pip install -r requirements/scrapers.txt
+-r requirements/backend.txt

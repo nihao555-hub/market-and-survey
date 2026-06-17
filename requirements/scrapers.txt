@@ -1,0 +1,25 @@
+# 第一环节·选品/市场调研 — 可选爬虫引擎（9 级降级链的 L1~L9）
+# ⚠️ 全部可选：不装也能跑后端 + 纯函数分析/报告；这些只在真实抓取平台数据时才需要。
+# 这些库依赖树重、版本演进快，故用下限约束（>=）而非精确锁版；
+# 想完全复现请在装好后 `pip freeze` 锁定你这套组合。
+# 安装：pip install -r requirements/scrapers.txt
+
+# L1 快速通道：TLS/JA3 指纹伪装
+curl-cffi>=0.7
+# L2 自适应解析 + 反检测
+scrapling>=0.2
+# L3 反检测 Playwright（SPA + 反爬强度高时）
+patchright>=1.40
+# 备用：无 webdriver 的 Chromium 自动化
+pydoll-python>=1.0
+# 备用：一体化反爬框架
+botasaurus>=4.0
+# 清洗：网页 → LLM-ready markdown / 文档 → markdown
+crawl4ai>=0.4
+markitdown>=0.0.1
+# LLM 驱动的结构化抽取（页面结构特殊时再兜底一层）
+scrapegraphai>=1.30
+
+# 编排（生产环境定时刷 BSR/价格 + 失败重试）
+apscheduler>=3.10
+tenacity>=8.2

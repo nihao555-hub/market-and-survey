@@ -15,7 +15,7 @@ import {
 } from "@/lib/atoms";
 import { MessageAccumulator } from "@/lib/message-accumulator";
 import { ClientChunkAdapter } from "@/lib/chunk-adapter";
-import { BACKEND_BASE } from "@/lib/graphql-client";
+import { BACKEND_BASE, BACKEND_API_KEY } from "@/lib/graphql-client";
 import type { UIMessage } from "@/lib/agent-types";
 
 export function useAgentChatSubscription(threadId: string | null) {
@@ -86,7 +86,13 @@ export function useAgentChatSubscription(threadId: string | null) {
     };
 
     // EventSource → 直连后端 /events（不走 Next 代理，避免 SSE 被缓冲）
-    const es = new EventSource(`${BACKEND_BASE}/events?thread_id=${encodeURIComponent(threadId)}`);
+    // EventSource 无法设请求头，鉴权开启时用 ?api_key= 传（dev 模式留空）。
+    const apiKeyQs = BACKEND_API_KEY
+      ? `&api_key=${encodeURIComponent(BACKEND_API_KEY)}`
+      : "";
+    const es = new EventSource(
+      `${BACKEND_BASE}/events?thread_id=${encodeURIComponent(threadId)}${apiKeyQs}`
+    );
 
     // catch-up：重放历史 chunk（后端 event: stream-chunk，带 seq）
     es.addEventListener("stream-chunk", (e: MessageEvent) => {

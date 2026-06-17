@@ -1,9 +1,43 @@
+# ── Python ──
 .venv/
-vendor/
+venv/
 __pycache__/
 *.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ── 环境/密钥 ──
 .env
+.env.local
+*.env.local
+
+# ── Node / Next.js ──
 node_modules/
-poc/01-ѡƷ/data/*.sqlite
-poc/01-ѡƷ/probes/captured/
-poc/01-ѡƷ/reports/
+.next/
+out/
+*.tsbuildinfo
+
+# ── vendor ──
+vendor/
+
+# ── 运行期产物（PoC 跑出来的，不该入库；正确匹配 p01_selection 路径）──
+# 数据库
+poc/p01_selection/data/*.sqlite
+poc/p01_selection/data/*.sqlite-journal
+# 报告 / 证据 / 图表
+poc/p01_selection/reports/
+# 抓取探针快照（HTML/PNG）
+poc/p01_selection/probes/captured/
+# 各处的临时输出 / 错误日志 / 下载缓存（根目录 + poc 目录）
+output/
+error_logs/
+downloaded_files/
+poc/p01_selection/output/
+poc/p01_selection/error_logs/
+poc/p01_selection/downloaded_files/
+
+# ── 杂项 ──
+.DS_Store
+*.log

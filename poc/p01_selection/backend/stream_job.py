@@ -18,15 +18,15 @@ from dotenv import load_dotenv
 load_dotenv(Path(__file__).resolve().parents[3] / ".env")
 
 from modules.agent_tools import TOOLS_SCHEMA, TOOL_IMPL
+from modules.llm import MODEL_FLASH, MODEL_PRO
 from backend.events import publish, CANCEL_SUB, CANCEL_CHANNEL
 from backend.storage import (add_message, set_active_stream, update_token_usage,
                               list_messages)
 
-MODEL_FLASH = os.getenv("DEEPSEEK_MODEL_FLASH", "deepseek-v4-flash")
-MODEL_PRO = os.getenv("DEEPSEEK_MODEL_PRO", "deepseek-v4-pro")
+# 模型名统一从 modules.llm 取（单一来源）。
 
 _client = AsyncOpenAI(
-    api_key=os.getenv("DEEPSEEK_API_KEY"),
+    api_key=os.getenv("DEEPSEEK_API_KEY") or "MISSING_DEEPSEEK_API_KEY",
     base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"),
 )
 

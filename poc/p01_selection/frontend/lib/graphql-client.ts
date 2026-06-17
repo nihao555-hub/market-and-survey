@@ -7,6 +7,9 @@
 export const BACKEND_BASE =
   process.env.NEXT_PUBLIC_BACKEND_BASE || "http://127.0.0.1:8001";
 
+// 后端开启鉴权（BACKEND_AUTH_REQUIRED=1）时需配置此值；dev 模式留空即可。
+export const BACKEND_API_KEY = process.env.NEXT_PUBLIC_BACKEND_API_KEY || "";
+
 const GRAPHQL_HTTP = `${BACKEND_BASE}/graphql`;
 
 /** 普通 query / mutation（fetch POST） */

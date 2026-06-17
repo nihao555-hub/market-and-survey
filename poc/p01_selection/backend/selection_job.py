@@ -23,6 +23,7 @@ load_dotenv(Path(__file__).resolve().parents[3] / ".env")
 
 from modules.agent_tools import TOOLS_SCHEMA, TOOL_IMPL
 from modules.browser_cleanup import start_watchdog, kill_orphan_browsers
+from modules.llm import MODEL_FLASH, MODEL_PRO
 from backend.events import publish, CANCEL_SUB, CANCEL_CHANNEL
 from backend.storage import (add_message, set_active_stream, update_token_usage,
                               list_messages)
@@ -30,12 +31,12 @@ from backend.storage import (add_message, set_active_stream, update_token_usage,
 # 防僵尸进程：进程级看门狗（每 120s 清理 >240s 的孤儿爬虫浏览器，不误杀用户日常浏览器）
 start_watchdog(interval_sec=120, max_age_sec=240)
 
-MODEL_FLASH = os.getenv("DEEPSEEK_MODEL_FLASH", "deepseek-v4-flash")
-MODEL_PRO = os.getenv("DEEPSEEK_MODEL_PRO", "deepseek-v4-pro")
+# 模型名统一从 modules.llm 取（单一来源），避免与 llm.py / agent.py 漂移。
 
 # 同步客户端（Agent 工具循环内部用，外层 await 走 to_thread）
+# api_key 缺失时用占位符，保证 import 不报错（真正调用才会 401，提示更清晰）
 _client = OpenAI(
-    api_key=os.getenv("DEEPSEEK_API_KEY"),
+    api_key=os.getenv("DEEPSEEK_API_KEY") or "MISSING_DEEPSEEK_API_KEY",
     base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"),
 )
 

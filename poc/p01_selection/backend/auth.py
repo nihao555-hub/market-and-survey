@@ -9,7 +9,7 @@ Backend 多租户鉴权 + 简易监控（对应 backend steering 安全要求）
 from __future__ import annotations
 import os, time, threading
 from collections import defaultdict
-from fastapi import Header, HTTPException
+from fastapi import Header, HTTPException, Query
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -70,15 +70,14 @@ def get_metrics() -> dict:
         }
 
 
-async def require_tenant(x_api_key: str | None = Header(default=None)) -> str:
-    """
-    FastAPI 依赖：校验 API Key，返回 tenant_id。
+def _resolve_tenant(api_key: str | None) -> str:
+    """核心鉴权逻辑（被 header / query 两个依赖共用）。
     - 有效 key → 对应 tenant_id
     - dev 模式 + 无 key → dev_tenant（放行）
     - 生产模式 + 无效/缺失 key → 401
     """
-    if x_api_key and x_api_key in API_KEYS:
-        tid = API_KEYS[x_api_key]
+    if api_key and api_key in API_KEYS:
+        tid = API_KEYS[api_key]
         record_request(tid)
         return tid
     if not AUTH_REQUIRED:
@@ -86,4 +85,18 @@ async def require_tenant(x_api_key: str | None = Header(default=None)) -> str:
         return "dev_tenant"
     with _lock:
         _metrics["auth_failures"] += 1
-    raise HTTPException(status_code=401, detail="invalid or missing X-API-Key")
+    raise HTTPException(status_code=401, detail="invalid or missing API key")
+
+
+async def require_tenant(x_api_key: str | None = Header(default=None)) -> str:
+    """FastAPI 依赖：从请求头 X-API-Key 校验，返回 tenant_id。"""
+    return _resolve_tenant(x_api_key)
+
+
+async def require_tenant_query(
+    api_key: str | None = Query(default=None),
+    x_api_key: str | None = Header(default=None),
+) -> str:
+    """SSE/EventSource 专用依赖：EventSource 无法设请求头，故支持 `?api_key=`，
+    同时仍兼容 X-API-Key 头（query 优先）。"""
+    return _resolve_tenant(api_key or x_api_key)

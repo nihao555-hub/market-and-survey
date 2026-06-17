@@ -2676,7 +2676,6 @@ TOOL_IMPL = {
     "get_bestsellers_by_url": tool_get_bestsellers_by_url,
     "get_movers_shakers_by_url": tool_get_movers_shakers_by_url,
     "get_bestsellers": tool_get_bestsellers,
-    "get_movers_shakers": tool_get_movers_shakers,
     "search_products": tool_search_products,
     "search_multi_platform": tool_search_multi_platform,
     "analyze_market_structure": tool_analyze_market_structure,

@@ -1,0 +1,29 @@
+# 第一环节·选品/市场调研 — 核心运行时（Agent 逻辑 + 分析 + 报告导出）
+# 不含后端服务栈（见 backend.txt）与可选爬虫引擎（见 scrapers.txt）。
+# 版本为 2026-06 实测可解析的组合（Python 3.12）。
+
+# LLM（DeepSeek，OpenAI 兼容协议）
+openai==2.42.0
+python-dotenv==1.2.2
+
+# 通用工具 / 数据
+loguru==0.7.3
+pandas==3.0.3
+numpy==2.4.6
+requests==2.34.2
+httpx==0.28.1
+pydantic==2.13.4
+
+# HTML 解析（评论/BSR/搜索结果）
+beautifulsoup4==4.15.0
+lxml==6.1.1
+
+# 趋势 / 关键词
+pytrends==4.9.2
+thefuzz==0.22.1
+
+# 图表 / 报告导出（一页纸 PNG + PDF）
+matplotlib==3.11.0
+pillow==12.2.0
+plotly==6.8.0
+markdown-pdf==1.13.2
