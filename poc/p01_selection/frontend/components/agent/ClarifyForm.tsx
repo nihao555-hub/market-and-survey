@@ -68,9 +68,9 @@ export function ClarifyForm({
   return (
     <div className="animate-fade-in-up rounded-xl border border-hairline bg-white shadow-[0_2px_12px_rgba(26,29,33,0.05)]">
       <div className="flex items-center gap-2 border-b border-hairline px-4 py-3">
-        <Sparkles className="h-4 w-4 text-accent" />
+        <Sparkles className="h-4 w-4 text-brand" />
         <span className="text-sm font-medium text-ink">
-          再补充两项，<span className="text-accent">「{category}」</span> 就开抓
+          再补充两项，<span className="text-brand">「{category}」</span> 就开抓
         </span>
       </div>
 
@@ -97,7 +97,7 @@ export function ClarifyForm({
               value={budget}
               onChange={(e) => setBudget(e.target.value)}
               placeholder="如 5万美元/月"
-              className="w-full rounded-lg border border-hairline px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)]"
+              className="w-full rounded-lg border border-hairline px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-[var(--brand-ring)]"
             />
           </Field>
           <Field label="排除大牌" hint="选填">
@@ -105,14 +105,14 @@ export function ClarifyForm({
               value={exclude}
               onChange={(e) => setExclude(e.target.value)}
               placeholder="如 Lululemon"
-              className="w-full rounded-lg border border-hairline px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus:border-accent focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)]"
+              className="w-full rounded-lg border border-hairline px-3 py-2 text-sm text-ink placeholder:text-ink-subtle focus:border-brand focus:outline-none focus:ring-2 focus:ring-[var(--brand-ring)]"
             />
           </Field>
         </div>
 
         <button
           onClick={submit}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover active:scale-[0.99]"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover active:scale-[0.99]"
         >
           开始调研
           <ArrowRight className="h-4 w-4" />

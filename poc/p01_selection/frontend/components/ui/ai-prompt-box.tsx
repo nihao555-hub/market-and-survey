@@ -53,7 +53,7 @@ TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 const CustomDivider: React.FC = () => (
   <div className="relative mx-1 h-6 w-[1.5px]">
     <div
-      className="absolute inset-0 rounded-full bg-gradient-to-t from-transparent via-accent/50 to-transparent"
+      className="absolute inset-0 rounded-full bg-gradient-to-t from-transparent via-brand/50 to-transparent"
       style={{
         clipPath:
           "polygon(0% 0%, 100% 0%, 100% 40%, 140% 50%, 100% 60%, 100% 100%, 0% 100%, 0% 60%, -40% 50%, 0% 40%)",
@@ -106,7 +106,7 @@ function ParamSettingsBar() {
         className={cn(
           "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs transition-colors",
           open
-            ? "border-accent/40 bg-accent/10 text-accent"
+            ? "border-brand/40 bg-brand/10 text-brand"
             : "border-hairline bg-white text-ink-muted hover:border-hairline-strong hover:text-ink"
         )}
       >
@@ -155,7 +155,7 @@ function ParamSettingsBar() {
                           className={cn(
                             "inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs transition-colors",
                             active
-                              ? "border-accent bg-accent text-white"
+                              ? "border-brand bg-brand text-white"
                               : "border-hairline bg-white text-ink-muted hover:border-hairline-strong"
                           )}
                         >
@@ -179,7 +179,7 @@ function ParamSettingsBar() {
                   className={cn(
                     "inline-flex items-center rounded-lg border px-2 py-1 text-xs transition-colors",
                     params.positioning === p
-                      ? "border-accent bg-accent text-white"
+                      ? "border-brand bg-brand text-white"
                       : "border-hairline bg-white text-ink-muted hover:border-hairline-strong"
                   )}
                 >
@@ -242,7 +242,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, PromptInputBoxPro
         <div
           ref={ref}
           className={cn(
-            "rounded-3xl border border-hairline bg-white p-2 shadow-[0_2px_16px_rgba(26,29,33,0.06)] transition-all duration-300 focus-within:border-hairline-strong focus-within:shadow-[0_2px_20px_rgba(13,148,136,0.10)]",
+            "rounded-3xl border border-hairline bg-white p-2 shadow-[0_2px_16px_rgba(26,29,33,0.06)] transition-all duration-300 focus-within:border-hairline-strong focus-within:shadow-[0_2px_20px_rgba(99,102,241,0.12)]",
             className
           )}
         >
@@ -279,7 +279,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, PromptInputBoxPro
               {/* 联网（恒开，仅展示真实数据来源） */}
               <button
                 type="button"
-                className="flex h-8 items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-2 py-1 text-accent"
+                className="flex h-8 items-center gap-1 rounded-full border border-brand/30 bg-brand/10 px-2 py-1 text-brand"
               >
                 <Globe className="h-4 w-4" />
                 <span className="text-xs">实时联网</span>
@@ -294,7 +294,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, PromptInputBoxPro
                 className={cn(
                   "flex h-8 items-center gap-1 rounded-full border px-2 py-1 transition-all",
                   deep
-                    ? "border-accent bg-accent/10 text-accent"
+                    ? "border-brand bg-brand/10 text-brand"
                     : "border-transparent bg-transparent text-ink-subtle hover:text-ink-muted"
                 )}
               >
@@ -340,7 +340,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, PromptInputBoxPro
                     isLoading
                       ? "bg-surface-2 text-ink-muted hover:bg-hairline-strong hover:text-ink"
                       : hasContent
-                      ? "bg-accent text-white hover:bg-accent-hover"
+                      ? "bg-brand text-white hover:bg-brand-hover"
                       : "bg-surface-2 text-ink-subtle"
                   )}
                 >

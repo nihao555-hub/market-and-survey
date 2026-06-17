@@ -8,6 +8,9 @@ import type { UIMessage, ThreadSummary, ReportArtifacts } from "./agent-types";
 // 当前激活会话 id（null = 新建任务草稿态）
 export const activeThreadIdAtom = atom<string | null>(null);
 
+// 草稿品类（工作台 hero / 品类快捷点击后，进入澄清态等待补参；null = 工作台首页）
+export const draftCategoryAtom = atom<string | null>(null);
+
 // 输入框快捷参数（市场/定位/模型）—— 与 A2UI 表单共享，localStorage 持久化。
 export interface QuickParams {
   markets: string[];

@@ -1,183 +1,166 @@
 "use client";
 import React from "react";
-import { useAtom } from "jotai";
-import { Plus, MessageSquare, Loader2, Compass, PanelLeftClose, PanelLeft, Trash2 } from "lucide-react";
+import { useAtom, useSetAtom } from "jotai";
+import {
+  Plus,
+  Compass,
+  LayoutGrid,
+  TrendingUp,
+  Swords,
+  Users,
+  Lightbulb,
+  Search,
+  ListTodo,
+  FileText,
+  Star,
+  Trash2,
+  Database,
+  BellRing,
+  Plug,
+  Settings,
+  Crown,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { activeThreadIdAtom, threadsAtom, sidebarCollapsedAtom } from "@/lib/atoms";
-import { gqlRequest } from "@/lib/graphql-client";
-import type { ThreadSummary } from "@/lib/agent-types";
+import { activeThreadIdAtom, draftCategoryAtom } from "@/lib/atoms";
 
-const THREADS_QUERY = /* GraphQL */ `
-  query Threads { threads { id title updatedAt activeStreamId } }
-`;
+type NavItem = { key: string; label: string; icon: React.ReactNode };
+type NavGroup = { title?: string; items: NavItem[] };
 
-const DELETE_MUTATION = /* GraphQL */ `
-  mutation DeleteThread($threadId: String!) { deleteThread(threadId: $threadId) }
-`;
+const NAV: NavGroup[] = [
+  {
+    items: [{ key: "home", label: "工作台", icon: <LayoutGrid className="h-4 w-4" /> }],
+  },
+  {
+    title: "调研中心",
+    items: [
+      { key: "market", label: "市场调研", icon: <Search className="h-4 w-4" /> },
+      { key: "trend", label: "趋势探索", icon: <TrendingUp className="h-4 w-4" /> },
+      { key: "competitor", label: "竞品分析", icon: <Swords className="h-4 w-4" /> },
+      { key: "audience", label: "受众洞察", icon: <Users className="h-4 w-4" /> },
+      { key: "opportunity", label: "机会挖掘", icon: <Lightbulb className="h-4 w-4" /> },
+    ],
+  },
+  {
+    title: "任务管理",
+    items: [
+      { key: "tasks", label: "我的任务", icon: <ListTodo className="h-4 w-4" /> },
+      { key: "reports", label: "报告中心", icon: <FileText className="h-4 w-4" /> },
+      { key: "favorites", label: "收藏夹", icon: <Star className="h-4 w-4" /> },
+      { key: "trash", label: "回收站", icon: <Trash2 className="h-4 w-4" /> },
+    ],
+  },
+  {
+    title: "数据与工具",
+    items: [
+      { key: "datasources", label: "数据源管理", icon: <Database className="h-4 w-4" /> },
+      { key: "monitor", label: "监控与订阅", icon: <BellRing className="h-4 w-4" /> },
+      { key: "api", label: "API 接入", icon: <Plug className="h-4 w-4" /> },
+    ],
+  },
+];
 
 export function Sidebar() {
-  const [activeId, setActiveId] = useAtom(activeThreadIdAtom);
-  const [threads, setThreads] = useAtom(threadsAtom);
-  const [collapsed, setCollapsed] = useAtom(sidebarCollapsedAtom);
-  const [loading, setLoading] = React.useState(false);
+  const setActiveId = useSetAtom(activeThreadIdAtom);
+  const [, setDraft] = useAtom(draftCategoryAtom);
+  const [active, setActive] = React.useState("home");
 
-  // 折叠态持久化
-  React.useEffect(() => {
-    const saved = localStorage.getItem("sidebar-collapsed");
-    if (saved === "1") setCollapsed(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  const toggle = () => {
-    setCollapsed((c) => {
-      localStorage.setItem("sidebar-collapsed", c ? "0" : "1");
-      return !c;
-    });
+  // 回到工作台首页：清空会话与草稿
+  const goHome = () => {
+    setActive("home");
+    setActiveId(null);
+    setDraft(null);
   };
 
-  const refresh = React.useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await gqlRequest<{ threads: ThreadSummary[] }>(THREADS_QUERY);
-      setThreads(data.threads || []);
-    } catch {
-      /* 后端没起时静默 */
-    } finally {
-      setLoading(false);
-    }
-  }, [setThreads]);
-
-  React.useEffect(() => {
-    refresh();
-  }, [refresh]);
-
-  // 删除单条会话记录（乐观：先从列表移除，失败再回滚刷新）
-  const [pendingDelete, setPendingDelete] = React.useState<string | null>(null);
-  const handleDelete = React.useCallback(
-    async (e: React.MouseEvent, id: string) => {
-      e.stopPropagation(); // 别触发选中
-      const prev = threads;
-      setThreads((list) => list.filter((t) => t.id !== id));
-      if (activeId === id) setActiveId(null); // 删的是当前会话 → 回到新建态
-      try {
-        await gqlRequest(DELETE_MUTATION, { threadId: id });
-      } catch {
-        setThreads(prev); // 失败回滚
-        refresh();
-      } finally {
-        setPendingDelete(null);
-      }
-    },
-    [threads, activeId, setThreads, setActiveId, refresh]
-  );
+  const onNav = (key: string) => {
+    setActive(key);
+    // 目前仅「工作台」有真实视图，其余分组为占位导航 → 统一回到工作台首页
+    setActiveId(null);
+    setDraft(null);
+  };
 
   return (
-    <aside
-      className={cn(
-        "flex h-full flex-col border-r border-hairline bg-surface-1 transition-[width] duration-200 ease-out",
-        collapsed ? "w-[56px]" : "w-64"
-      )}
-    >
-      {/* 顶部：品牌 + 折叠按钮 */}
-      <div className="flex h-14 items-center justify-between px-3">
-        <div className={cn("flex items-center gap-2 overflow-hidden", collapsed && "w-0")}>
-          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-accent text-white">
-            <Compass className="h-4 w-4" />
-          </div>
-          {!collapsed && <span className="whitespace-nowrap text-sm font-semibold text-ink">蓝海罗盘</span>}
+    <aside className="flex h-full w-60 flex-shrink-0 flex-col border-r border-hairline bg-white">
+      {/* 品牌 */}
+      <div className="flex h-16 items-center gap-2.5 px-5">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white shadow-sm">
+          <Compass className="h-5 w-5" strokeWidth={2} />
         </div>
+        <div className="leading-tight">
+          <div className="text-sm font-semibold text-ink">MarketAgent</div>
+          <div className="text-[10px] text-ink-subtle">选品 &amp; 市场调研</div>
+        </div>
+      </div>
+
+      {/* 新建调研任务 */}
+      <div className="px-3 pb-1.5">
         <button
-          onClick={toggle}
-          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-ink-subtle transition-colors hover:bg-surface-2 hover:text-ink"
-          title={collapsed ? "展开侧边栏" : "收起侧边栏"}
+          onClick={goHome}
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-hover active:scale-[0.99]"
         >
-          {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          <Plus className="h-4 w-4" />
+          新建调研任务
         </button>
       </div>
 
-      {/* 新建任务 */}
-      <div className="px-3 pb-2">
-        <button
-          onClick={() => setActiveId(null)}
-          className={cn(
-            "flex items-center justify-center gap-2 rounded-lg bg-accent text-sm font-medium text-white transition-colors hover:bg-accent-hover active:scale-[0.99]",
-            collapsed ? "h-9 w-9" : "w-full px-4 py-2"
-          )}
-          title="新建任务"
-        >
-          <Plus className="h-4 w-4 flex-shrink-0" />
-          {!collapsed && "新建任务"}
-        </button>
-      </div>
-
-      {!collapsed && (
-        <div className="flex items-center justify-between px-4 py-2">
-          <span className="text-[11px] font-medium uppercase tracking-wide text-ink-subtle">历史任务</span>
-          {loading && <Loader2 className="h-3 w-3 animate-spin text-ink-subtle" />}
-        </div>
-      )}
-
-      {/* 任务列表 */}
-      <div className="scroll-area flex-1 overflow-y-auto px-2 pb-3">
-        {threads.length === 0 ? (
-          !collapsed && <div className="px-2 py-6 text-center text-xs text-ink-subtle">暂无历史任务</div>
-        ) : (
-          threads.map((t) => (
-            <div
-              key={t.id}
-              onClick={() => setActiveId(t.id)}
-              onMouseLeave={() => pendingDelete === t.id && setPendingDelete(null)}
-              title={t.title || "未命名任务"}
-              className={cn(
-                "group mb-0.5 flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors",
-                activeId === t.id ? "bg-surface-2 text-ink" : "text-ink-muted hover:bg-surface-2/60",
-                collapsed && "justify-center px-0"
-              )}
-            >
-              <div className="relative">
-                <MessageSquare className="mt-0.5 h-4 w-4 flex-shrink-0 text-ink-subtle" />
-                {collapsed && t.activeStreamId && (
-                  <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-success" />
-                )}
+      {/* 导航分组 */}
+      <nav className="scroll-area min-h-0 flex-1 overflow-y-auto px-3 py-2">
+        {NAV.map((group, gi) => (
+          <div key={gi} className="mb-1">
+            {group.title && (
+              <div className="px-2 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-ink-tertiary">
+                {group.title}
               </div>
-              {!collapsed && (
-                <>
-                  <span className="line-clamp-2 flex-1 leading-snug">{t.title || "未命名任务"}</span>
-                  {t.activeStreamId && (
-                    <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-success" />
+            )}
+            {group.items.map((it) => {
+              const isActive = active === it.key;
+              return (
+                <button
+                  key={it.key}
+                  onClick={() => (it.key === "home" ? goHome() : onNav(it.key))}
+                  className={cn(
+                    "mb-0.5 flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors",
+                    isActive
+                      ? "bg-brand/10 font-medium text-brand"
+                      : "text-ink-muted hover:bg-surface-1 hover:text-ink"
                   )}
-                  {/* 删除按钮：悬停显示；点一次进入确认态，再点确认删除 */}
-                  {pendingDelete === t.id ? (
-                    <button
-                      onClick={(e) => handleDelete(e, t.id)}
-                      title="确认删除"
-                      className="mt-0.5 flex-shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium text-danger transition-colors hover:bg-danger/10"
-                    >
-                      确认
-                    </button>
-                  ) : (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPendingDelete(t.id);
-                      }}
-                      title="删除记录"
-                      className="mt-0.5 flex-shrink-0 rounded p-0.5 text-ink-subtle opacity-0 transition-all hover:bg-danger/10 hover:text-danger group-hover:opacity-100"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-          ))
-        )}
+                >
+                  <span className={isActive ? "text-brand" : "text-ink-subtle"}>{it.icon}</span>
+                  {it.label}
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </nav>
+
+      {/* Pro 计划卡 */}
+      <div className="px-3 pb-2">
+        <div className="rounded-xl border border-hairline bg-gradient-to-br from-brand/5 to-violet/5 p-3">
+          <div className="flex items-center gap-1.5 text-sm font-semibold text-ink">
+            <Crown className="h-4 w-4 text-amber-500" />
+            专业版
+          </div>
+          <div className="mt-2 flex items-center justify-between text-[11px] text-ink-subtle">
+            <span>使用量</span>
+            <span className="font-medium text-ink-muted">68%</span>
+          </div>
+          <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
+            <div className="h-full rounded-full bg-brand" style={{ width: "68%" }} />
+          </div>
+          <div className="mt-1.5 text-[10px] text-ink-tertiary">重置于 12 天后</div>
+          <button className="mt-2.5 w-full rounded-lg border border-brand/30 bg-white px-3 py-1.5 text-xs font-medium text-brand transition-colors hover:bg-brand/5">
+            升级计划
+          </button>
+        </div>
       </div>
 
-      {!collapsed && (
-        <div className="border-t border-hairline px-4 py-3 text-[11px] text-ink-subtle">
-          DeepSeek · 8 阶段实时调研
-        </div>
-      )}
+      {/* 设置 */}
+      <div className="border-t border-hairline px-3 py-2">
+        <button className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-ink-muted transition-colors hover:bg-surface-1 hover:text-ink">
+          <Settings className="h-4 w-4 text-ink-subtle" />
+          设置
+        </button>
+      </div>
     </aside>
   );
 }
