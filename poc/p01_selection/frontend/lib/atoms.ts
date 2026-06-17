@@ -11,6 +11,24 @@ export const activeThreadIdAtom = atom<string | null>(null);
 // 草稿品类（工作台 hero / 品类快捷点击后，进入澄清态等待补参；null = 工作台首页）
 export const draftCategoryAtom = atom<string | null>(null);
 
+// 当前侧边栏页面（home = 工作台首页；其余对应导航 key）
+export type PageKey =
+  | "home"
+  | "market"
+  | "trend"
+  | "competitor"
+  | "audience"
+  | "opportunity"
+  | "tasks"
+  | "reports"
+  | "favorites"
+  | "trash"
+  | "datasources"
+  | "monitor"
+  | "api"
+  | "settings";
+export const activePageAtom = atom<PageKey>("home");
+
 // 输入框快捷参数（市场/定位/模型）—— 与 A2UI 表单共享，localStorage 持久化。
 export interface QuickParams {
   markets: string[];

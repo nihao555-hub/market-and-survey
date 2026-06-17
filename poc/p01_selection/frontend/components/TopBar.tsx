@@ -2,12 +2,31 @@
 import React from "react";
 import { useAtomValue } from "jotai";
 import { Search, Bell, HelpCircle, ChevronDown } from "lucide-react";
-import { activeThreadIdAtom, draftCategoryAtom } from "@/lib/atoms";
+import { activeThreadIdAtom, draftCategoryAtom, activePageAtom, type PageKey } from "@/lib/atoms";
+
+const PAGE_TITLES: Record<PageKey, string> = {
+  home: "调研工作区",
+  market: "市场调研",
+  trend: "趋势探索",
+  competitor: "竞品分析",
+  audience: "受众洞察",
+  opportunity: "机会挖掘",
+  tasks: "我的任务",
+  reports: "报告中心",
+  favorites: "收藏夹",
+  trash: "回收站",
+  datasources: "数据源管理",
+  monitor: "监控与订阅",
+  api: "API 接入",
+  settings: "设置",
+};
 
 export function TopBar() {
   const activeId = useAtomValue(activeThreadIdAtom);
   const draft = useAtomValue(draftCategoryAtom);
-  const isHome = !activeId && !draft;
+  const page = useAtomValue(activePageAtom);
+  const isChat = !!activeId || !!draft;
+  const isHome = !isChat && page === "home";
 
   return (
     <header className="flex h-16 flex-shrink-0 items-center gap-4 border-b border-hairline bg-white px-5">
@@ -22,7 +41,7 @@ export function TopBar() {
           </div>
         </div>
       ) : (
-        <div className="text-sm font-medium text-ink-muted">调研工作区</div>
+        <div className="text-sm font-medium text-ink-muted">{isChat ? "调研工作区" : PAGE_TITLES[page]}</div>
       )}
 
       {/* 全局搜索 */}
@@ -46,7 +65,7 @@ export function TopBar() {
           <HelpCircle className="h-[18px] w-[18px]" />
         </button>
         <div className="ml-1 flex items-center gap-2 rounded-lg py-1 pl-1 pr-2 transition-colors hover:bg-surface-1">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand to-violet text-xs font-semibold text-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand2 text-xs font-semibold text-white">
             产
           </div>
           <div className="hidden leading-tight sm:block">

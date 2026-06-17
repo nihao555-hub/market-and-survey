@@ -123,7 +123,7 @@ export function RightRail() {
               </div>
             ))}
           </div>
-          <div className="mt-3 flex items-start gap-2.5 rounded-xl bg-gradient-to-br from-brand/10 to-violet/10 p-3">
+          <div className="mt-3 flex items-start gap-2.5 rounded-xl bg-gradient-to-br from-brand/10 to-brand2/10 p-3">
             <Gift className="h-5 w-5 flex-shrink-0 text-brand" />
             <div className="text-[11px] leading-relaxed text-ink-muted">
               完成全部任务可获得 <span className="font-medium text-brand">专属数据报告模版</span>

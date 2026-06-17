@@ -68,15 +68,15 @@ const config: Config = {
           4: "hsl(var(--chart-4))",
           5: "hsl(var(--chart-5))",
         },
-        // ── 品牌主色（indigo，设计稿② Primary #6366F1） ──
+        // ── 品牌主色（橙色系，Primary #F97316 orange-500） ──
         brand: {
-          DEFAULT: "#6366F1",
-          hover: "#4F46E5",
-          light: "#818CF8",
+          DEFAULT: "#F97316",
+          hover: "#EA580C",
+          light: "#FB923C",
           fg: "#FFFFFF",
         },
-        // ── 设计稿② 辅助色 ──
-        violet: { DEFAULT: "#8B5CF6" },
+        // ── 品牌辅助色（暖琥珀，用于渐变第二色） ──
+        brand2: { DEFAULT: "#FBBF24" },
         // ── 语义色（设计稿② Semantic） ──
         success: { DEFAULT: "#10B981", bg: "#D1FAE5", border: "#A7F3D0" },
         warning: { DEFAULT: "#F59E0B", bg: "#FEF3C7", border: "#FDE68A" },

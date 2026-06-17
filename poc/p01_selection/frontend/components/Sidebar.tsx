@@ -21,9 +21,9 @@ import {
   Crown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { activeThreadIdAtom, draftCategoryAtom } from "@/lib/atoms";
+import { activeThreadIdAtom, draftCategoryAtom, activePageAtom, type PageKey } from "@/lib/atoms";
 
-type NavItem = { key: string; label: string; icon: React.ReactNode };
+type NavItem = { key: PageKey; label: string; icon: React.ReactNode };
 type NavGroup = { title?: string; items: NavItem[] };
 
 const NAV: NavGroup[] = [
@@ -62,21 +62,15 @@ const NAV: NavGroup[] = [
 export function Sidebar() {
   const setActiveId = useSetAtom(activeThreadIdAtom);
   const [, setDraft] = useAtom(draftCategoryAtom);
-  const [active, setActive] = React.useState("home");
+  const [active, setActive] = useAtom(activePageAtom);
 
-  // 回到工作台首页：清空会话与草稿
-  const goHome = () => {
-    setActive("home");
-    setActiveId(null);
-    setDraft(null);
-  };
-
-  const onNav = (key: string) => {
+  // 切换页面：清空会话与草稿，退出聊天态
+  const onNav = (key: PageKey) => {
     setActive(key);
-    // 目前仅「工作台」有真实视图，其余分组为占位导航 → 统一回到工作台首页
     setActiveId(null);
     setDraft(null);
   };
+  const goHome = () => onNav("home");
 
   return (
     <aside className="flex h-full w-60 flex-shrink-0 flex-col border-r border-hairline bg-white">
@@ -116,7 +110,7 @@ export function Sidebar() {
               return (
                 <button
                   key={it.key}
-                  onClick={() => (it.key === "home" ? goHome() : onNav(it.key))}
+                  onClick={() => onNav(it.key)}
                   className={cn(
                     "mb-0.5 flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors",
                     isActive
@@ -135,7 +129,7 @@ export function Sidebar() {
 
       {/* Pro 计划卡 */}
       <div className="px-3 pb-2">
-        <div className="rounded-xl border border-hairline bg-gradient-to-br from-brand/5 to-violet/5 p-3">
+        <div className="rounded-xl border border-hairline bg-gradient-to-br from-brand/5 to-brand2/10 p-3">
           <div className="flex items-center gap-1.5 text-sm font-semibold text-ink">
             <Crown className="h-4 w-4 text-amber-500" />
             专业版
@@ -156,8 +150,16 @@ export function Sidebar() {
 
       {/* 设置 */}
       <div className="border-t border-hairline px-3 py-2">
-        <button className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-ink-muted transition-colors hover:bg-surface-1 hover:text-ink">
-          <Settings className="h-4 w-4 text-ink-subtle" />
+        <button
+          onClick={() => onNav("settings")}
+          className={cn(
+            "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
+            active === "settings"
+              ? "bg-brand/10 font-medium text-brand"
+              : "text-ink-muted hover:bg-surface-1 hover:text-ink"
+          )}
+        >
+          <Settings className={cn("h-4 w-4", active === "settings" ? "text-brand" : "text-ink-subtle")} />
           设置
         </button>
       </div>

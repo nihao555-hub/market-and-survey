@@ -21,12 +21,23 @@ import {
   PieChart,
   MoreHorizontal,
   ArrowRight,
+  Target,
+  BarChart3,
+  Lightbulb,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { draftCategoryAtom, activeThreadIdAtom, threadsAtom, quickParamsAtom } from "@/lib/atoms";
+import {
+  draftCategoryAtom,
+  activeThreadIdAtom,
+  threadsAtom,
+  quickParamsAtom,
+  activePageAtom,
+} from "@/lib/atoms";
 import { gqlRequest } from "@/lib/graphql-client";
 import { marketIso, marketLabel } from "@/lib/markets";
 import { Flag } from "@/components/ui/Flag";
+import { formatDate, parseTitle } from "@/lib/thread-format";
 import type { ThreadSummary } from "@/lib/agent-types";
 
 const THREADS_QUERY = /* GraphQL */ `
@@ -42,11 +53,11 @@ const QUICK_CATEGORIES = [
 ];
 
 const WORKFLOW = [
-  { n: 1, label: "定义调研", desc: "明确品类与目标市场" },
-  { n: 2, label: "市场分析", desc: "规模 / 趋势 / 需求" },
-  { n: 3, label: "竞品洞察", desc: "对手 / 定价 / 评论" },
-  { n: 4, label: "机会挖掘", desc: "痛点 / 差异化空间" },
-  { n: 5, label: "报告生成", desc: "可决策结论产出" },
+  { n: 1, label: "定义调研", desc: "明确品类与目标市场", icon: <Target className="h-4 w-4" /> },
+  { n: 2, label: "市场分析", desc: "规模 / 趋势 / 需求", icon: <BarChart3 className="h-4 w-4" /> },
+  { n: 3, label: "竞品洞察", desc: "对手 / 定价 / 评论", icon: <Swords className="h-4 w-4" /> },
+  { n: 4, label: "机会挖掘", desc: "痛点 / 差异化空间", icon: <Lightbulb className="h-4 w-4" /> },
+  { n: 5, label: "报告生成", desc: "可决策结论产出", icon: <FileText className="h-4 w-4" /> },
 ];
 
 const TOOLS = [
@@ -58,25 +69,10 @@ const TOOLS = [
   { label: "市场规模", desc: "TAM / SAM 估算", icon: <PieChart className="h-4 w-4" /> },
 ];
 
-function formatDate(s?: string): string {
-  if (!s) return "—";
-  const d = new Date(s);
-  if (Number.isNaN(d.getTime())) return s;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-/** 解析 thread 标题「品类 · 市场」→ {name, market} */
-function parseTitle(title?: string): { name: string; market: string } {
-  if (!title) return { name: "未命名任务", market: "—" };
-  const idx = title.lastIndexOf(" · ");
-  if (idx === -1) return { name: title, market: "—" };
-  return { name: title.slice(0, idx), market: title.slice(idx + 3) };
-}
-
 export function WorkspaceHome() {
   const setDraft = useSetAtom(draftCategoryAtom);
   const setActiveId = useSetAtom(activeThreadIdAtom);
+  const setPage = useSetAtom(activePageAtom);
   const [threads, setThreads] = useAtom(threadsAtom);
   const [params, setParams] = useAtom(quickParamsAtom);
   const [input, setInput] = React.useState("");
@@ -105,18 +101,25 @@ export function WorkspaceHome() {
   const firstMarket = (params.markets[0] as string) || "US";
 
   return (
-    <div className="mx-auto w-full max-w-[1100px] px-6 py-6">
+    <div className="mx-auto w-full max-w-[1180px] px-8 py-7">
       {/* Hero 调研入口 */}
-      <section className="relative overflow-hidden rounded-2xl border border-brand/20 bg-gradient-to-br from-brand via-violet to-indigo-600 p-6 text-white shadow-md">
-        <div className="pointer-events-none absolute -right-8 -top-10 h-44 w-44 rounded-full bg-white/10 blur-2xl" />
-        <div className="pointer-events-none absolute -bottom-12 right-24 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-        <div className="relative max-w-2xl">
-          <h1 className="text-2xl font-bold">你想调研什么？</h1>
-          <p className="mt-1.5 text-sm text-white/85">
+      <section className="relative overflow-hidden rounded-2xl border border-brand/20 bg-gradient-to-br from-brand via-brand-light to-brand2 p-7 text-white shadow-md">
+        <div className="pointer-events-none absolute -right-10 -top-12 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-12 right-32 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/hero-research.png"
+          alt=""
+          aria-hidden
+          className="pointer-events-none absolute right-2 top-1/2 hidden h-[230px] w-auto -translate-y-1/2 select-none drop-shadow-xl lg:block"
+        />
+        <div className="relative max-w-[640px]">
+          <h1 className="text-[28px] font-bold leading-tight tracking-tight">你想调研什么？</h1>
+          <p className="mt-2 text-sm text-white/90">
             描述一个品类或市场，AI 自动完成趋势、竞品、痛点、利润与 IP 风险全流程调研。
           </p>
 
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-white/20 bg-white/95 p-1.5 shadow-lg backdrop-blur">
+          <div className="mt-5 flex items-center gap-2 rounded-xl border border-white/20 bg-white/95 p-1.5 shadow-lg backdrop-blur">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -197,16 +200,19 @@ export function WorkspaceHome() {
             <p className="text-xs text-ink-subtle">从问题到洞察，AI 全流程为你就绪</p>
           </div>
         </div>
-        <div className="flex flex-col gap-3 md:flex-row md:items-stretch">
+        <div className="flex flex-col gap-2 md:flex-row md:items-stretch">
           {WORKFLOW.map((s, i) => (
             <React.Fragment key={s.n}>
-              <div className="flex flex-1 items-start gap-3 rounded-xl border border-hairline bg-surface-1 p-3">
-                <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-brand/10 text-xs font-semibold text-brand">
-                  {s.n}
+              <div className="flex flex-1 items-start gap-3 rounded-xl border border-hairline bg-surface-1 p-3.5">
+                <span className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
+                  {s.icon}
+                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand text-[9px] font-bold text-white">
+                    {s.n}
+                  </span>
                 </span>
-                <div className="min-w-0">
+                <div className="min-w-0 pt-0.5">
                   <div className="text-sm font-medium text-ink">{s.label}</div>
-                  <div className="text-[11px] text-ink-subtle">{s.desc}</div>
+                  <div className="mt-0.5 text-[11px] leading-snug text-ink-subtle">{s.desc}</div>
                 </div>
               </div>
               {i < WORKFLOW.length - 1 && (
@@ -223,7 +229,7 @@ export function WorkspaceHome() {
       <section className="mt-6">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-base font-semibold text-ink">常用工具</h2>
-          <button className="text-xs text-brand hover:underline">更多工具</button>
+          <button onClick={() => setPage("market")} className="text-xs text-brand hover:underline">更多工具</button>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {TOOLS.map((t) => (
@@ -248,7 +254,7 @@ export function WorkspaceHome() {
       <section className="mt-6 rounded-2xl border border-hairline bg-white">
         <div className="flex items-center justify-between border-b border-hairline px-5 py-3.5">
           <h2 className="text-base font-semibold text-ink">最近任务</h2>
-          <button className="text-xs text-brand hover:underline">查看全部任务</button>
+          <button onClick={() => setPage("tasks")} className="text-xs text-brand hover:underline">查看全部任务</button>
         </div>
         {threads.length === 0 ? (
           <div className="px-5 py-10 text-center text-sm text-ink-subtle">

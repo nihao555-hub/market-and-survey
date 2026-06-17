@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* ── 设计系统 token（设计稿② Design Tokens v1.0）──
-   主色 indigo #6366F1、slate 中性阶、语义色、8pt 间距、5 档阴影。
+   主色 orange #F97316、slate 中性阶、语义色、8pt 间距、5 档阴影。
    shadcn / ai-elements 用 HSL CSS 变量驱动；品牌/旧 token 用 hex 兼容现有组件。*/
 @layer base {
   :root {
@@ -13,7 +13,7 @@
     --card-foreground: 222.2 47.4% 11.2%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 47.4% 11.2%;
-    --primary: 238.7 83.5% 66.7%;     /* #6366F1 indigo-500 */
+    --primary: 24.6 95% 53.1%;        /* #F97316 orange-500 */
     --primary-foreground: 0 0% 100%;
     --secondary: 210 40% 96.1%;       /* #F1F5F9 slate-100 */
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -25,19 +25,19 @@
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;      /* #E2E8F0 slate-200 */
     --input: 214.3 31.8% 91.4%;
-    --ring: 238.7 83.5% 66.7%;        /* indigo 聚焦环 */
+    --ring: 24.6 95% 53.1%;           /* orange 聚焦环 */
     --radius: 0.75rem;                /* 12px 卡片圆角基准 */
 
-    --chart-1: 258 90% 66%;   /* violet #8B5CF6 */
+    --chart-1: 25 95% 53%;    /* orange #F97316 */
     --chart-2: 189 94% 43%;   /* cyan #06B6D4 */
     --chart-3: 330 81% 60%;   /* pink #EC4899 */
     --chart-4: 38 92% 50%;    /* amber #F59E0B */
     --chart-5: 160 84% 39%;   /* emerald #10B981 */
 
     /* ── 品牌主色（shimmer / markdown 链接等用） ── */
-    --brand: #6366F1;
-    --brand-hover: #4F46E5;
-    --brand-ring: rgba(99, 102, 241, 0.35);
+    --brand: #F97316;
+    --brand-hover: #EA580C;
+    --brand-ring: rgba(249, 115, 22, 0.35);
 
     /* ── 兼容旧组件的中性/语义 token（重映射到设计稿② slate） ── */
     --canvas: #ffffff;
@@ -56,9 +56,9 @@
     --danger: #ef4444;
     --warning: #f59e0b;
 
-    /* shimmer 渐变（indigo） */
-    --font-color-light: #c7d2fe;
-    --font-color-primary: #6366f1;
+    /* shimmer 渐变（orange） */
+    --font-color-light: #fed7aa;
+    --font-color-primary: #f97316;
   }
 }
 
@@ -86,7 +86,7 @@ h2, .display-lg { letter-spacing: -0.018em; font-weight: 600; }
 h3, .display-md { letter-spacing: -0.012em; font-weight: 600; }
 .eyebrow { letter-spacing: 0.04em; font-weight: 500; text-transform: uppercase; font-size: 12px; color: var(--ink-subtle); }
 
-/* ShimmeringText —— 进行中文案水波光效（indigo） */
+/* ShimmeringText —— 进行中文案水波光效（orange） */
 .shimmering-text {
   background: linear-gradient(
     90deg,
