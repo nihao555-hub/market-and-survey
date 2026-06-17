@@ -3,6 +3,7 @@ vendor/
 __pycache__/
 *.pyc
 .env
+node_modules/
 poc/01-ѡƷ/data/*.sqlite
 poc/01-ѡƷ/probes/captured/
 poc/01-ѡƷ/reports/
