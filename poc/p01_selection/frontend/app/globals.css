@@ -1,0 +1,115 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Linear 设计系统 token（亮色适配版，见 vendor/.../linear.app/DESIGN.md）──
+   原则：四级 surface 阶梯 + hairline 细线承载层级（几乎不用阴影），
+   单一 accent（Linear 用薰衣草紫，本项目按规范用青绿避开"AI 紫"辉光），
+   display 负字距收紧，8px 按钮圆角 / 12px 卡片圆角。*/
+:root {
+  --accent: #0d9488;
+  --accent-hover: #0b8076;
+  --accent-ring: rgba(13, 148, 136, 0.35);
+
+  /* 四级 surface 阶梯（canvas → 1 → 2 → 3 → 4），亮色下逐级加深一点点 */
+  --canvas: #ffffff;
+  --surface-1: #fafbfc;
+  --surface-2: #f4f5f7;
+  --surface-3: #eef0f3;
+  --surface-4: #e8eaee;
+
+  /* hairline 三级（Linear 用细线代替阴影做层级） */
+  --hairline: #e8eaed;
+  --hairline-strong: #d8dbe0;
+  --hairline-tertiary: #c8ccd2;
+
+  /* ink 四级文本 */
+  --ink: #1a1d21;
+  --ink-muted: #4b5563;
+  --ink-subtle: #8a8f98;
+  --ink-tertiary: #a8adb5;
+
+  --success: #27a644;
+  --danger: #dc2626;
+  --warning: #d4a017;
+
+  /* shimmer 用 */
+  --font-color-light: #cbd5d1;
+  --font-color-primary: #0d9488;
+}
+
+* {
+  border-color: var(--hairline);
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: Inter, -apple-system, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.011em;
+}
+
+/* Linear 标题：单一字族，越大字距越负（display 收紧到 -0.03em） */
+h1, .display-xl { letter-spacing: -0.03em; font-weight: 600; }
+h2, .display-lg { letter-spacing: -0.022em; font-weight: 600; }
+h3, .display-md { letter-spacing: -0.014em; font-weight: 600; }
+.eyebrow { letter-spacing: 0.04em; font-weight: 500; text-transform: uppercase; font-size: 12px; color: var(--ink-subtle); }
+
+/* ShimmeringText —— 进行中文案水波光效（lavender） */
+.shimmering-text {
+  background: linear-gradient(
+    90deg,
+    var(--font-color-light),
+    var(--font-color-primary),
+    var(--font-color-light)
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer-wave 1.4s infinite linear;
+}
+@keyframes shimmer-wave {
+  0% { background-position: 200% top; }
+  100% { background-position: -200% top; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmering-text { animation: none; -webkit-text-fill-color: var(--accent); }
+}
+
+/* 滚动条 */
+textarea::-webkit-scrollbar, .scroll-area::-webkit-scrollbar { width: 8px; }
+textarea::-webkit-scrollbar-track, .scroll-area::-webkit-scrollbar-track { background: transparent; }
+textarea::-webkit-scrollbar-thumb, .scroll-area::-webkit-scrollbar-thumb { background-color: var(--hairline-strong); border-radius: 4px; }
+textarea::-webkit-scrollbar-thumb:hover, .scroll-area::-webkit-scrollbar-thumb:hover { background-color: var(--ink-subtle); }
+
+/* ── markdown 报告样式（亮色，对齐 DESIGN.md） ── */
+.markdown-body { font-size: 15px; line-height: 1.65; color: var(--ink-muted); }
+.markdown-body h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); margin: 1.2rem 0 0.6rem; }
+.markdown-body h2 { font-size: 1.2rem; font-weight: 600; letter-spacing: -0.01em; color: var(--ink); margin: 1.1rem 0 0.4rem; padding-bottom: 5px; border-bottom: 1px solid var(--hairline); }
+.markdown-body h3 { font-size: 1.02rem; font-weight: 600; color: var(--ink); margin: 0.9rem 0 0.3rem; }
+.markdown-body h4 { font-size: 0.95rem; font-weight: 600; color: var(--ink-muted); margin: 0.7rem 0 0.2rem; }
+.markdown-body p { margin: 0.5rem 0; }
+.markdown-body strong { color: var(--ink); font-weight: 600; }
+.markdown-body table { border-collapse: collapse; width: 100%; margin: 0.8rem 0; font-size: 0.85rem; }
+.markdown-body th, .markdown-body td { border: 1px solid var(--hairline); padding: 6px 10px; text-align: left; }
+.markdown-body th { background: var(--surface-2); font-weight: 600; color: var(--ink); }
+.markdown-body tr:nth-child(even) { background: var(--surface-1); }
+.markdown-body blockquote { border-left: 3px solid var(--hairline-strong); padding: 2px 14px; color: var(--ink-subtle); margin: 0.6rem 0; }
+.markdown-body code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.82rem; color: #b3471d; }
+.markdown-body pre { background: var(--surface-2); padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; border: 1px solid var(--hairline); }
+.markdown-body pre code { background: transparent; color: var(--ink); padding: 0; }
+.markdown-body img { max-width: 100%; border-radius: 8px; margin: 10px 0; border: 1px solid var(--hairline); }
+.markdown-body a { color: var(--accent); text-decoration: none; }
+.markdown-body a:hover { text-decoration: underline; }
+.markdown-body details { border: 1px solid var(--hairline); border-radius: 8px; padding: 10px 14px; margin: 10px 0; background: var(--surface-1); }
+.markdown-body summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.markdown-body ul { list-style: disc; padding-left: 1.4rem; margin: 0.4rem 0; }
+.markdown-body ol { list-style: decimal; padding-left: 1.4rem; margin: 0.4rem 0; }
+.markdown-body hr { border: none; border-top: 1px solid var(--hairline); margin: 1.2rem 0; }

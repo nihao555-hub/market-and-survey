@@ -1,0 +1,89 @@
+13:29:05 | INFO | ━━━━━ Step 1 / model=deepseek-v4-flash ━━━━━
+13:29:07 | INFO | ━━━━━ Step 2 / model=deepseek-v4-flash ━━━━━
+13:29:10 | INFO | ━━━━━ Step 3 / model=deepseek-v4-flash ━━━━━
+13:29:13 | INFO | 🔧 get_trend(bluetooth headphones, US)
+13:29:15 | INFO | 趋势 OK：['bluetooth headphones'] (54 行)
+13:29:15 | INFO | 🔧 get_bestsellers(electronics)
+13:29:15 | INFO | 📦 BSR: electronics → https://www.amazon.com/Best-Sellers-Electronics/zgbs/electronics/
+13:29:25 | INFO | [L3 patchright] OK 457987 chars status=200
+13:29:25 | INFO |   解析到 30 个 BSR 商品
+13:29:25 | INFO | 🔧 get_movers_shakers(electronics)
+13:29:25 | INFO | 📈 Movers&Shakers: electronics → https://www.amazon.com/gp/movers-and-shakers/electronics/
+13:29:34 | INFO | [L3 patchright] OK 362974 chars status=200
+13:29:34 | INFO |   解析到 0 个 Movers&Shakers 商品
+13:29:34 | INFO | ━━━━━ Step 4 / model=deepseek-v4-flash ━━━━━
+13:29:37 | INFO | 🔧 search_products(amazon, bluetooth earbuds)
+13:29:37 | DEBUG | [L1 curl_cffi] fail: Failed to perform, curl: (77) error setting certificate verify locations:  CAfile: D:\new 项目\.venv\Lib\site-packages\cer
+13:29:40 | INFO | [L2 Scrapling] OK 1604444 bytes
+13:29:40 | INFO | 🔧 search_products(amazon, wireless headphones)
+13:29:40 | DEBUG | [L1 curl_cffi] fail: Failed to perform, curl: (77) error setting certificate verify locations:  CAfile: D:\new 项目\.venv\Lib\site-packages\cer
+13:29:53 | INFO | [L2 Scrapling] OK 1515035 bytes
+13:29:53 | INFO | 🔧 get_bestsellers(electronics)
+13:29:53 | INFO | 📦 BSR: electronics → https://www.amazon.com/Best-Sellers-Electronics/zgbs/electronics/
+13:30:02 | INFO | [L3 patchright] OK 529652 chars status=200
+13:30:02 | INFO |   解析到 38 个 BSR 商品
+13:30:02 | INFO | ━━━━━ Step 5 / model=deepseek-v4-flash ━━━━━
+13:30:05 | INFO | 🔧 get_asin_pool() → 62 ASINs
+13:30:05 | INFO | ━━━━━ Step 6 / model=deepseek-v4-flash ━━━━━
+13:30:17 | INFO | 🔧 analyze_market_structure(25 件)
+13:30:17 | INFO | ━━━━━ Step 7 / model=deepseek-v4-flash ━━━━━
+13:30:22 | INFO | 🔧 get_reviews_batch(6 ASINs)
+13:30:22 | INFO | 📝 详情页评论 ASIN=B0CRTR3PMF
+13:31:04 | INFO |   ASIN=B0CRTR3PMF reviews=13 kw=0 summary=无
+13:31:04 | INFO | 📝 详情页评论 ASIN=B09DT48V16
+13:31:43 | INFO |   ASIN=B09DT48V16 reviews=13 kw=0 summary=无
+13:31:43 | INFO | 📝 详情页评论 ASIN=B09FT58QQP
+13:32:27 | INFO |   ASIN=B09FT58QQP reviews=13 kw=0 summary=无
+13:32:27 | INFO | 📝 详情页评论 ASIN=B0C3HCD34R
+13:33:27 | INFO |   ASIN=B0C3HCD34R reviews=13 kw=0 summary=无
+13:33:27 | INFO | 📝 详情页评论 ASIN=B0BQPNMXQV
+13:34:11 | INFO |   ASIN=B0BQPNMXQV reviews=13 kw=0 summary=无
+13:34:11 | INFO | ━━━━━ Step 8 / model=deepseek-v4-flash ━━━━━
+13:34:23 | INFO | 🔧 analyze_reviews(70 条)
+13:34:27 | INFO | ━━━━━ Step 9 / model=deepseek-v4-flash ━━━━━
+13:34:33 | INFO | 🔧 validate_candidate(B0CRTR3PMF)
+13:34:33 | INFO | 🔧 validate_candidate(B09DT48V16)
+13:34:33 | INFO | 🔧 validate_candidate(B0BQPNMXQV)
+13:34:33 | INFO | 🔧 validate_candidate(B0BTYCRJSS)
+13:34:33 | INFO | 🔧 validate_candidate(B0GWCC1K63)
+13:34:33 | INFO | ━━━━━ Step 10 / model=deepseek-v4-flash ━━━━━
+13:34:35 | INFO | 🔧 estimate_procurement_cost(蓝牙耳机 真无线)
+13:34:35 | INFO | 🏭 搜 1688 → 蓝牙耳机 真无线
+13:34:43 | INFO | [L3 patchright] OK 220163 chars status=200
+13:34:43 | INFO | 🔧 estimate_procurement_cost(蓝牙耳机 ANC主动降噪)
+13:34:43 | INFO | 🏭 搜 1688 → 蓝牙耳机 ANC主动降噪
+13:34:55 | INFO | [L3 patchright] OK 220166 chars status=200
+13:34:55 | INFO | ━━━━━ Step 11 / model=deepseek-v4-flash ━━━━━
+13:35:06 | INFO | 🔧 full_cost_breakdown($34.99, $9.8, asin=B0CRTR3PMF, cat=headphones)
+13:35:06 | INFO | 💱 实时汇率 1USD = 6.786741 CNY
+13:35:06 | INFO | 🔧 full_cost_breakdown($39.99, $12.0, asin=B0BTYCRJSS, cat=headphones)
+13:35:06 | INFO | 💱 实时汇率 1USD = 6.786741 CNY
+13:35:06 | INFO | 🔧 full_cost_breakdown($49.99, $14.0, asin=B0BQPNMXQV, cat=headphones)
+13:35:06 | INFO | 💱 实时汇率 1USD = 6.786741 CNY
+13:35:06 | INFO | ━━━━━ Step 12 / model=deepseek-v4-pro ━━━━━
+13:35:19 | INFO | 🔧 full_cost_breakdown($54.99, $15.5, asin=B0BQPNMXQV, cat=headphones)
+13:35:19 | INFO | 💱 实时汇率 1USD = 6.786741 CNY
+13:35:19 | INFO | 🔧 stress_test($49.99, $14.0)
+13:35:19 | INFO | 🔧 stress_test($54.99, $15.5)
+13:35:19 | INFO | ━━━━━ Step 13 / model=deepseek-v4-pro ━━━━━
+13:35:34 | INFO | 🔧 full_cost_breakdown($59.99, $16.0, asin=B0BQPNMXQV, cat=headphones)
+13:35:34 | INFO | 💱 实时汇率 1USD = 6.786741 CNY
+13:35:34 | INFO | 🔧 full_cost_breakdown($69.99, $18.0, asin=B0BQPNMXQV, cat=headphones)
+13:35:34 | INFO | 💱 实时汇率 1USD = 6.786741 CNY
+13:35:34 | INFO | ━━━━━ Step 14 / model=deepseek-v4-pro ━━━━━
+13:35:39 | INFO | 🔧 stress_test($59.99, $16.0)
+13:35:39 | INFO | 🔧 stress_test($69.99, $18.0)
+13:35:39 | INFO | ━━━━━ Step 15 / model=deepseek-v4-pro ━━━━━
+13:35:50 | INFO | 🔧 quick_ip_check(TWS earbuds ANC bluetooth, SonoFit)
+13:35:50 | INFO | 🔍 Google Patents: TWS earbuds ANC bluetooth
+13:36:05 | INFO | [L6 botasaurus] OK 264657 chars
+13:36:05 | INFO | 🔍 USPTO Trademark: SonoFit
+13:36:12 | INFO | [L3 patchright] OK 223943 chars status=200
+13:36:12 | INFO | ━━━━━ Step 16 / model=deepseek-v4-pro ━━━━━
+13:36:18 | INFO | 🔧 quick_ip_check(earbuds ear hook design patent, EarLock)
+13:36:18 | INFO | 🔍 Google Patents: earbuds ear hook design patent
+13:36:32 | INFO | [L6 botasaurus] OK 280238 chars
+13:36:33 | INFO | 🔍 USPTO Trademark: EarLock
+13:36:40 | INFO | [L3 patchright] OK 223943 chars status=200
+13:36:40 | INFO | ━━━━━ Step 17 / model=deepseek-v4-pro ━━━━━
+13:37:26 | INFO | ✅ Agent 给出最终结论，流程结束

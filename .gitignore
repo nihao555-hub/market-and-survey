@@ -1,0 +1,8 @@
+.venv/
+vendor/
+__pycache__/
+*.pyc
+.env
+poc/01-ѡƷ/data/*.sqlite
+poc/01-ѡƷ/probes/captured/
+poc/01-ѡƷ/reports/

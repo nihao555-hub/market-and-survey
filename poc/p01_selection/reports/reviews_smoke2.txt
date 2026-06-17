@@ -1,0 +1,36 @@
+﻿.\.venv\Scripts\python.exe : 2026-05-31 12:34:00.779 | INFO     | modules.reviews:get_product_r
+eview_summary:52 - 馃摑 鎶撹鎯呴〉璇勮 ASIN=B0DGHMNQ5Z (botasaurus + 缇庡浗浠ｇ悊 + 婊氬姩鍔犺浇)
+所在位置 行:1 字符: 32
++ ... NG="utf-8"; .\.venv\Scripts\python.exe "poc\01-选品\probes\smoke_review ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (2026-05-31 12:3...庡浗浠ｇ悊 + 婊氬姩鍔犺浇):String) [], Rem 
+   oteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+2026-05-31 12:34:28.192 | INFO     | modules.reviews:get_product_review_summary:154 -   ASIN=B0
+DGHMNQ5Z ai_summary=鏃?samples=8
+Sleeping for 4 seconds...
+Sleeping for 2 seconds...
+Sleeping for 3 seconds...
+
+ASIN=B0DGHMNQ5Z
+title: Apple AirPods 4 Wireless Earbuds, Bluetooth Headphones, Personalized Spatial Aud
+rating: 4.6
+total_reviews: 29874
+ai_summary 闀垮害: 0
+sample_reviews 鏁? 8
+  - [5.0] 鈥淭hese wireless earbuds are excellent! The sound quality is crystal clear with deep bass and great v
+  - [5.0] "I'm really impressed with these! The sound is crystal clear, and they are super comfortable to wear
+  - [5.0] I have used Airpods 2 for years.  I will have a difficult time when I switch back and forth between 
+  - [5.0] Picked these up mainly for everyday use 鈥?calls, music, and workouts 鈥?and they鈥檝e been exactly what
+  - [5.0] Blown away by these. I鈥檝e owned Powerbeats, studio beats, and JBL, but these are by far the lightest
+
+--- 鍠?LLM 鐢ㄧ殑鏂囨湰鍒楄〃 ---
+ 鈫?[5.0鈽匽 Very good - 鈥淭hese wireless earbuds are excellent! The sound quality is crystal clear with deep bass and great volume. They are lightweight, comfortable 
+ 鈫?[5.0鈽匽 Amazing quality and comfort! - "I'm really impressed with these! The sound is crystal clear, and they are super comfortable to wear for hours. The batter
+ 鈫?[5.0鈽匽 LOVE these Airpods! - I have used Airpods 2 for years.  I will have a difficult time when I switch back and forth between all of my Airpods now!  These a
+ 鈫?[5.0鈽匽 Easy to use, great sound, and seamless with Apple devices - Picked these up mainly for everyday use 鈥?calls, music, and workouts 鈥?and they鈥檝e been exact
+ 鈫?[5.0鈽匽 10/10 comfort, connectivity, and sound - Blown away by these. I鈥檝e owned Powerbeats, studio beats, and JBL, but these are by far the lightest, most comfo
+ 鈫?[4.0鈽匽 Excellent Sound, But Fit May Not Work for Everyone - The Apple AirPods 4 are really impressive overall, and I鈥檇 give them a solid four stars. Apple did a
+ 鈫?[5.0鈽匽 Good AirPods for cheaper price - Nice AirPods. Nothing really different between the 3 and 4. Only difference I鈥檝e noticed is the case is a little smaller
+ 鈫?[5.0鈽匽 All day comfort and reliable sound that feels effortless - I bought these because I wanted a pair of wireless earbuds that could handle long listening se

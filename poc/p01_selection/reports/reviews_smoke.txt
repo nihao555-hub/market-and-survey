@@ -1,0 +1,36 @@
+﻿.\.venv\Scripts\python.exe : 2026-05-31 12:33:11.799 | INFO     | modules.reviews:get_product_r
+eview_summary:52 - 馃摑 鎶撹鎯呴〉璇勮 ASIN=B0DGHMNQ5Z (botasaurus + 缇庡浗浠ｇ悊 + 婊氬姩鍔犺浇)
+所在位置 行:1 字符: 32
++ ... NG="utf-8"; .\.venv\Scripts\python.exe "poc\01-选品\probes\smoke_review ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (2026-05-31 12:3...庡浗浠ｇ悊 + 婊氬姩鍔犺浇):String) [], Rem 
+   oteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+2026-05-31 12:33:40.181 | INFO     | modules.reviews:get_product_review_summary:149 -   ASIN=B0
+DGHMNQ5Z ai_summary=鏃?samples=8
+Sleeping for 4 seconds...
+Sleeping for 2 seconds...
+Sleeping for 3 seconds...
+
+ASIN=B0DGHMNQ5Z
+title: Apple AirPods 4 Wireless Earbuds, Bluetooth Headphones, Personalized Spatial Aud
+rating: 4.6
+total_reviews: 29874
+ai_summary 闀垮害: 0
+sample_reviews 鏁? 8
+  - [5.0] Brief content visible, double tap to read full content. Full content visible, double tap to read bri
+  - [5.0] Brief content visible, double tap to read full content. Full content visible, double tap to read bri
+  - [5.0] Brief content visible, double tap to read full content. Full content visible, double tap to read bri
+  - [5.0] Brief content visible, double tap to read full content. Full content visible, double tap to read bri
+  - [5.0] Brief content visible, double tap to read full content. Full content visible, double tap to read bri
+
+--- 鍠?LLM 鐢ㄧ殑鏂囨湰鍒楄〃 ---
+ 鈫?[5.0鈽匽 Very good - Brief content visible, double tap to read full content. Full content visible, double tap to read brief content. 鈥淭hese wireless earbuds are e
+ 鈫?[5.0鈽匽 Amazing quality and comfort! - Brief content visible, double tap to read full content. Full content visible, double tap to read brief content. "I'm reall
+ 鈫?[5.0鈽匽 LOVE these Airpods! - Brief content visible, double tap to read full content. Full content visible, double tap to read brief content. I have used Airpods
+ 鈫?[5.0鈽匽 Easy to use, great sound, and seamless with Apple devices - Brief content visible, double tap to read full content. Full content visible, double tap to r
+ 鈫?[5.0鈽匽 10/10 comfort, connectivity, and sound - Brief content visible, double tap to read full content. Full content visible, double tap to read brief content. 
+ 鈫?[4.0鈽匽 Excellent Sound, But Fit May Not Work for Everyone - Brief content visible, double tap to read full content. Full content visible, double tap to read bri
+ 鈫?[5.0鈽匽 Good AirPods for cheaper price - Brief content visible, double tap to read full content. Full content visible, double tap to read brief content. Nice Air
+ 鈫?[5.0鈽匽 All day comfort and reliable sound that feels effortless - Brief content visible, double tap to read full content. Full content visible, double tap to re

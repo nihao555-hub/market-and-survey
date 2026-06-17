@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "D:\new 项目\poc\01-选品\probes\probe_with_us_proxy.py", line 73, in probe_us
+    print(f"  {status} bytes={size}  blocked={blocked or 'no'}  sel={best_sel!r}: {best_n}  sample={sample[:60]!r}")
+UnicodeEncodeError: 'gbk' codec can't encode character '\u26a0' in position 2: illegal multibyte sequence
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\new 项目\.venv\Lib\site-packages\botasaurus\browser_decorator.py", line 199, in run_task
+    result = func(driver, data)
+             ^^^^^^^^^^^^^^^^^^
+  File "D:\new 项目\poc\01-选品\probes\probe_with_us_proxy.py", line 77, in probe_us
+    print(f"  ❌ error: {str(e)[:200]}")
+UnicodeEncodeError: 'gbk' codec can't encode character '\u274c' in position 2: illegal multibyte sequence

@@ -1,0 +1,155 @@
+<html><head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no">
+    <script charset="utf-8" src="//g.alicdn.com/mtb/lib-windvane/3.0.6/windvane.js" crossorigin=""></script>
+    <script charset="utf-8" async="" src="//g.alicdn.com/bsop-static/sufei-punish/0.1.122/build/htmltocanvas.min.js" crossorigin=""></script>
+    <script src="//g.alicdn.com/code/lib/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="//g.alicdn.com/sd/sufei-utils/0.0.3/sufeiUtils.js"></script><style type="text/css">#bx-pu-qrcode-wrap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10px;
+  width: auto !important;
+  text-align: center;
+  margin: auto;
+  padding: 0;
+  z-index: 999;
+}
+#bx-pu-qrcode-wrap img {
+  margin: auto;
+}
+#bx-pu-qrcode-wrap.pc-ajax img {
+  width: 60px;
+  height: 60px;
+}
+#bx-pu-qrcode-wrap.pc-ajax .hide {
+  top: 20px;
+  margin-left: 40px;
+}
+#bx-pu-qrcode-wrap.mobile .hide {
+  top: 30px;
+  margin-left: 50px;
+}
+#bx-pu-qrcode-wrap .hide {
+  display: flex;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  background: #cbcbcb;
+  border-radius: 20px;
+  -webkit-box-pack: center;
+  justify-content: center;
+  -webkit-box-align: center;
+  align-items: center;
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  margin-left: 50px;
+}
+#bx-pu-qrcode-wrap .hide .hide-text {
+  width: 6px;
+  height: 2px;
+  background: #ffffff;
+  border-radius: 4px;
+}
+#bx-pu-qrcode-wrap .hide:hover {
+  background: #f40;
+}
+.feedback-show {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  background: #cbcbcb;
+  border-radius: 20px;
+  display: none;
+  -webkit-box-pack: center;
+  justify-content: center;
+  -webkit-box-align: center;
+  align-items: center;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 2147483647;
+}
+.feedback-show:hover {
+  background: #f40;
+}
+</style>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+      	#bx-pu-qrcode-wrap {
+      		max-width: 110px !important;
+      	}
+    </style>
+</head>
+
+<body>
+    <iframe src="//www.lazada.sg:443/catalog/_____tmd_____/punish?recaptcha=1&amp;iframe=1&amp;x5step=2&amp;x5secdata=xga8e3ba8e1cbf68b9na9be69a16cf8e58f58cd4396a95c1398b1780224892a1984346082a1743664020abaxc3aajrecaptcha33b9f14376dd995a5047610b1564bd9164c__bx__www.lazada.sg:443/catalog&amp;uuid=9be69a16cf8e58f58cd4396a95c1398b&amp;qrcode=m-aaFs-OWPWM1DlqlcE5iw|ahwTfA|Z-4zlA_0|Bjl1Tg|0&amp;redirectURL=https%3a%2f%2fwww.lazada.sg:443/catalog%2F_____tmd_____%2Fpage%2Fthird_validate_close_page%3Frand%3DS3WxGHAgAt756EpznwfNzJq2AFA2qBNla3j6EINUS8We9dazM_iKElp8DwVSHZUevpC41Bx7RzivXIj9RnZgdg%26uuid%3D9be69a16cf8e58f58cd4396a95c1398b%26x5secdata%3Dxga8e3ba8e1cbf68b9na9be69a16cf8e58f58cd4396a95c1398b1780224892a1984346082a1743664020abaxc3aajrecaptcha33b9f14376dd995a5047610b1564bd9164c__bx__www.lazada.sg:443/catalog" style="border:none;height: 100%;" width="100%" height="100%" allow="publickey-credentials-get *"></iframe>
+    <div id="bx-pu-qrcode-wrap">
+        <div id="qrcode" title="m-aaFs-OWPWM1DlqlcE5iw|ahwTfA|Z-4zlA_0|Bjl1Tg|0"><canvas width="80" height="80" style="display: none;"></canvas><img src="data:image/png;base64,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" style="display: block;"></div>
+        <div id="feedback"><div class="hide"><div class="hide-text"></div></div><a id="feedback" style="text-decoration:none;font-size:12px;color:#999" href="https://www.lazada.sg//catalog//_____tmd_____/page/feedback?rand=S3WxGHAgAt756EpznwfNzJq2AFA2qBNla3j6EINUS8We9dazM_iKElp8DwVSHZUevpC41Bx7RzivXIj9RnZgdg&amp;x5secdata=xga8e3ba8e1cbf68b9na9be69a16cf8e58f58cd4396a95c1398b1780224892a1984346082a1743664020abaxc3aajrecaptcha33b9f14376dd995a5047610b1564bd9164c__bx__www.lazada.sg:443/catalog&amp;uuid=9be69a16cf8e58f58cd4396a95c1398b&amp;type=11" target="_blank">Click to feedback &gt;</a></div>
+    </div>
+    <script>
+        window._config_ = {
+            "action": "captcharecaptcha",
+      		"HOST": "www.lazada.sg:443",
+            "PATH": "/catalog",
+            "NCTOKENSTR": "9be69a16cf8e58f58cd4396a95c1398b",
+            "SECDATA": "xga8e3ba8e1cbf68b9na9be69a16cf8e58f58cd4396a95c1398b1780224892a1984346082a1743664020abaxc3aajrecaptcha33b9f14376dd995a5047610b1564bd9164c__bx__www.lazada.sg:443/catalog",
+            "url": "//www.lazada.sg:443/catalog/_____tmd_____/punish?recaptcha=1&iframe=1&x5step=2&x5secdata=xga8e3ba8e1cbf68b9na9be69a16cf8e58f58cd4396a95c1398b1780224892a1984346082a1743664020abaxc3aajrecaptcha33b9f14376dd995a5047610b1564bd9164c__bx__www.lazada.sg:443/catalog&uuid=9be69a16cf8e58f58cd4396a95c1398b&qrcode=m-aaFs-OWPWM1DlqlcE5iw|ahwTfA|Z-4zlA_0|Bjl1Tg|0&redirectURL=https%3a%2f%2fwww.lazada.sg:443/catalog%2F_____tmd_____%2Fpage%2Fthird_validate_close_page%3Frand%3DS3WxGHAgAt756EpznwfNzJq2AFA2qBNla3j6EINUS8We9dazM_iKElp8DwVSHZUevpC41Bx7RzivXIj9RnZgdg%26uuid%3D9be69a16cf8e58f58cd4396a95c1398b%26x5secdata%3Dxga8e3ba8e1cbf68b9na9be69a16cf8e58f58cd4396a95c1398b1780224892a1984346082a1743664020abaxc3aajrecaptcha33b9f14376dd995a5047610b1564bd9164c__bx__www.lazada.sg:443/catalog"
+        };
+    </script>
+    <!--rgv587_flag:sm-->
+  	<script>
+      	var custom_config = {"loginDialogWidth":"810px","loginDialogHeight":"360px","templateName":"LAZADA通用模板"};
+      	var templateName = "";
+      	if (typeof custom_config === "object") {
+      		templateName = custom_config["templateName"] || "";
+      		window._custom_config_ = window._custom_config_ || {};
+      		for (var key in custom_config) {
+      			window._custom_config_[key] = custom_config[key];
+      		}
+      	}
+    </script>
+    <script charset="utf-8" type="text/javascript" src="https://g.alicdn.com/trace/trace/1.3.22/??sdk.js,resourceError-plugin.js,perf-plugin.js" crossorigin=""></script>
+    <script type="text/javascript">
+      	sufeiUtils.clearX5SecData();
+      	sufeiUtils.initListener();
+
+        // 将二维码渲染至指定父容器
+        sufeiUtils.renderQRCode({
+            id: "qrcode",
+            qrcode: "m-aaFs-OWPWM1DlqlcE5iw|ahwTfA|Z-4zlA_0|Bjl1Tg|0"
+        });
+
+        // 将二维码渲染至指定父容器
+        sufeiUtils.renderFeedbackLink({
+            id: "feedback",
+            x5secdata: "xga8e3ba8e1cbf68b9na9be69a16cf8e58f58cd4396a95c1398b1780224892a1984346082a1743664020abaxc3aajrecaptcha33b9f14376dd995a5047610b1564bd9164c__bx__www.lazada.sg:443/catalog",
+            uuid: "9be69a16cf8e58f58cd4396a95c1398b",
+            type: "thirdValidate"
+        }, true);
+
+        var tracker = TraceSdk({
+            pid: 'punish-page',
+            env: 'pre',
+            plugins: [
+                [TracePerfPlugin, { enableLCP: false }],
+                [TraceResourceErrorPlugin]
+            ]
+        });
+        tracker.install();
+        tracker.log({
+            code: 11,  // 系统自动生成，请勿修改 100%
+            c1: '9be69a16cf8e58f58cd4396a95c1398b',
+            c2: '0.1.122',
+            msg: '三方通用解封页 - ' + window._config_.action,  // 异常信息，推荐传入
+            sampling: 1,  // 目前采样率为 100.00%
+        });
+    </script><div class="feedback-show"><svg t="1710420587888" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5918" width="12" height="12"><path d="M925.696 384q19.456 0 37.376 7.68t30.72 20.48 20.48 30.72 7.68 37.376q0 20.48-7.68 37.888t-20.48 30.208-30.72 20.48-37.376 7.68l-287.744 0 0 287.744q0 20.48-7.68 37.888t-20.48 30.208-30.72 20.48-37.376 7.68q-20.48 0-37.888-7.68t-30.208-20.48-20.48-30.208-7.68-37.888l0-287.744-287.744 0q-20.48 0-37.888-7.68t-30.208-20.48-20.48-30.208-7.68-37.888q0-19.456 7.68-37.376t20.48-30.72 30.208-20.48 37.888-7.68l287.744 0 0-287.744q0-19.456 7.68-37.376t20.48-30.72 30.208-20.48 37.888-7.68q39.936 0 68.096 28.16t28.16 68.096l0 287.744 287.744 0z" p-id="5919" fill="#ffffff"></path></svg></div>
+
+
+</body></html>

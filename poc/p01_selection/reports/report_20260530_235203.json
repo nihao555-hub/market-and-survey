@@ -1,0 +1,106 @@
+{
+  "timestamp": "20260530_235203",
+  "n_products": 60,
+  "suggestions": [
+    {
+      "title": "Worlds Elsewhere: Journeys Around Shakespeare’s Globe",
+      "price": 40.3,
+      "rating": 5.0,
+      "url": "https://books.toscrape.com/worlds-elsewhere-journeys-around-shakespeares-globe_972/index.html",
+      "estimated_profit": 10.09,
+      "estimated_margin": 0.2504,
+      "decision": "上架",
+      "reason": "机会分 35.4，毛利 25.0%"
+    },
+    {
+      "title": "Mesaerion: The Best Science Fiction Stories 1800-1849",
+      "price": 37.59,
+      "rating": 1.0,
+      "url": "https://books.toscrape.com/catalogue/mesaerion-the-best-science-fiction-stories-1800-1849_983/index.html",
+      "estimated_profit": 9.28,
+      "estimated_margin": 0.2468,
+      "decision": "上架",
+      "reason": "机会分 35.4，毛利 24.7%"
+    },
+    {
+      "title": "How Music Works",
+      "price": 37.32,
+      "rating": 2.0,
+      "url": "https://books.toscrape.com/how-music-works_979/index.html",
+      "estimated_profit": 9.2,
+      "estimated_margin": 0.2464,
+      "decision": "上架",
+      "reason": "机会分 35.4，毛利 24.6%"
+    },
+    {
+      "title": "The Bear and the Piano",
+      "price": 36.89,
+      "rating": 1.0,
+      "url": "https://books.toscrape.com/the-bear-and-the-piano_967/index.html",
+      "estimated_profit": 9.07,
+      "estimated_margin": 0.2458,
+      "decision": "上架",
+      "reason": "机会分 35.4，毛利 24.6%"
+    },
+    {
+      "title": "Rip it Up and Start Again",
+      "price": 35.02,
+      "rating": 5.0,
+      "url": "https://books.toscrape.com/catalogue/rip-it-up-and-start-again_986/index.html",
+      "estimated_profit": 8.51,
+      "estimated_margin": 0.2429,
+      "decision": "上架",
+      "reason": "机会分 35.4，毛利 24.3%"
+    },
+    {
+      "title": "Black Dust",
+      "price": 34.53,
+      "rating": 5.0,
+      "url": "https://books.toscrape.com/black-dust_976/index.html",
+      "estimated_profit": 8.36,
+      "estimated_margin": 0.2421,
+      "decision": "上架",
+      "reason": "机会分 35.4，毛利 24.2%"
+    },
+    {
+      "title": "You can't bury them all: Poems",
+      "price": 33.63,
+      "rating": 2.0,
+      "url": "https://books.toscrape.com/you-cant-bury-them-all-poems_961/index.html",
+      "estimated_profit": 8.09,
+      "estimated_margin": 0.2405,
+      "decision": "上架",
+      "reason": "机会分 35.4，毛利 24.1%"
+    },
+    {
+      "title": "The Dirty Little Secrets of Getting Your Dream Job",
+      "price": 33.34,
+      "rating": 4.0,
+      "url": "https://books.toscrape.com/catalogue/the-dirty-little-secrets-of-getting-your-dream-job_994/index.html",
+      "estimated_profit": 8.0,
+      "estimated_margin": 0.24,
+      "decision": "上架",
+      "reason": "机会分 35.4，毛利 24.0%"
+    },
+    {
+      "title": "Penny Maybe",
+      "price": 33.29,
+      "rating": 3.0,
+      "url": "https://books.toscrape.com/penny-maybe_965/index.html",
+      "estimated_profit": 7.99,
+      "estimated_margin": 0.2399,
+      "decision": "上架",
+      "reason": "机会分 35.4，毛利 24.0%"
+    },
+    {
+      "title": "When We Collided",
+      "price": 31.77,
+      "rating": 1.0,
+      "url": "https://books.toscrape.com/when-we-collided_955/index.html",
+      "estimated_profit": 7.53,
+      "estimated_margin": 0.237,
+      "decision": "上架",
+      "reason": "机会分 35.4，毛利 23.7%"
+    }
+  ]
+}

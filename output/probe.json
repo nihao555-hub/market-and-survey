@@ -1,0 +1,17 @@
+[
+    {
+        "site": "eBay",
+        "ok": false,
+        "info": "bytes=1831 blocked=False cards=0"
+    },
+    {
+        "site": "Walmart",
+        "ok": false,
+        "info": "bytes=2062644 blocked=True cards=62"
+    },
+    {
+        "site": "BestBuy",
+        "ok": false,
+        "info": "bytes=8028 blocked=False cards=0"
+    }
+]

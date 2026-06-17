@@ -1,0 +1,3 @@
+﻿SG_url= https://www.amazon.sg/s?k=laptop
+RU_avail= False
+UK_url= https://www.amazon.co.uk/s?k=kitchen
