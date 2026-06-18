@@ -20,6 +20,7 @@ from backend.events import (get_accumulated_chunks, request_cancel,
                               EVENT_CHANNEL, REDIS_URL)
 from backend.storage import (get_or_create_thread, list_messages, set_active_stream,
                               SessionLocal, Thread, delete_thread)
+from backend import storage as st
 from backend.ui_chunks import UIChunkAdapter
 
 
@@ -70,6 +71,97 @@ class ThreadSummary:
     title: str
     updated_at: typing.Optional[str]
     active_stream_id: typing.Optional[str]
+    is_favorite: bool = False
+
+
+@strawberry.type
+class DataSourceType:
+    id: str
+    name: str
+    description: str
+    kind: str
+    frequency: str
+    connected: bool
+    builtin: bool
+
+
+@strawberry.type
+class MonitorType:
+    id: str
+    name: str
+    description: str
+    kind: str
+    cadence: str
+    enabled: bool
+
+
+@strawberry.type
+class ApiKeyType:
+    id: str
+    name: str
+    prefix: str
+    last4: str
+    revoked: bool
+    created_at: typing.Optional[str]
+    last_used_at: typing.Optional[str]
+
+
+@strawberry.type
+class ApiKeyCreated:
+    key: ApiKeyType
+    token: str   # 明文，仅创建时返回一次
+
+
+@strawberry.type
+class SettingsType:
+    display_name: str
+    email: str
+    plan: str
+    default_model: str
+    default_market: str
+    default_positioning: str
+    notify_email: bool
+    notify_in_app: bool
+
+
+def _thread_summary(t: Thread) -> ThreadSummary:
+    return ThreadSummary(
+        id=t.id, title=t.title or "未命名任务",
+        updated_at=t.updated_at.isoformat() if t.updated_at else None,
+        active_stream_id=t.active_stream_id,
+        is_favorite=bool(t.is_favorite),
+    )
+
+
+def _data_source_type(d: st.DataSource) -> DataSourceType:
+    return DataSourceType(
+        id=d.id, name=d.name, description=d.description or "", kind=d.kind,
+        frequency=d.frequency, connected=bool(d.connected), builtin=bool(d.builtin),
+    )
+
+
+def _monitor_type(m: st.Monitor) -> MonitorType:
+    return MonitorType(
+        id=m.id, name=m.name, description=m.description or "", kind=m.kind,
+        cadence=m.cadence, enabled=bool(m.enabled),
+    )
+
+
+def _api_key_type(k: st.ApiKey) -> ApiKeyType:
+    return ApiKeyType(
+        id=k.id, name=k.name, prefix=k.prefix, last4=k.last4, revoked=bool(k.revoked),
+        created_at=k.created_at.isoformat() if k.created_at else None,
+        last_used_at=k.last_used_at.isoformat() if k.last_used_at else None,
+    )
+
+
+def _settings_type(d: dict) -> SettingsType:
+    return SettingsType(
+        display_name=d["displayName"], email=d["email"], plan=d["plan"],
+        default_model=d["defaultModel"], default_market=d["defaultMarket"],
+        default_positioning=d["defaultPositioning"],
+        notify_email=bool(d["notifyEmail"]), notify_in_app=bool(d["notifyInApp"]),
+    )
 
 
 @strawberry.type
@@ -90,15 +182,31 @@ class AgentEventPayload:
 class Query:
     @strawberry.field
     def threads(self, tenant_id: str = "dev_tenant") -> typing.List[ThreadSummary]:
-        with SessionLocal() as s:
-            rows = (s.query(Thread)
-                    .filter(Thread.tenant_id == tenant_id)
-                    .order_by(Thread.updated_at.desc()).all())
-            return [ThreadSummary(
-                id=t.id, title=t.title or "未命名任务",
-                updated_at=t.updated_at.isoformat() if t.updated_at else None,
-                active_stream_id=t.active_stream_id,
-            ) for t in rows]
+        return [_thread_summary(t) for t in st.list_threads(tenant_id)]
+
+    @strawberry.field
+    def favorite_threads(self, tenant_id: str = "dev_tenant") -> typing.List[ThreadSummary]:
+        return [_thread_summary(t) for t in st.list_threads(tenant_id, favorite=True)]
+
+    @strawberry.field
+    def trashed_threads(self, tenant_id: str = "dev_tenant") -> typing.List[ThreadSummary]:
+        return [_thread_summary(t) for t in st.list_threads(tenant_id, trashed=True)]
+
+    @strawberry.field
+    def data_sources(self, tenant_id: str = "dev_tenant") -> typing.List[DataSourceType]:
+        return [_data_source_type(d) for d in st.list_data_sources(tenant_id)]
+
+    @strawberry.field
+    def monitors(self, tenant_id: str = "dev_tenant") -> typing.List[MonitorType]:
+        return [_monitor_type(m) for m in st.list_monitors(tenant_id)]
+
+    @strawberry.field
+    def api_keys(self, tenant_id: str = "dev_tenant") -> typing.List[ApiKeyType]:
+        return [_api_key_type(k) for k in st.list_api_keys(tenant_id)]
+
+    @strawberry.field
+    def settings(self, tenant_id: str = "dev_tenant") -> SettingsType:
+        return _settings_type(st.get_settings(tenant_id))
 
     @strawberry.field
     def thread(self, id: str) -> typing.Optional[ThreadState]:
@@ -161,12 +269,101 @@ class Mutation:
 
     @strawberry.mutation
     async def delete_thread(self, thread_id: str, tenant_id: str = "dev_tenant") -> bool:
-        """删除会话及其消息。若该会话正在运行，先发取消信号再删。"""
+        """软删除：移入回收站（可恢复）。若正在运行，先发取消信号。"""
+        try:
+            await request_cancel(thread_id)
+        except Exception:
+            pass
+        return st.soft_delete_thread(thread_id, tenant_id)
+
+    @strawberry.mutation
+    def restore_thread(self, thread_id: str, tenant_id: str = "dev_tenant") -> bool:
+        """从回收站恢复会话。"""
+        return st.restore_thread(thread_id, tenant_id)
+
+    @strawberry.mutation
+    async def purge_thread(self, thread_id: str, tenant_id: str = "dev_tenant") -> bool:
+        """彻底删除会话及其消息（不可恢复）。"""
         try:
             await request_cancel(thread_id)
         except Exception:
             pass
         return delete_thread(thread_id, tenant_id)
+
+    @strawberry.mutation
+    def toggle_favorite(self, thread_id: str, tenant_id: str = "dev_tenant") -> bool:
+        """切换收藏态，返回新状态。"""
+        result = st.toggle_favorite(thread_id, tenant_id)
+        return bool(result)
+
+    # ── 数据源 ──
+    @strawberry.mutation
+    def create_data_source(
+        self, name: str, description: str = "", kind: str = "trends",
+        frequency: str = "每日", tenant_id: str = "dev_tenant",
+    ) -> DataSourceType:
+        return _data_source_type(
+            st.create_data_source(tenant_id, name, description, kind, frequency))
+
+    @strawberry.mutation
+    def set_data_source_connected(
+        self, source_id: str, connected: bool, tenant_id: str = "dev_tenant",
+    ) -> bool:
+        result = st.set_data_source_connected(source_id, connected, tenant_id)
+        return bool(result)
+
+    # ── 监控规则 ──
+    @strawberry.mutation
+    def create_monitor(
+        self, name: str, description: str = "", kind: str = "trend",
+        cadence: str = "每日", tenant_id: str = "dev_tenant",
+    ) -> MonitorType:
+        return _monitor_type(st.create_monitor(tenant_id, name, description, kind, cadence))
+
+    @strawberry.mutation
+    def set_monitor_enabled(
+        self, monitor_id: str, enabled: bool, tenant_id: str = "dev_tenant",
+    ) -> bool:
+        result = st.set_monitor_enabled(monitor_id, enabled, tenant_id)
+        return bool(result)
+
+    @strawberry.mutation
+    def delete_monitor(self, monitor_id: str, tenant_id: str = "dev_tenant") -> bool:
+        return st.delete_monitor(monitor_id, tenant_id)
+
+    # ── API Key ──
+    @strawberry.mutation
+    def create_api_key(self, name: str = "默认 Key", tenant_id: str = "dev_tenant") -> ApiKeyCreated:
+        rec, token = st.create_api_key(tenant_id, name)
+        return ApiKeyCreated(key=_api_key_type(rec), token=token)
+
+    @strawberry.mutation
+    def revoke_api_key(self, key_id: str, tenant_id: str = "dev_tenant") -> bool:
+        return st.revoke_api_key(key_id, tenant_id)
+
+    # ── 设置 ──
+    @strawberry.mutation
+    def update_settings(
+        self,
+        tenant_id: str = "dev_tenant",
+        display_name: typing.Optional[str] = None,
+        email: typing.Optional[str] = None,
+        default_model: typing.Optional[str] = None,
+        default_market: typing.Optional[str] = None,
+        default_positioning: typing.Optional[str] = None,
+        notify_email: typing.Optional[bool] = None,
+        notify_in_app: typing.Optional[bool] = None,
+    ) -> SettingsType:
+        patch = {
+            "displayName": display_name,
+            "email": email,
+            "defaultModel": default_model,
+            "defaultMarket": default_market,
+            "defaultPositioning": default_positioning,
+            "notifyEmail": notify_email,
+            "notifyInApp": notify_in_app,
+        }
+        return _settings_type(st.update_settings(tenant_id, patch))
 
 
 # ─────────── Subscription ───────────

@@ -92,4 +92,5 @@ export interface ThreadSummary {
   title: string;
   updatedAt?: string;
   activeStreamId?: string | null;
+  isFavorite?: boolean;
 }

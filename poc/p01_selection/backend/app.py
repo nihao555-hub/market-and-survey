@@ -22,8 +22,8 @@ from backend.events import (publish, get_pub, get_accumulated_chunks, request_ca
                               EVENT_CHANNEL, REDIS_URL)
 from backend.storage import (get_or_create_thread, list_messages, set_active_stream,
                               assert_thread_owner, SessionLocal, Thread)
-from backend.stream_job import run_stream_job
-from backend.selection_job import run_selection_job
+# 注：stream_job / selection_job 依赖完整 LLM/采集栈，按需在路由内惰性导入，
+# 这样仅跑控制面 + GraphQL（管理类页面）时无需安装重型依赖。
 from backend.auth import (require_tenant, require_tenant_query, get_metrics,
                           record_error, record_job_start)
 
@@ -83,6 +83,7 @@ async def chat(body: ChatBody, tenant_id: str = Depends(require_tenant)):
 
     # 后台执行（PoC 用 asyncio.create_task 模拟 worker 队列；
     # 生产换 dramatiq actor 异步触发即可）
+    from backend.stream_job import run_stream_job
     asyncio.create_task(run_stream_job(thread_id, stream_id, body.text, body.model_choice))
 
     return {"thread_id": thread_id, "stream_id": stream_id, "status": "queued"}
@@ -134,6 +135,7 @@ async def selection_start(body: SelectionBody, tenant_id: str = Depends(require_
         queued_via = "dramatiq"
     except Exception as e:
         # dev fallback
+        from backend.selection_job import run_selection_job
         asyncio.create_task(run_selection_job(
             thread_id, stream_id, body.user_text, body.model_choice
         ))
