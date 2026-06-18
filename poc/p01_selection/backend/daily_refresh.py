@@ -29,24 +29,40 @@ from loguru import logger
 
 from backend import storage as st
 
-# 默认追踪词（跨境选品常见品类；会与启用的监控规则、近期调研线程合并去重）
+# 默认追踪词（跨境选品常见大批量品类；会与启用的监控规则、近期调研线程合并去重）。
+# 这是「真实数据底子」的固定词表：每次刷新都覆盖全表，保证大批量底盘持续在线、
+# 不会被下一次小批量刷新覆盖（前端只展示最近一个批次）。开源数据集底子已缓存复用，
+# 故扩到几十个词也不会显著增加耗时；实时层（TikTok Shop）成本见 README/报告说明。
 DEFAULT_SEED_TERMS = [
-    "garlic press",
-    "stainless steel water bottle",
-    "yoga mat",
-    "wireless earbuds",
-    "pet hair remover",
-    "led strip lights",
+    # 厨房 / 家居
+    "garlic press", "stainless steel water bottle", "silicone spatula", "kitchen scale",
+    "vegetable chopper", "knife sharpener", "coffee grinder", "dish drying rack",
+    "food storage containers",
+    # 3C / 数码配件
+    "wireless earbuds", "phone holder", "bluetooth speaker", "usb c charger",
+    "laptop stand", "car phone mount", "led strip lights", "ring light",
+    # 运动 / 户外
+    "yoga mat", "resistance bands", "jump rope", "foam roller", "camping lantern",
+    "hiking backpack",
+    # 宠物
+    "pet hair remover", "dog chew toy", "cat litter mat", "slow feeder bowl",
+    # 美妆 / 个护
+    "jade roller", "facial cleansing brush", "hair straightener brush", "makeup organizer",
+    # 健康 / 家用
+    "posture corrector", "massage gun", "humidifier", "air purifier",
+    # 办公
+    "desk organizer", "standing desk", "mechanical keyboard", "blue light glasses",
 ]
 
-# 单次刷新最多处理多少个词（控制时长与限流风险）
-MAX_TERMS = int(os.getenv("DAILY_REFRESH_MAX_TERMS", "8"))
+# 单次刷新最多处理多少个词（控制时长与限流风险）。默认足够容纳整张种子词表 +
+# 若干监控规则/近期调研词；如需压实时层成本可用 DAILY_REFRESH_MAX_TERMS 调小。
+MAX_TERMS = int(os.getenv("DAILY_REFRESH_MAX_TERMS", "50"))
 
 # 开源数据集底子（Amazon Reviews 2023）配置
 OPEN_DATASET_ENABLED = os.getenv("OPEN_DATASET_ENABLED", "1") == "1"
 OPEN_DATASET_TTL_DAYS = int(os.getenv("OPEN_DATASET_TTL_DAYS", "7"))
 OPEN_DATASET_MAX_LINES = int(os.getenv("OPEN_DATASET_MAX_LINES", "150000"))
-OPEN_DATASET_PER_TERM = int(os.getenv("OPEN_DATASET_PER_TERM", "15"))
+OPEN_DATASET_PER_TERM = int(os.getenv("OPEN_DATASET_PER_TERM", "30"))
 _OPEN_CACHE_KEY = "open_dataset:cache:{tenant}"
 
 _RUN_LOCK = threading.Lock()
