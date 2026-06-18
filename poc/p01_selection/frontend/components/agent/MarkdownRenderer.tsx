@@ -25,7 +25,8 @@ function stripControlMarkup(text: string): string {
   if (!text) return text;
   const m = CTRL_TAG_RE.exec(text);
   if (!m) return text;
-  return text.slice(0, m.index).replace(TRAILING_INTENT_RE, "").trimEnd();
+  // 先去尾部空白，让 TRAILING_INTENT_RE 的 $ 锚点能命中过渡句（与后端 rstrip 一致）。
+  return text.slice(0, m.index).trimEnd().replace(TRAILING_INTENT_RE, "").trimEnd();
 }
 
 function rewriteImg(src: string): string {
