@@ -14,10 +14,34 @@ import {
 import { cn } from "@/lib/utils";
 
 const INSIGHTS = [
-  { label: "高需求品类", value: "↑ 25%", tone: "text-success", icon: <Flame className="h-4 w-4" /> },
-  { label: "竞争较低", value: "蓝海", tone: "text-info", icon: <ShieldCheck className="h-4 w-4" /> },
-  { label: "上升趋势", value: "↑ 120%", tone: "text-brand", icon: <TrendingUp className="h-4 w-4" /> },
-  { label: "机会评分最高", value: "8.6 / 10", tone: "text-amber-600", icon: <Star className="h-4 w-4" /> },
+  {
+    title: "高需求品类",
+    desc: "智能家居设备在 2024 年预计增长 25%",
+    value: "↑ 25%",
+    icon: <Flame className="h-4 w-4" />,
+    tone: "bg-sky-50 text-sky-600",
+  },
+  {
+    title: "竞争较低",
+    desc: "宠物智能喂食器竞争度较低",
+    value: "低",
+    icon: <ShieldCheck className="h-4 w-4" />,
+    tone: "bg-rose-50 text-rose-500",
+  },
+  {
+    title: "上升趋势",
+    desc: "户外便携电源搜索量增长 120%",
+    value: "↑ 120%",
+    icon: <TrendingUp className="h-4 w-4" />,
+    tone: "bg-violet-50 text-violet-600",
+  },
+  {
+    title: "机会评分最高",
+    desc: "无线充电配件机会评分 8.6/10",
+    value: "8.6/10",
+    icon: <Star className="h-4 w-4" />,
+    tone: "bg-amber-50 text-amber-600",
+  },
 ];
 
 const SOURCES = [
@@ -65,14 +89,24 @@ export function RightRail() {
       <div className="space-y-4">
         {/* AI 洞察 */}
         <SectionCard title="AI 洞察" action="更多洞察">
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="space-y-3.5">
             {INSIGHTS.map((it) => (
-              <div key={it.label} className="rounded-xl border border-hairline bg-surface-1 p-3">
-                <div className={cn("flex items-center gap-1.5", it.tone)}>
+              <div key={it.title} className="flex items-start gap-3">
+                <span
+                  className={cn(
+                    "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg",
+                    it.tone
+                  )}
+                >
                   {it.icon}
-                  <span className="text-sm font-semibold">{it.value}</span>
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-ink">{it.title}</div>
+                  <div className="mt-0.5 text-[11px] leading-snug text-ink-subtle">{it.desc}</div>
                 </div>
-                <div className="mt-1 text-[11px] text-ink-subtle">{it.label}</div>
+                <span className="flex-shrink-0 text-sm font-semibold text-emerald-600">
+                  {it.value}
+                </span>
               </div>
             ))}
           </div>
@@ -87,16 +121,9 @@ export function RightRail() {
                 className="flex items-center justify-between rounded-lg px-1.5 py-1.5 text-sm"
               >
                 <span className="text-ink-muted">{s.name}</span>
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1.5 text-[11px]",
-                    s.live ? "text-success" : "text-ink-subtle"
-                  )}
-                >
-                  <Circle
-                    className={cn("h-2 w-2 fill-current", s.live ? "text-success" : "text-ink-tertiary")}
-                  />
+                <span className="inline-flex items-center gap-1.5 text-[11px] text-ink-subtle">
                   {s.freq}
+                  <Circle className="h-2 w-2 fill-current text-success" />
                 </span>
               </div>
             ))}

@@ -81,7 +81,7 @@ export function Sidebar() {
         </div>
         <div className="leading-tight">
           <div className="text-sm font-semibold text-ink">MarketAgent</div>
-          <div className="text-[10px] text-ink-subtle">选品 &amp; 市场调研</div>
+          <div className="text-[10px] text-ink-subtle">选品 &amp; 市场调研 Agent</div>
         </div>
       </div>
 
@@ -130,11 +130,16 @@ export function Sidebar() {
       {/* Pro 计划卡 */}
       <div className="px-3 pb-2">
         <div className="rounded-xl border border-hairline bg-gradient-to-br from-brand/5 to-brand2/10 p-3">
-          <div className="flex items-center gap-1.5 text-sm font-semibold text-ink">
-            <Crown className="h-4 w-4 text-amber-500" />
-            专业版
+          <div className="flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-brand text-white">
+              <Crown className="h-3.5 w-3.5" />
+            </span>
+            <div className="leading-tight">
+              <div className="text-sm font-semibold text-ink">Pro 计划</div>
+              <div className="text-[10px] text-ink-subtle">专业版</div>
+            </div>
           </div>
-          <div className="mt-2 flex items-center justify-between text-[11px] text-ink-subtle">
+          <div className="mt-3 flex items-center justify-between text-[11px] text-ink-subtle">
             <span>使用量</span>
             <span className="font-medium text-ink-muted">68%</span>
           </div>
@@ -142,7 +147,7 @@ export function Sidebar() {
             <div className="h-full rounded-full bg-brand" style={{ width: "68%" }} />
           </div>
           <div className="mt-1.5 text-[10px] text-ink-tertiary">重置于 12 天后</div>
-          <button className="mt-2.5 w-full rounded-lg border border-brand/30 bg-white px-3 py-1.5 text-xs font-medium text-brand transition-colors hover:bg-brand/5">
+          <button className="mt-2.5 w-full rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-brand-hover">
             升级计划
           </button>
         </div>

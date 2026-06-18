@@ -68,9 +68,11 @@ export function TopBar() {
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand2 text-xs font-semibold text-white">
             产
           </div>
-          <div className="hidden leading-tight sm:block">
-            <div className="text-xs font-medium text-ink">产品经理</div>
-            <div className="text-[10px] text-brand">Pro</div>
+          <div className="hidden items-center gap-1.5 sm:flex">
+            <span className="text-xs font-medium text-ink">产品经理</span>
+            <span className="rounded bg-brand/10 px-1.5 py-0.5 text-[10px] font-semibold text-brand">
+              Pro
+            </span>
           </div>
           <ChevronDown className="hidden h-3.5 w-3.5 text-ink-subtle sm:block" />
         </div>
