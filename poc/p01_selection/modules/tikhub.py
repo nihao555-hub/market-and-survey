@@ -90,6 +90,32 @@ def _product_url(seo_url: Any, product_id: Optional[str]) -> Optional[str]:
     return None
 
 
+def _marketing_labels(p: dict) -> list[str]:
+    """从 product_marketing_info 抽取去重后的活动标签文案（Flash sale / Free shipping 等）。"""
+    mi = p.get("product_marketing_info") or {}
+    pl = mi.get("placement_labels") or {}
+    out: list[str] = []
+    if isinstance(pl, dict):
+        for arr in pl.values():
+            if isinstance(arr, list):
+                for lbl in arr:
+                    if isinstance(lbl, dict):
+                        t = (lbl.get("text") or "").strip()
+                        if t and t not in out:
+                            out.append(t)
+    return out
+
+
+def _sku_price_info(p: dict) -> dict:
+    """首个 SKU 的 PriceInfo（含 origin_price / discount_format / reduce_price，最可靠的折扣来源）。"""
+    si = p.get("sku_info")
+    if isinstance(si, list) and si and isinstance(si[0], dict):
+        pi = si[0].get("PriceInfo")
+        if isinstance(pi, dict):
+            return pi
+    return {}
+
+
 # ─────────────────────── TikTok Shop（实时电商底盘）───────────────────────
 def shop_search(keyword: str, region: str = "US", limit: int = 20) -> list[dict]:
     """实时搜 TikTok Shop 商品。返回归一化商品列表（价格/评分/评论数/销量/店铺/图/链接）。"""
@@ -106,17 +132,31 @@ def shop_search(keyword: str, region: str = "US", limit: int = 20) -> list[dict]
         rate = p.get("rate_info") or {}
         sold = p.get("sold_info") or {}
         seller = p.get("seller_info") or {}
+        skup = _sku_price_info(p)
+        sale = _num(price.get("sale_price_format") or price.get("sale_price_decimal"))
+        # 原价 / 折扣：优先用 SKU PriceInfo 的 origin_price（最准），仅当 > 现价时才认定为有折扣
+        origin = _num(skup.get("origin_price_format") or skup.get("origin_price_decimal"))
+        discount_pct: Optional[int] = None
+        if origin and sale and origin > sale:
+            discount_pct = round((origin - sale) / origin * 100)
+        else:
+            origin = None  # 无真实折扣则不展示原价，避免误导
         out.append({
             "product_id": p.get("product_id"),
             "title": (p.get("title") or "").strip(),
-            "price": _num(price.get("sale_price_format") or price.get("sale_price_decimal")),
+            "price": sale,
+            "original_price": origin,
+            "discount_pct": discount_pct,
             "currency": price.get("currency_name") or "USD",
             "currency_symbol": price.get("currency_symbol") or "$",
             "rating": _num(rate.get("score")),
             "review_count": int(_num(rate.get("review_count")) or 0),
             "sold_count": sold.get("sold_count"),
+            "sku_count": len(p.get("sku_info") or []) or None,
+            "marketing_labels": _marketing_labels(p),
             "shop_name": seller.get("shop_name"),
             "seller_id": seller.get("seller_id"),
+            "shop_logo": _first_img(seller.get("shop_logo")),
             "image": _first_img(p.get("image")),
             "url": _product_url(p.get("seo_url"), p.get("product_id")),
         })

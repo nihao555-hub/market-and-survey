@@ -30,6 +30,7 @@ import {
 import { marketIso, marketLabel } from "@/lib/markets";
 import { Flag } from "@/components/ui/Flag";
 import { HeroArt } from "@/components/HeroArt";
+import { HotProductsSection } from "@/components/HotProductsSection";
 import { formatDate, parseTitle } from "@/lib/thread-format";
 
 // 调研工具入口：与「调研中心」一一对应，点击直达对应功能页（同一个 agent 的 5 个聚焦入口）。
@@ -154,6 +155,9 @@ export function WorkspaceHome() {
           </div>
         </div>
       </section>
+
+      {/* 实时社媒选品榜：工作台醒目位（Hero 正下方），TikTok Shop 海外实时爆款 */}
+      <HotProductsSection />
 
       {/* 最近调研品类（真实历史，去重；无历史时不展示） */}
       {recentCategories.length > 0 && (
