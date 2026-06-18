@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { RefreshCw, Database, Clock, ListChecks, Search, TrendingUp, CalendarDays, ShoppingCart } from "lucide-react";
+import { RefreshCw, Database, Clock, ListChecks, Search, TrendingUp, CalendarDays, ShoppingCart, Flame, Star } from "lucide-react";
 import {
   fetchDailyRefreshStatus, fetchDataSnapshots, triggerDailyRefresh,
   type DataSnapshot, type RefreshStatus,
@@ -13,6 +13,12 @@ const SOURCE_META: Record<string, { label: string; icon: React.ReactNode }> = {
   google_trends: { label: "搜索趋势", icon: <TrendingUp className="h-3.5 w-3.5" /> },
   seasonality: { label: "季节性", icon: <CalendarDays className="h-3.5 w-3.5" /> },
   bestsellers: { label: "电商榜单", icon: <ShoppingCart className="h-3.5 w-3.5" /> },
+  tiktok_shop: { label: "TikTok Shop 实时商品", icon: <ShoppingCart className="h-3.5 w-3.5" /> },
+  trend_tiktok: { label: "TikTok 趋势词", icon: <Flame className="h-3.5 w-3.5" /> },
+  trend_douyin: { label: "抖音热榜", icon: <Flame className="h-3.5 w-3.5" /> },
+  trend_weibo: { label: "微博热搜", icon: <Flame className="h-3.5 w-3.5" /> },
+  trend_xiaohongshu: { label: "小红书热词", icon: <Flame className="h-3.5 w-3.5" /> },
+  social_trends: { label: "社媒趋势", icon: <Flame className="h-3.5 w-3.5" /> },
 };
 const sourceMeta = (s: string) => SOURCE_META[s] ?? { label: s, icon: <Database className="h-3.5 w-3.5" /> };
 
@@ -72,23 +78,27 @@ export function DailyDataPanel() {
   const realCount = counts.real ?? 0;
   const termCount = counts.terms ?? status?.terms?.length ?? 0;
 
-  // 按追踪词分组
+  // 按追踪词分组；社媒趋势组置顶
   const groups = React.useMemo(() => {
     const m = new Map<string, DataSnapshot[]>();
     for (const s of snapshots) {
       if (!m.has(s.term)) m.set(s.term, []);
       m.get(s.term)!.push(s);
     }
-    return Array.from(m.entries());
+    return Array.from(m.entries()).sort((a, b) => {
+      const av = a[0].includes("社媒趋势") ? 0 : 1;
+      const bv = b[0].includes("社媒趋势") ? 0 : 1;
+      return av - bv;
+    });
   }, [snapshots]);
 
   return (
     <section className="mb-4 rounded-2xl border border-hairline bg-white">
       <div className="flex items-start justify-between gap-3 border-b border-hairline px-5 py-3.5">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-ink">每日数据刷新 · 真实数据底子</h2>
+          <h2 className="text-sm font-semibold text-ink">实时数据刷新 · 真实数据底子</h2>
           <p className="mt-0.5 text-xs text-ink-subtle">
-            每天北京时间 0:00 自动爬取最新真实数据（搜索词 / 趋势 / 季节性），落库作为选品与调研的底子。
+            每 2 小时自动刷新一次：TikTok Shop 实时商品 + 社媒趋势（TikTok/抖音/微博/小红书）+ 搜索词/趋势，落库作为选品与调研的底子。
           </p>
         </div>
         <Button size="sm" loading={running} onClick={onRefresh} className="flex-shrink-0">
@@ -122,7 +132,7 @@ export function DailyDataPanel() {
 
           {!status?.tier2ChannelOk && (
             <div className="mb-4 rounded-lg border border-hairline bg-surface-1 px-3 py-2 text-xs text-ink-subtle">
-              电商商品级数据（Amazon/Walmart 等商品/价格/BSR/评论）需美国代理或付费数据 API；通道未就绪时如实标注「通道未就绪」，<span className="font-medium text-ink-muted">不编造数据</span>，接入后自动补齐。
+              实时电商通道（TikTok Shop）需配置 <span className="font-medium text-ink-muted">TIKHUB_API_KEY</span>；通道未就绪时如实标注，<span className="font-medium text-ink-muted">不编造数据</span>，接入后自动补齐。
             </div>
           )}
 
@@ -131,7 +141,7 @@ export function DailyDataPanel() {
             <EmptyState
               icon={<Database className="h-6 w-6" />}
               title="还没有数据快照"
-              hint="点击右上角「立即刷新」抓取一次真实数据，或等待每天北京 0:00 的自动刷新。"
+              hint="点击右上角「立即刷新」抓取一次真实数据，或等待每 2 小时一次的自动刷新。"
             />
           ) : (
             <div className="space-y-3">
@@ -158,6 +168,51 @@ export function DailyDataPanel() {
                                 <span key={i} className="rounded-full bg-brand/10 px-2 py-0.5 text-[11px] text-brand">
                                   {k.keyword ?? k}
                                 </span>
+                              ))}
+                            </div>
+                          )}
+                          {s.source.startsWith("trend_") && s.realData && Array.isArray(s.payload?.items) && (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {s.payload.items.slice(0, 12).map((it: any, i: number) => (
+                                <span key={i} className="rounded-full bg-brand/10 px-2 py-0.5 text-[11px] text-brand">
+                                  {it.keyword ?? it}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {s.source === "tiktok_shop" && s.realData && Array.isArray(s.payload?.products) && (
+                            <div className="mt-2 space-y-1.5">
+                              {s.payload.products.slice(0, 6).map((p: any, i: number) => (
+                                <a
+                                  key={i}
+                                  href={p.url || undefined}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="flex items-center gap-2 rounded-lg border border-hairline bg-white p-1.5 transition hover:border-brand/40"
+                                >
+                                  {p.image ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={p.image} alt="" className="h-9 w-9 flex-shrink-0 rounded object-cover" />
+                                  ) : (
+                                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded bg-surface-2">
+                                      <ShoppingCart className="h-4 w-4 text-ink-subtle" />
+                                    </div>
+                                  )}
+                                  <div className="min-w-0 flex-1">
+                                    <div className="truncate text-[11px] font-medium text-ink">{p.title}</div>
+                                    <div className="flex items-center gap-2 text-[10px] text-ink-subtle">
+                                      {typeof p.price === "number" && (
+                                        <span className="font-semibold text-brand">{p.currency_symbol || "$"}{p.price}</span>
+                                      )}
+                                      {p.rating ? (
+                                        <span className="inline-flex items-center gap-0.5">
+                                          <Star className="h-2.5 w-2.5 fill-current text-amber-500" />{p.rating}
+                                        </span>
+                                      ) : null}
+                                      {p.sold_count ? <span>已售 {p.sold_count}</span> : null}
+                                    </div>
+                                  </div>
+                                </a>
                               ))}
                             </div>
                           )}

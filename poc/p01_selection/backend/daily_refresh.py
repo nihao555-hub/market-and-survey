@@ -42,6 +42,13 @@ DEFAULT_SEED_TERMS = [
 # 单次刷新最多处理多少个词（控制时长与限流风险）
 MAX_TERMS = int(os.getenv("DAILY_REFRESH_MAX_TERMS", "8"))
 
+# 开源数据集底子（Amazon Reviews 2023）配置
+OPEN_DATASET_ENABLED = os.getenv("OPEN_DATASET_ENABLED", "1") == "1"
+OPEN_DATASET_TTL_DAYS = int(os.getenv("OPEN_DATASET_TTL_DAYS", "7"))
+OPEN_DATASET_MAX_LINES = int(os.getenv("OPEN_DATASET_MAX_LINES", "150000"))
+OPEN_DATASET_PER_TERM = int(os.getenv("OPEN_DATASET_PER_TERM", "15"))
+_OPEN_CACHE_KEY = "open_dataset:cache:{tenant}"
+
 _RUN_LOCK = threading.Lock()
 _STATE_KEY = "daily_refresh:state:{tenant}"
 
@@ -78,9 +85,20 @@ def _paid_api_available() -> bool:
     return any(os.getenv(k) for k in ("DATAFORSEO_LOGIN", "KEEPA_API_KEY", "RAPIDAPI_KEY"))
 
 
+def _tikhub_ok() -> bool:
+    try:
+        from modules import tikhub
+        return tikhub.is_configured()
+    except Exception:
+        return False
+
+
 def tier2_channel_ok() -> bool:
-    """电商商品级数据通道是否就绪（真实代理在转发，或配了付费 API）。"""
-    return _proxy_alive() or _paid_api_available()
+    """电商商品级数据通道是否就绪。
+
+    TikHub（实时 TikTok Shop 商品/评论）已就绪即视为可用；其次是美国代理 / 付费 API。
+    """
+    return _tikhub_ok() or _proxy_alive() or _paid_api_available()
 
 
 # ─────────── 追踪词汇总 ───────────
@@ -182,30 +200,136 @@ def _collect_tier1(term: str, geo: str) -> list[dict]:
     return out
 
 
-def _collect_tier2(term: str, geo: str, channel_ok: bool) -> list[dict]:
-    """电商商品级数据（需代理/付费 API）。通道未就绪时如实标 unavailable，不编造。"""
-    if not channel_ok:
-        return [dict(
-            source="bestsellers", tier=2, status="unavailable", real_data=False,
-            summary="电商商品级数据通道未就绪（需美国代理或付费 API）；未编造，通道接入后自动补齐",
-            payload={"reason": "no_proxy_or_paid_api", "us_proxy_host": "127.0.0.1:10808"},
-        )]
-    out: list[dict] = []
+# ─────────── 开源数据集底子（零反爬，量大精准；静态快照做底盘）───────────
+def open_dataset_products(tenant_id: str, terms: list[str]) -> dict[str, list[dict]]:
+    """取追踪词的开源真实商品底子（Amazon Reviews 2023）。
+
+    数据集是静态快照，故缓存在 GlobalConfig：仅当缓存过期（TTL）或出现新词时才重新流式拉取，
+    每日刷新复用缓存，避免重复扫描。返回 {term: [product, ...]}。
+    """
+    if not OPEN_DATASET_ENABLED or not terms:
+        return {t: [] for t in terms}
+    key = _OPEN_CACHE_KEY.format(tenant=tenant_id)
+    cache = st.get_config(key) or {}
+    products: dict[str, list[dict]] = dict(cache.get("products") or {})
+    ingested_at = cache.get("ingested_at")
+
+    stale = True
+    if ingested_at:
+        try:
+            age = (datetime.now(timezone.utc) - datetime.fromisoformat(ingested_at)).total_seconds()
+            stale = age > OPEN_DATASET_TTL_DAYS * 86400
+        except Exception:
+            stale = True
+    missing = [t for t in terms if t not in products]
+    to_ingest = terms if stale else missing
+
+    if to_ingest:
+        try:
+            from modules.open_dataset import ingest_products
+            logger.info(f"open_dataset 拉取底子 terms={to_ingest} (stale={stale})")
+            fresh = ingest_products(to_ingest, max_lines=OPEN_DATASET_MAX_LINES,
+                                    per_term=OPEN_DATASET_PER_TERM)
+            products.update(fresh)
+            st.set_config(key, {"ingested_at": _now_iso(), "products": products})
+        except Exception as e:
+            logger.warning(f"open_dataset 拉取失败: {e}")
+    return {t: products.get(t, []) for t in terms}
+
+
+def _dataset_row(term: str, products: list[dict]) -> dict:
+    """把开源商品底子整理成一条快照行（tier1，零反爬，真实）。"""
+    from modules.open_dataset import summarize, product_stats
+    if products:
+        return dict(
+            source="dataset_products", tier=1, status="ok", real_data=True,
+            summary=summarize(term, products),
+            payload={"products": products, "stats": product_stats(products),
+                     "dataset": "McAuley-Lab/Amazon-Reviews-2023"},
+        )
+    return dict(
+        source="dataset_products", tier=1, status="empty", real_data=False,
+        summary="开源数据集未匹配到该词的商品", payload={"products": []},
+    )
+
+
+def _collect_tikhub_products(term: str, geo: str) -> dict:
+    """实时 TikTok Shop 商品（价格/评分/评论数/销量/店铺）。未配 key 时如实标 unavailable。"""
+    if not _tikhub_ok():
+        return dict(
+            source="tiktok_shop", tier=2, status="unavailable", real_data=False,
+            summary="TikTok Shop 实时通道未就绪（需 TIKHUB_API_KEY）；未编造，配置后自动补齐",
+            payload={"reason": "no_tikhub_key"},
+        )
     try:
-        from modules.agent_tools import tool_get_bestsellers
-        r = tool_get_bestsellers(category=term, limit=30, geo=geo)
-        items = r.get("items") or []
-        ok = bool(items)
-        out.append(dict(
-            source="bestsellers", tier=2, status="ok" if ok else "empty",
-            real_data=ok,
-            summary=(f"BSR Top {len(items)} 抓取成功" if ok else "未抓到 BSR 榜单"),
-            payload=r,
-        ))
+        from modules import tikhub
+        prods = tikhub.shop_search(term, region=geo, limit=30)
+        if prods:
+            return dict(
+                source="tiktok_shop", tier=2, status="ok", real_data=True,
+                summary=tikhub.shop_summary(term, prods),
+                payload={"products": prods, "stats": tikhub.product_stats(prods),
+                         "region": geo, "source_label": "TikTok Shop（实时）"},
+            )
+        return dict(source="tiktok_shop", tier=2, status="empty", real_data=False,
+                    summary=f"TikTok Shop 未搜到「{term}」在售商品", payload={"region": geo})
     except Exception as e:
-        out.append(dict(source="bestsellers", tier=2, status="error",
-                        real_data=False, summary=str(e)[:160], payload={"error": str(e)[:300]}))
+        return dict(source="tiktok_shop", tier=2, status="error", real_data=False,
+                    summary=str(e)[:160], payload={"error": str(e)[:300]})
+
+
+def _collect_tier2(term: str, geo: str, channel_ok: bool) -> list[dict]:
+    """电商商品级数据。优先 TikTok Shop 实时；可选叠加 Amazon BSR（默认关，机房 IP 必封）。"""
+    out: list[dict] = [_collect_tikhub_products(term, geo)]
+    # Amazon BSR 抓取很慢且机房 IP 基本必封，默认关闭；需要时 ENABLE_AMAZON_BSR=1 显式开启。
+    if os.getenv("ENABLE_AMAZON_BSR") == "1" and (_proxy_alive() or _paid_api_available()):
+        try:
+            from modules.agent_tools import tool_get_bestsellers
+            r = tool_get_bestsellers(category=term, limit=30, geo=geo)
+            items = r.get("items") or []
+            ok = bool(items)
+            out.append(dict(
+                source="bestsellers", tier=2, status="ok" if ok else "empty",
+                real_data=ok,
+                summary=(f"BSR Top {len(items)} 抓取成功" if ok else "未抓到 BSR 榜单"),
+                payload=r,
+            ))
+        except Exception as e:
+            out.append(dict(source="bestsellers", tier=2, status="error",
+                            real_data=False, summary=str(e)[:160], payload={"error": str(e)[:300]}))
     return out
+
+
+# ─────────── 实时社媒趋势（每批一次，跨平台）───────────
+SOCIAL_TREND_TERM = "🔥 实时社媒趋势"
+
+
+def _collect_social_trends(limit: int = 20) -> list[dict]:
+    """跨平台实时社媒热搜/热词（TikTok/抖音/微博/小红书）。每批采集一次。"""
+    if not _tikhub_ok():
+        return [dict(
+            source="social_trends", tier=2, status="unavailable", real_data=False,
+            summary="社媒趋势通道未就绪（需 TIKHUB_API_KEY）", payload={"reason": "no_tikhub_key"},
+        )]
+    from modules import tikhub
+    trends = tikhub.social_trends(limit=limit)
+    rows: list[dict] = []
+    for plat, r in trends.items():
+        src = f"trend_{plat}"
+        if r.get("ok") and r.get("items"):
+            kws = [i.get("keyword") for i in r["items"] if i.get("keyword")]
+            rows.append(dict(
+                source=src, tier=2, status="ok", real_data=True,
+                summary=f"{r['label']}：{('、'.join(kws[:8]))}",
+                payload={"platform": plat, "label": r["label"], "items": r["items"]},
+            ))
+        else:
+            rows.append(dict(
+                source=src, tier=2, status="error" if not r.get("ok") else "empty",
+                real_data=False, summary=f"{r.get('label', plat)} 未取到：{r.get('error', '空')}"[:160],
+                payload={"platform": plat, "error": r.get("error")},
+            ))
+    return rows
 
 
 # ─────────── 批次刷新 ───────────
@@ -225,6 +349,7 @@ def run_daily_refresh(tenant_id: str = "dev_tenant", terms: Optional[list[str]] 
     try:
         terms = terms or collect_terms(tenant_id)
         channel_ok = tier2_channel_ok()
+        ds_products = open_dataset_products(tenant_id, terms)
         st.set_config(_state_key(tenant_id), {
             "run_id": run_id, "status": "running", "trigger": trigger,
             "started_at": started, "finished_at": None, "geo": geo,
@@ -234,14 +359,23 @@ def run_daily_refresh(tenant_id: str = "dev_tenant", terms: Optional[list[str]] 
 
         counts = {"total": 0, "ok": 0, "empty": 0, "error": 0, "unavailable": 0,
                   "real": 0, "terms": len(terms)}
-        for term in terms:
-            rows = _collect_tier1(term, geo) + _collect_tier2(term, geo, channel_ok)
+
+        def _persist(term_label: str, rows: list[dict]) -> None:
             for row in rows:
-                st.save_snapshot(tenant_id=tenant_id, run_id=run_id, term=term, geo=geo, **row)
+                st.save_snapshot(tenant_id=tenant_id, run_id=run_id, term=term_label, geo=geo, **row)
                 counts["total"] += 1
                 counts[row["status"]] = counts.get(row["status"], 0) + 1
                 if row["real_data"]:
                     counts["real"] += 1
+
+        # 跨平台实时社媒趋势：每批采集一次（与具体追踪词无关）
+        _persist(SOCIAL_TREND_TERM, _collect_social_trends())
+
+        for term in terms:
+            rows = (_collect_tier1(term, geo)
+                    + [_dataset_row(term, ds_products.get(term, []))]
+                    + _collect_tier2(term, geo, channel_ok))
+            _persist(term, rows)
 
         summary = {
             "run_id": run_id, "status": "done", "trigger": trigger,

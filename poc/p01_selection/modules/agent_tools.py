@@ -2246,6 +2246,47 @@ def tool_file_to_markdown(file_path: str) -> dict:
     return {"file": file_path, "length": len(md), "markdown": md[:5000]}
 
 
+# =====================  TikHub：实时社媒趋势 + TikTok Shop 电商  =====================
+def tool_tiktok_shop_search(keyword: str, region: str = "US", limit: int = 20) -> dict:
+    """实时搜 TikTok Shop 商品（真实价格/评分/评论数/销量/店铺）。未配 key 时如实返回 error。"""
+    logger.info(f"🔧 tiktok_shop_search({keyword}, region={region}, limit={limit})")
+    from modules import tikhub
+    if not tikhub.is_configured():
+        return {"ok": False, "error": "TIKHUB_API_KEY 未配置，TikTok Shop 实时通道不可用", "products": []}
+    try:
+        prods = tikhub.shop_search(keyword, region=region, limit=limit)
+        return {"ok": True, "keyword": keyword, "region": region, "count": len(prods),
+                "summary": tikhub.shop_summary(keyword, prods),
+                "stats": tikhub.product_stats(prods), "products": prods}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:300], "products": []}
+
+
+def tool_tiktok_shop_reviews(product_id: str, region: str = "US", limit: int = 20) -> dict:
+    """抓 TikTok Shop 某商品的真实评论（product_id 来自 tiktok_shop_search）。区域不匹配返回空。"""
+    logger.info(f"🔧 tiktok_shop_reviews({product_id}, region={region})")
+    from modules import tikhub
+    if not tikhub.is_configured():
+        return {"ok": False, "error": "TIKHUB_API_KEY 未配置", "reviews": []}
+    try:
+        rv = tikhub.shop_reviews(product_id, region=region, limit=limit)
+        return {"ok": True, "product_id": product_id, "count": len(rv), "reviews": rv}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:300], "reviews": []}
+
+
+def tool_social_trends(platforms: list = None, limit: int = 20) -> dict:
+    """跨平台实时社媒热搜/热词（tiktok/douyin/weibo/xiaohongshu）。看「今天大家在搜什么、什么在火」。"""
+    logger.info(f"🔧 social_trends(platforms={platforms}, limit={limit})")
+    from modules import tikhub
+    if not tikhub.is_configured():
+        return {"ok": False, "error": "TIKHUB_API_KEY 未配置，社媒趋势通道不可用", "platforms": {}}
+    try:
+        return {"ok": True, "platforms": tikhub.social_trends(platforms=platforms, limit=limit)}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:300], "platforms": {}}
+
+
 # =====================  工具 schema（DeepSeek function calling）=====================
 TOOLS_SCHEMA = [
     {"type": "function", "function": {
@@ -2279,6 +2320,30 @@ TOOLS_SCHEMA = [
         "parameters": {"type": "object", "properties": {
             "keyword": {"type": "string"}, "geo": {"type": "string"}
         }, "required": ["keyword"]}}},
+    {"type": "function", "function": {
+        "name": "tiktok_shop_search",
+        "description": "**实时电商首选**。搜 TikTok Shop 当前在售商品，返回真实价格/评分/评论数/销量/店铺/图片/链接。TikTok Shop 是全球主流电商平台之一，数据每日更新——亚马逊机房 IP 被封时这是最稳的实时商品来源。region 用目标市场（US/UK/GB/MY/TH/VN/ID/SG 等）。",
+        "parameters": {"type": "object", "properties": {
+            "keyword": {"type": "string"},
+            "region": {"type": "string", "description": "市场国家码，默认 US"},
+            "limit": {"type": "integer", "default": 20}
+        }, "required": ["keyword"]}}},
+    {"type": "function", "function": {
+        "name": "tiktok_shop_reviews",
+        "description": "抓 TikTok Shop 某商品的真实买家评论（product_id 来自 tiktok_shop_search）。用于提炼痛点/卖点。region 必须与搜索时一致，否则评论不可用。",
+        "parameters": {"type": "object", "properties": {
+            "product_id": {"type": "string"},
+            "region": {"type": "string", "description": "需与搜索时一致，默认 US"},
+            "limit": {"type": "integer", "default": 20}
+        }, "required": ["product_id"]}}},
+    {"type": "function", "function": {
+        "name": "social_trends",
+        "description": "**社媒实时趋势**。一次拿 TikTok 趋势搜索词 / 抖音热榜 / 微博热搜 / 小红书热词，看『今天大家在搜什么、什么在火』。用于发现新兴选品方向、把社媒热度与电商销量做交叉验证。platforms 不传则全拿。",
+        "parameters": {"type": "object", "properties": {
+            "platforms": {"type": "array", "items": {"type": "string"},
+                          "description": "tiktok/douyin/weibo/xiaohongshu，不传则全部"},
+            "limit": {"type": "integer", "default": 20}
+        }}}},
     {"type": "function", "function": {
         "name": "discover_bsr_url",
         "description": "LLM 给类目关键词（如 'wireless earbuds' / 'smart watch'），工具自动从【目标市场对应的 Amazon 站点】搜索发现真实子类目 BSR URL。**必须传 geo=目标市场**（US/UK/DE/FR/JP/SG/IN/...），否则默认美国站。若该市场无 Amazon 业务（如 RU/东南亚），返回 amazon_available=false，此时应改用 search_multi_platform 抓本地平台。",
@@ -2672,6 +2737,9 @@ TOOL_IMPL = {
     "list_platforms": tool_list_platforms,
     "search_multi_platform": tool_search_multi_platform,
     "get_trend": tool_get_trend,
+    "tiktok_shop_search": tool_tiktok_shop_search,
+    "tiktok_shop_reviews": tool_tiktok_shop_reviews,
+    "social_trends": tool_social_trends,
     "discover_bsr_url": tool_discover_bsr_url,
     "get_bestsellers_by_url": tool_get_bestsellers_by_url,
     "get_movers_shakers_by_url": tool_get_movers_shakers_by_url,

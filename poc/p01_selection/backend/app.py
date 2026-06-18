@@ -61,12 +61,14 @@ async def _start_daily_refresh_scheduler():
         from apscheduler.triggers.cron import CronTrigger
         from backend.daily_refresh import run_daily_refresh
 
-        hour = int(_os.getenv("DAILY_REFRESH_HOUR_UTC", "16"))
+        # 每 N 小时刷新一次（用户要求「每两小时更新一次」），默认 2 小时。
+        interval = int(_os.getenv("DAILY_REFRESH_INTERVAL_HOURS", "2"))
         minute = int(_os.getenv("DAILY_REFRESH_MINUTE", "0"))
+        hour_spec = f"*/{interval}" if interval > 1 else "*"
         _scheduler = BackgroundScheduler(timezone="UTC")
         _scheduler.add_job(
             run_daily_refresh,
-            trigger=CronTrigger(hour=hour, minute=minute, timezone="UTC"),
+            trigger=CronTrigger(hour=hour_spec, minute=minute, timezone="UTC"),
             id="daily_refresh",
             kwargs={"trigger": "schedule"},
             replace_existing=True,
@@ -77,7 +79,8 @@ async def _start_daily_refresh_scheduler():
         _scheduler.start()
         import logging
         logging.getLogger("uvicorn").info(
-            f"每日刷新调度已启动：cron {minute} {hour} * * * (UTC) = 北京 {(hour + 8) % 24} 点")
+            f"刷新调度已启动：cron {minute} {hour_spec} * * * (UTC) = 每 {interval} 小时一次"
+            f"（含北京 0:00 = UTC 16:00）")
 
         if _os.getenv("DAILY_REFRESH_ON_STARTUP", "0") == "1":
             from backend.daily_refresh import run_in_background
