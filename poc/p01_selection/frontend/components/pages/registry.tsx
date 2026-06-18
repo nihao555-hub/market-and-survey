@@ -22,6 +22,7 @@ import { ResearchLauncher, type ResearchConfig } from "./ResearchLauncher";
 import { TasksPage } from "./TasksPage";
 import { ReportsPage } from "./ReportsPage";
 import { MonitorPage } from "./MonitorPage";
+import { SocialTrendsPage } from "./SocialTrendsPage";
 import { SettingsPage } from "./SettingsPage";
 import { FavoritesPage, TrashPage } from "./SimplePages";
 
@@ -113,6 +114,8 @@ export function renderPage(page: PageKey): React.ReactNode {
       return <TrashPage />;
     case "monitor":
       return <MonitorPage />;
+    case "social":
+      return <SocialTrendsPage />;
     case "settings":
       return <SettingsPage />;
     default:

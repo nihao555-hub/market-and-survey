@@ -15,6 +15,7 @@ import {
   Star,
   Trash2,
   BellRing,
+  Flame,
   Settings,
   Crown,
 } from "lucide-react";
@@ -50,6 +51,7 @@ const NAV: NavGroup[] = [
   {
     title: "监控",
     items: [
+      { key: "social", label: "社媒趋势", icon: <Flame className="h-4 w-4" /> },
       { key: "monitor", label: "监控与订阅", icon: <BellRing className="h-4 w-4" /> },
     ],
   },

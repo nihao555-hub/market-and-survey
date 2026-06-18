@@ -15,6 +15,7 @@ const PAGE_TITLES: Record<PageKey, string> = {
   reports: "报告中心",
   favorites: "收藏夹",
   trash: "回收站",
+  social: "社媒趋势",
   monitor: "监控与订阅",
   settings: "设置",
 };
