@@ -104,6 +104,28 @@ class ApiKey(Base):
     last_used_at = Column(DateTime, nullable=True)
 
 
+class DataSnapshot(Base):
+    """每日定时刷新落库的真实数据快照。
+
+    反幻觉：`status` / `real_data` 如实标注本条数据是否真抓到，拿不到不编造。
+    - tier=1：免代理可得（Amazon 自动补全买家搜索词 / Google Trends / 季节性）
+    - tier=2：需美国代理或付费 API（Amazon/Walmart 等商品级 BSR/价格/评论）
+    """
+    __tablename__ = "data_snapshots"
+    id = Column(String, primary_key=True)
+    tenant_id = Column(String, default="dev_tenant", index=True)
+    run_id = Column(String, index=True)            # 同一次刷新批次
+    term = Column(String, index=True)              # 追踪词 / 品类
+    source = Column(String, index=True)            # amazon_keywords / google_trends / seasonality / bestsellers / products
+    geo = Column(String, default="US")
+    tier = Column(Integer, default=1)              # 1=免代理可得 2=需代理/付费
+    status = Column(String, default="ok")          # ok / empty / error / unavailable
+    real_data = Column(Boolean, default=False)     # 是否真实抓到（反幻觉标记）
+    summary = Column(String, default="")           # 简短人类可读摘要
+    payload = Column(JSON)                          # 结构化原始结果
+    captured_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+
 _engine = create_engine(f"sqlite:///{DB_PATH}", future=True)
 Base.metadata.create_all(_engine)
 SessionLocal = sessionmaker(bind=_engine, future=True)
@@ -439,3 +461,65 @@ def update_settings(tenant_id: str, patch: dict) -> dict:
             row.value = merged
         s.commit()
     return merged
+
+
+# ─────────── 全局 KV（每日刷新状态等）───────────
+def get_config(key: str, default=None):
+    with SessionLocal() as s:
+        row = s.get(GlobalConfig, key)
+        return row.value if row is not None else default
+
+
+def set_config(key: str, value) -> None:
+    with SessionLocal() as s:
+        row = s.get(GlobalConfig, key)
+        if row is None:
+            s.add(GlobalConfig(key=key, value=value))
+        else:
+            row.value = value
+        s.commit()
+
+
+# ─────────── 数据快照（每日定时刷新落库）───────────
+def save_snapshot(*, tenant_id: str, run_id: str, term: str, source: str,
+                  geo: str = "US", tier: int = 1, status: str = "ok",
+                  real_data: bool = False, summary: str = "", payload=None) -> str:
+    """落一条数据快照，返回快照 id。"""
+    sid = str(uuid.uuid4())
+    with SessionLocal() as s:
+        s.add(DataSnapshot(
+            id=sid, tenant_id=tenant_id, run_id=run_id, term=term, source=source,
+            geo=geo, tier=tier, status=status, real_data=bool(real_data),
+            summary=summary or "", payload=payload if payload is not None else {},
+        ))
+        s.commit()
+    return sid
+
+
+def latest_run_id(tenant_id: str = "dev_tenant") -> Optional[str]:
+    """该租户最近一次刷新批次的 run_id。"""
+    with SessionLocal() as s:
+        row = (s.query(DataSnapshot)
+               .filter(DataSnapshot.tenant_id == tenant_id)
+               .order_by(DataSnapshot.captured_at.desc())
+               .first())
+        return row.run_id if row else None
+
+
+def list_latest_snapshots(tenant_id: str = "dev_tenant", *,
+                          term: Optional[str] = None,
+                          source: Optional[str] = None,
+                          run_id: Optional[str] = None,
+                          limit: int = 200) -> list[DataSnapshot]:
+    """列出最近一次刷新批次的快照（或指定 run_id），可按 term/source 过滤。"""
+    rid = run_id or latest_run_id(tenant_id)
+    if not rid:
+        return []
+    with SessionLocal() as s:
+        q = (s.query(DataSnapshot)
+             .filter(DataSnapshot.tenant_id == tenant_id, DataSnapshot.run_id == rid))
+        if term:
+            q = q.filter(DataSnapshot.term == term)
+        if source:
+            q = q.filter(DataSnapshot.source == source)
+        return list(q.order_by(DataSnapshot.captured_at.asc()).limit(limit).all())

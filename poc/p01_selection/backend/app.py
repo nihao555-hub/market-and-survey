@@ -39,6 +39,64 @@ async def _clear_stale_streams():
     except Exception:
         pass
 
+
+# ─── 每日定时刷新（北京 0 点 = UTC 16:00）调度器 ───
+# 用 APScheduler BackgroundScheduler：采集器是同步阻塞调用，跑在独立线程池里，
+# 不占用 FastAPI 的事件循环。可用环境变量调节：
+#   DAILY_REFRESH_ENABLED   默认 1（关掉设 0）
+#   DAILY_REFRESH_HOUR_UTC  默认 16（= 北京 0 点）
+#   DAILY_REFRESH_MINUTE    默认 0
+#   DAILY_REFRESH_ON_STARTUP 默认 0（设 1 时启动即先跑一次做底子）
+_scheduler = None
+
+
+@app.on_event("startup")
+async def _start_daily_refresh_scheduler():
+    global _scheduler
+    import os as _os
+    if _os.getenv("DAILY_REFRESH_ENABLED", "1") != "1":
+        return
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from apscheduler.triggers.cron import CronTrigger
+        from backend.daily_refresh import run_daily_refresh
+
+        hour = int(_os.getenv("DAILY_REFRESH_HOUR_UTC", "16"))
+        minute = int(_os.getenv("DAILY_REFRESH_MINUTE", "0"))
+        _scheduler = BackgroundScheduler(timezone="UTC")
+        _scheduler.add_job(
+            run_daily_refresh,
+            trigger=CronTrigger(hour=hour, minute=minute, timezone="UTC"),
+            id="daily_refresh",
+            kwargs={"trigger": "schedule"},
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=3600,
+        )
+        _scheduler.start()
+        import logging
+        logging.getLogger("uvicorn").info(
+            f"每日刷新调度已启动：cron {minute} {hour} * * * (UTC) = 北京 {(hour + 8) % 24} 点")
+
+        if _os.getenv("DAILY_REFRESH_ON_STARTUP", "0") == "1":
+            from backend.daily_refresh import run_in_background
+            run_in_background(trigger="startup")
+    except Exception as _e:
+        import logging
+        logging.getLogger("uvicorn").warning(f"每日刷新调度未启动: {_e}")
+
+
+@app.on_event("shutdown")
+async def _stop_daily_refresh_scheduler():
+    global _scheduler
+    if _scheduler is not None:
+        try:
+            _scheduler.shutdown(wait=False)
+        except Exception:
+            pass
+        _scheduler = None
+
 # ─── CORS（前端 Next.js dev server 跨域）───
 from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
@@ -228,6 +286,22 @@ async def thread_state(thread_id: str, tenant_id: str = Depends(require_tenant))
 async def metrics():
     """监控端点：请求数/各租户用量/错误数/运行时长（供 Prometheus/健康检查抓取）。"""
     return get_metrics()
+
+
+# ─── 每日定时刷新：手动触发 + 状态查询 ───
+@app.post("/admin/daily-refresh")
+async def admin_daily_refresh(tenant_id: str = Depends(require_tenant)):
+    """手动触发一次刷新（后台线程跑，立即返回）。供「立即刷新」按钮与测试用。"""
+    from backend.daily_refresh import run_in_background, get_refresh_state
+    started = run_in_background(tenant_id=tenant_id, trigger="manual")
+    return {"started": started, "state": get_refresh_state(tenant_id)}
+
+
+@app.get("/admin/daily-refresh/status")
+async def admin_daily_refresh_status(tenant_id: str = Depends(require_tenant)):
+    """查询最近一次刷新批次的状态摘要。"""
+    from backend.daily_refresh import get_refresh_state
+    return get_refresh_state(tenant_id)
 
 
 @app.get("/healthz")

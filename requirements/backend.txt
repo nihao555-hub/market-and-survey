@@ -16,3 +16,6 @@ dramatiq[redis]==2.2.0
 
 # 持久化（PoC 用 SQLite；生产换 Postgres 时再加 psycopg[binary]）
 SQLAlchemy==2.0.51
+
+# 每日定时刷新（北京 0 点 = UTC 16:00 的 cron 调度）
+APScheduler==3.11.2

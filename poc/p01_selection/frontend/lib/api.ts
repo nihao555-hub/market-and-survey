@@ -177,6 +177,65 @@ export async function deleteMonitor(monitorId: string): Promise<boolean> {
   return d.deleteMonitor;
 }
 
+// ─────────── 每日数据刷新（定时爬取真实数据落库）───────────
+export interface DataSnapshot {
+  id: string;
+  term: string;
+  source: string;
+  geo: string;
+  tier: number;
+  status: string;          // ok / empty / error / unavailable
+  realData: boolean;       // 是否真实抓到（反幻觉标记）
+  summary: string;
+  payload: any;
+  capturedAt?: string | null;
+}
+
+export interface RefreshStatus {
+  status: string;          // never_run / running / done / failed
+  runId?: string | null;
+  trigger?: string | null;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+  elapsedSec?: number | null;
+  tier2ChannelOk: boolean;
+  terms: string[];
+  counts: Record<string, number>;
+}
+
+const SNAPSHOT_FIELDS =
+  "id term source geo tier status realData summary payload capturedAt";
+const REFRESH_FIELDS =
+  "status runId trigger startedAt finishedAt elapsedSec tier2ChannelOk terms counts";
+
+export async function fetchDailyRefreshStatus(): Promise<RefreshStatus> {
+  const d = await gqlRequest<{ dailyRefreshStatus: RefreshStatus }>(
+    `query { dailyRefreshStatus { ${REFRESH_FIELDS} } }`
+  );
+  return d.dailyRefreshStatus;
+}
+
+export async function fetchDataSnapshots(opts?: {
+  term?: string;
+  source?: string;
+  limit?: number;
+}): Promise<DataSnapshot[]> {
+  const d = await gqlRequest<{ dataSnapshots: DataSnapshot[] }>(
+    `query($term: String, $source: String, $limit: Int!) {
+       dataSnapshots(term: $term, source: $source, limit: $limit) { ${SNAPSHOT_FIELDS} }
+     }`,
+    { term: opts?.term ?? null, source: opts?.source ?? null, limit: opts?.limit ?? 200 }
+  );
+  return d.dataSnapshots || [];
+}
+
+export async function triggerDailyRefresh(): Promise<boolean> {
+  const d = await gqlRequest<{ triggerDailyRefresh: boolean }>(
+    `mutation { triggerDailyRefresh }`
+  );
+  return d.triggerDailyRefresh;
+}
+
 // ─────────── API Key ───────────
 export interface ApiKey {
   id: string;

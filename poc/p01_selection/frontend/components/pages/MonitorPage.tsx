@@ -5,6 +5,7 @@ import { fetchMonitors, createMonitor, setMonitorEnabled, deleteMonitor, type Mo
 import {
   PageContainer, PageHeader, Panel, EmptyState, Button, Switch, Skeleton,
 } from "./primitives";
+import { DailyDataPanel } from "./DailyDataPanel";
 
 const ICONS: Record<string, React.ReactNode> = {
   trend: <TrendingUp className="h-4 w-4" />,
@@ -66,6 +67,8 @@ export function MonitorPage() {
         subtitle="为关键品类、竞品与价格设置自动监控规则，变化发生时第一时间收到提醒。"
         actions={<Button onClick={() => setAdding((v) => !v)}><Plus className="h-4 w-4" />新建监控</Button>}
       />
+
+      <DailyDataPanel />
 
       {adding && (
         <div className="mb-4 rounded-2xl border border-hairline bg-white p-4">

@@ -117,6 +117,33 @@ class MonitorType:
 
 
 @strawberry.type
+class DataSnapshotType:
+    id: str
+    term: str
+    source: str
+    geo: str
+    tier: int
+    status: str
+    real_data: bool
+    summary: str
+    payload: JSON
+    captured_at: typing.Optional[str]
+
+
+@strawberry.type
+class DailyRefreshStatus:
+    status: str
+    run_id: typing.Optional[str] = None
+    trigger: typing.Optional[str] = None
+    started_at: typing.Optional[str] = None
+    finished_at: typing.Optional[str] = None
+    elapsed_sec: typing.Optional[float] = None
+    tier2_channel_ok: bool = False
+    terms: typing.List[str] = strawberry.field(default_factory=list)
+    counts: JSON = strawberry.field(default_factory=dict)
+
+
+@strawberry.type
 class ApiKeyType:
     id: str
     name: str
@@ -166,6 +193,29 @@ def _monitor_type(m: st.Monitor) -> MonitorType:
     return MonitorType(
         id=m.id, name=m.name, description=m.description or "", kind=m.kind,
         cadence=m.cadence, enabled=bool(m.enabled),
+    )
+
+
+def _snapshot_type(d: st.DataSnapshot) -> DataSnapshotType:
+    return DataSnapshotType(
+        id=d.id, term=d.term, source=d.source, geo=d.geo or "US",
+        tier=d.tier or 1, status=d.status or "ok", real_data=bool(d.real_data),
+        summary=d.summary or "", payload=d.payload or {},
+        captured_at=d.captured_at.isoformat() if d.captured_at else None,
+    )
+
+
+def _refresh_status(d: dict) -> DailyRefreshStatus:
+    return DailyRefreshStatus(
+        status=d.get("status", "never_run"),
+        run_id=d.get("run_id"),
+        trigger=d.get("trigger"),
+        started_at=d.get("started_at"),
+        finished_at=d.get("finished_at"),
+        elapsed_sec=d.get("elapsed_sec"),
+        tier2_channel_ok=bool(d.get("tier2_channel_ok", False)),
+        terms=list(d.get("terms") or []),
+        counts=d.get("counts") or {},
     )
 
 
@@ -226,6 +276,23 @@ class Query:
     @strawberry.field
     def monitors(self, tenant_id: str = "dev_tenant") -> typing.List[MonitorType]:
         return [_monitor_type(m) for m in st.list_monitors(tenant_id)]
+
+    @strawberry.field
+    def data_snapshots(
+        self, tenant_id: str = "dev_tenant",
+        term: typing.Optional[str] = None,
+        source: typing.Optional[str] = None,
+        limit: int = 200,
+    ) -> typing.List[DataSnapshotType]:
+        """最近一次每日刷新批次落库的真实数据快照（可按 term/source 过滤）。"""
+        rows = st.list_latest_snapshots(tenant_id, term=term, source=source, limit=limit)
+        return [_snapshot_type(d) for d in rows]
+
+    @strawberry.field
+    def daily_refresh_status(self, tenant_id: str = "dev_tenant") -> DailyRefreshStatus:
+        """最近一次每日刷新的状态摘要（时间/词表/各状态计数/Tier2 通道是否就绪）。"""
+        from backend.daily_refresh import get_refresh_state
+        return _refresh_status(get_refresh_state(tenant_id))
 
     @strawberry.field
     def api_keys(self, tenant_id: str = "dev_tenant") -> typing.List[ApiKeyType]:
@@ -358,6 +425,13 @@ class Mutation:
     @strawberry.mutation
     def delete_monitor(self, monitor_id: str, tenant_id: str = "dev_tenant") -> bool:
         return st.delete_monitor(monitor_id, tenant_id)
+
+    # ── 每日数据刷新 ──
+    @strawberry.mutation
+    def trigger_daily_refresh(self, tenant_id: str = "dev_tenant") -> bool:
+        """手动触发一次每日刷新（后台线程跑，立即返回是否已启动）。"""
+        from backend.daily_refresh import run_in_background
+        return run_in_background(tenant_id=tenant_id, trigger="manual")
 
     # ── API Key ──
     @strawberry.mutation
