@@ -21,9 +21,7 @@ import type { PageKey } from "@/lib/atoms";
 import { ResearchLauncher, type ResearchConfig } from "./ResearchLauncher";
 import { TasksPage } from "./TasksPage";
 import { ReportsPage } from "./ReportsPage";
-import { DataSourcesPage } from "./DataSourcesPage";
 import { MonitorPage } from "./MonitorPage";
-import { ApiPage } from "./ApiPage";
 import { SettingsPage } from "./SettingsPage";
 import { FavoritesPage, TrashPage } from "./SimplePages";
 
@@ -113,12 +111,8 @@ export function renderPage(page: PageKey): React.ReactNode {
       return <FavoritesPage />;
     case "trash":
       return <TrashPage />;
-    case "datasources":
-      return <DataSourcesPage />;
     case "monitor":
       return <MonitorPage />;
-    case "api":
-      return <ApiPage />;
     case "settings":
       return <SettingsPage />;
     default:

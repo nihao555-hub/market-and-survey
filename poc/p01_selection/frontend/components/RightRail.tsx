@@ -1,70 +1,21 @@
 "use client";
 import React from "react";
-import {
-  TrendingUp,
-  ShieldCheck,
-  Flame,
-  Star,
-  ChevronRight,
-  Circle,
-  Plus,
-  CheckCircle2,
-  Gift,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-
-const INSIGHTS = [
-  {
-    title: "高需求品类",
-    desc: "智能家居设备在 2024 年预计增长 25%",
-    value: "↑ 25%",
-    icon: <Flame className="h-4 w-4" />,
-    tone: "bg-sky-50 text-sky-600",
-  },
-  {
-    title: "竞争较低",
-    desc: "宠物智能喂食器竞争度较低",
-    value: "低",
-    icon: <ShieldCheck className="h-4 w-4" />,
-    tone: "bg-rose-50 text-rose-500",
-  },
-  {
-    title: "上升趋势",
-    desc: "户外便携电源搜索量增长 120%",
-    value: "↑ 120%",
-    icon: <TrendingUp className="h-4 w-4" />,
-    tone: "bg-violet-50 text-violet-600",
-  },
-  {
-    title: "机会评分最高",
-    desc: "无线充电配件机会评分 8.6/10",
-    value: "8.6/10",
-    icon: <Star className="h-4 w-4" />,
-    tone: "bg-amber-50 text-amber-600",
-  },
-];
-
-const SOURCES = [
-  { name: "Google Trends", freq: "实时", live: true },
-  { name: "Amazon Best Sellers", freq: "实时", live: true },
-  { name: "Semrush", freq: "每日", live: false },
-  { name: "SimilarWeb", freq: "每日", live: false },
-  { name: "社媒数据", freq: "实时", live: true },
-];
-
-const ONBOARDING = [
-  { label: "完成新手教程", done: true },
-  { label: "创建第一个调研任务", done: false },
-  { label: "查看示例报告", done: false },
-];
+import { useAtomValue, useSetAtom } from "jotai";
+import { ChevronRight, Loader2, Star, Inbox, Activity } from "lucide-react";
+import { threadsAtom, activeThreadIdAtom, activePageAtom } from "@/lib/atoms";
+import { parseTitle, formatDate } from "@/lib/thread-format";
+import { marketIso } from "@/lib/markets";
+import { Flag } from "@/components/ui/Flag";
 
 function SectionCard({
   title,
   action,
+  onAction,
   children,
 }: {
   title: string;
   action?: string;
+  onAction?: () => void;
   children: React.ReactNode;
 }) {
   return (
@@ -72,7 +23,10 @@ function SectionCard({
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-ink">{title}</h3>
         {action && (
-          <button className="inline-flex items-center gap-0.5 text-[11px] text-brand hover:underline">
+          <button
+            onClick={onAction}
+            className="inline-flex items-center gap-0.5 text-[11px] text-brand hover:underline"
+          >
             {action}
             <ChevronRight className="h-3 w-3" />
           </button>
@@ -84,78 +38,106 @@ function SectionCard({
 }
 
 export function RightRail() {
+  const threads = useAtomValue(threadsAtom);
+  const setActiveId = useSetAtom(activeThreadIdAtom);
+  const setPage = useSetAtom(activePageAtom);
+
+  const running = threads.filter((t) => t.activeStreamId);
+  const favorites = threads.filter((t) => t.isFavorite);
+  const completed = threads.filter((t) => !t.activeStreamId).length;
+
+  const stats = [
+    { label: "累计调研", value: threads.length, tone: "text-ink" },
+    { label: "进行中", value: running.length, tone: "text-brand" },
+    { label: "已完成", value: completed, tone: "text-success" },
+    { label: "收藏", value: favorites.length, tone: "text-amber-600" },
+  ];
+
+  const Row = ({
+    id,
+    title,
+    updatedAt,
+    running: isRunning,
+  }: {
+    id: string;
+    title: string;
+    updatedAt?: string;
+    running?: boolean;
+  }) => {
+    const { name, market } = parseTitle(title);
+    const iso = marketIso(market);
+    return (
+      <button
+        onClick={() => setActiveId(id)}
+        className="flex w-full items-center gap-2.5 rounded-lg px-1.5 py-2 text-left transition-colors hover:bg-surface-1"
+      >
+        {iso ? (
+          <Flag iso={iso} size={16} />
+        ) : (
+          <span className="h-4 w-4 flex-shrink-0 rounded-full bg-surface-3" />
+        )}
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium text-ink">{name}</div>
+          <div className="text-[11px] text-ink-subtle">{formatDate(updatedAt)}</div>
+        </div>
+        {isRunning ? (
+          <Loader2 className="h-3.5 w-3.5 flex-shrink-0 animate-spin text-brand" />
+        ) : (
+          <Star className="h-3.5 w-3.5 flex-shrink-0 fill-amber-400 text-amber-400" />
+        )}
+      </button>
+    );
+  };
+
   return (
     <aside className="hidden w-80 flex-shrink-0 overflow-y-auto border-l border-hairline bg-surface-1 px-4 py-6 xl:block">
       <div className="space-y-4">
-        {/* AI 洞察 */}
-        <SectionCard title="AI 洞察" action="更多洞察">
-          <div className="space-y-3.5">
-            {INSIGHTS.map((it) => (
-              <div key={it.title} className="flex items-start gap-3">
-                <span
-                  className={cn(
-                    "flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg",
-                    it.tone
-                  )}
-                >
-                  {it.icon}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-ink">{it.title}</div>
-                  <div className="mt-0.5 text-[11px] leading-snug text-ink-subtle">{it.desc}</div>
-                </div>
-                <span className="flex-shrink-0 text-sm font-semibold text-emerald-600">
-                  {it.value}
-                </span>
+        {/* 调研概览（真实统计） */}
+        <SectionCard title="调研概览">
+          <div className="grid grid-cols-2 gap-2.5">
+            {stats.map((s) => (
+              <div key={s.label} className="rounded-xl border border-hairline bg-surface-1 px-3 py-2.5">
+                <div className={`text-xl font-semibold leading-none ${s.tone}`}>{s.value}</div>
+                <div className="mt-1.5 text-[11px] text-ink-subtle">{s.label}</div>
               </div>
             ))}
           </div>
         </SectionCard>
 
-        {/* 数据源 */}
-        <SectionCard title="数据源" action="管理">
-          <div className="space-y-1">
-            {SOURCES.map((s) => (
-              <div
-                key={s.name}
-                className="flex items-center justify-between rounded-lg px-1.5 py-1.5 text-sm"
-              >
-                <span className="text-ink-muted">{s.name}</span>
-                <span className="inline-flex items-center gap-1.5 text-[11px] text-ink-subtle">
-                  {s.freq}
-                  <Circle className="h-2 w-2 fill-current text-success" />
-                </span>
-              </div>
-            ))}
-            <button className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-hairline-strong py-2 text-xs text-ink-subtle transition-colors hover:border-brand/40 hover:text-brand">
-              <Plus className="h-3.5 w-3.5" />
-              添加数据源
-            </button>
-          </div>
-        </SectionCard>
-
-        {/* 新手引导 */}
-        <SectionCard title="新手引导">
-          <div className="space-y-2">
-            {ONBOARDING.map((o) => (
-              <div key={o.label} className="flex items-center gap-2.5 text-sm">
-                {o.done ? (
-                  <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-success" />
-                ) : (
-                  <Circle className="h-4 w-4 flex-shrink-0 text-ink-tertiary" />
-                )}
-                <span className={o.done ? "text-ink-subtle line-through" : "text-ink-muted"}>
-                  {o.label}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 flex items-start gap-2.5 rounded-xl bg-gradient-to-br from-brand/10 to-brand2/10 p-3">
-            <Gift className="h-5 w-5 flex-shrink-0 text-brand" />
-            <div className="text-[11px] leading-relaxed text-ink-muted">
-              完成全部任务可获得 <span className="font-medium text-brand">专属数据报告模版</span>
+        {/* 进行中（真实运行任务） */}
+        <SectionCard title="进行中">
+          {running.length === 0 ? (
+            <div className="flex flex-col items-center py-5 text-center">
+              <Activity className="h-5 w-5 text-ink-tertiary" />
+              <div className="mt-2 text-[11px] text-ink-subtle">暂无进行中的调研</div>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-0.5">
+              {running.slice(0, 5).map((t) => (
+                <Row key={t.id} id={t.id} title={t.title} updatedAt={t.updatedAt} running />
+              ))}
+            </div>
+          )}
+        </SectionCard>
+
+        {/* 收藏报告（真实收藏） */}
+        <SectionCard
+          title="收藏报告"
+          action={favorites.length > 0 ? "全部收藏" : undefined}
+          onAction={() => setPage("favorites")}
+        >
+          {favorites.length === 0 ? (
+            <div className="flex flex-col items-center py-5 text-center">
+              <Inbox className="h-5 w-5 text-ink-tertiary" />
+              <div className="mt-2 text-[11px] text-ink-subtle">暂无收藏报告</div>
+            </div>
+          ) : (
+            <div className="space-y-0.5">
+              {favorites.slice(0, 5).map((t) => (
+                <Row key={t.id} id={t.id} title={t.title} updatedAt={t.updatedAt} />
+              ))}
+            </div>
+          )}
         </SectionCard>
       </div>
     </aside>

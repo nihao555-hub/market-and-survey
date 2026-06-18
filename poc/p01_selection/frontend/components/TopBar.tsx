@@ -15,9 +15,7 @@ const PAGE_TITLES: Record<PageKey, string> = {
   reports: "报告中心",
   favorites: "收藏夹",
   trash: "回收站",
-  datasources: "数据源管理",
   monitor: "监控与订阅",
-  api: "API 接入",
   settings: "设置",
 };
 
@@ -57,9 +55,6 @@ export function TopBar() {
       <div className="flex items-center gap-1.5">
         <button className="relative flex h-9 w-9 items-center justify-center rounded-lg text-ink-subtle transition-colors hover:bg-surface-1 hover:text-ink">
           <Bell className="h-[18px] w-[18px]" />
-          <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[9px] font-semibold leading-none text-white">
-            12
-          </span>
         </button>
         <button className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-subtle transition-colors hover:bg-surface-1 hover:text-ink">
           <HelpCircle className="h-[18px] w-[18px]" />

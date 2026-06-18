@@ -6,26 +6,14 @@ import {
   Clock,
   Database,
   ChevronDown,
-  ChevronRight,
-  Circle,
-  Home,
-  Mountain,
-  Sparkle,
-  PawPrint,
-  Plug,
-  Plus,
+  Search,
   TrendingUp,
   Swords,
   Users,
-  KeyRound,
-  Tag,
-  PieChart,
+  Lightbulb,
   MoreHorizontal,
   ArrowRight,
-  Target,
-  BarChart3,
-  Lightbulb,
-  FileText,
+  Inbox,
   CheckCircle2,
   Loader2,
 } from "lucide-react";
@@ -37,48 +25,20 @@ import {
   threadsAtom,
   quickParamsAtom,
   activePageAtom,
+  type PageKey,
 } from "@/lib/atoms";
-import { gqlRequest } from "@/lib/graphql-client";
 import { marketIso, marketLabel } from "@/lib/markets";
 import { Flag } from "@/components/ui/Flag";
 import { HeroArt } from "@/components/HeroArt";
 import { formatDate, parseTitle } from "@/lib/thread-format";
-import type { ThreadSummary } from "@/lib/agent-types";
 
-const THREADS_QUERY = /* GraphQL */ `
-  query Threads { threads { id title updatedAt activeStreamId } }
-`;
-
-const QUICK_CATEGORIES = [
-  { label: "智能家居", icon: <Home className="h-5 w-5" />, tone: "text-sky-600 bg-sky-50" },
-  { label: "户外装备", icon: <Mountain className="h-5 w-5" />, tone: "text-emerald-600 bg-emerald-50" },
-  { label: "美妆个护", icon: <Sparkle className="h-5 w-5" />, tone: "text-violet-600 bg-violet-50" },
-  { label: "宠物用品", icon: <PawPrint className="h-5 w-5" />, tone: "text-cyan-600 bg-cyan-50" },
-  { label: "3C 配件", icon: <Plug className="h-5 w-5" />, tone: "text-indigo-600 bg-indigo-50" },
-];
-
-const WORKFLOW = [
-  { n: 1, label: "定义调研", desc: "明确目标与范围", icon: <Target className="h-5 w-5" />, tone: "bg-emerald-50 text-emerald-600" },
-  { n: 2, label: "市场分析", desc: "规模、趋势、需求", icon: <BarChart3 className="h-5 w-5" />, tone: "bg-sky-50 text-sky-600" },
-  { n: 3, label: "竞品洞察", desc: "分析竞争格局", icon: <Users className="h-5 w-5" />, tone: "bg-violet-50 text-violet-600" },
-  { n: 4, label: "机会挖掘", desc: "发现增长机会", icon: <Lightbulb className="h-5 w-5" />, tone: "bg-amber-50 text-amber-600" },
-  { n: 5, label: "报告生成", desc: "输出可视化报告", icon: <FileText className="h-5 w-5" />, tone: "bg-indigo-50 text-indigo-600" },
-];
-
-const DEMO_TASKS = [
-  { id: "d1", name: "智能插座市场调研", iso: "us", market: "美国", time: "2024-05-20 14:30", state: "running", progress: 68, real: false },
-  { id: "d2", name: "宠物用品趋势分析", iso: "gb", market: "英国", time: "2024-05-19 10:15", state: "done", progress: 100, real: false },
-  { id: "d3", name: "户外装备竞品分析", iso: "de", market: "德国", time: "2024-05-18 16:45", state: "done", progress: 100, real: false },
-  { id: "d4", name: "美妆个护机会扫描", iso: "jp", market: "日本", time: "2024-05-17 09:20", state: "pending", progress: 0, real: false },
-];
-
-const TOOLS = [
-  { label: "趋势探索", desc: "Google Trends 热度", icon: <TrendingUp className="h-4 w-4" /> },
-  { label: "竞品分析", desc: "对手 listing 对比", icon: <Swords className="h-4 w-4" /> },
-  { label: "受众洞察", desc: "目标人群画像", icon: <Users className="h-4 w-4" /> },
-  { label: "关键词分析", desc: "搜索量与难度", icon: <KeyRound className="h-4 w-4" /> },
-  { label: "定价分析", desc: "价格带与利润", icon: <Tag className="h-4 w-4" /> },
-  { label: "市场规模", desc: "TAM / SAM 估算", icon: <PieChart className="h-4 w-4" /> },
+// 调研工具入口：与「调研中心」一一对应，点击直达对应功能页（同一个 agent 的 5 个聚焦入口）。
+const TOOLS: { key: PageKey; label: string; desc: string; icon: React.ReactNode }[] = [
+  { key: "market", label: "市场调研", desc: "规模 / 趋势 / 竞争全景", icon: <Search className="h-4 w-4" /> },
+  { key: "trend", label: "趋势探索", desc: "Google Trends 热度走势", icon: <TrendingUp className="h-4 w-4" /> },
+  { key: "competitor", label: "竞品分析", desc: "对手 listing 与定价", icon: <Swords className="h-4 w-4" /> },
+  { key: "audience", label: "受众洞察", desc: "目标人群画像", icon: <Users className="h-4 w-4" /> },
+  { key: "opportunity", label: "机会挖掘", desc: "需求缺口与蓝海", icon: <Lightbulb className="h-4 w-4" /> },
 ];
 
 export function WorkspaceHome() {
@@ -86,23 +46,12 @@ export function WorkspaceHome() {
   const setDraftKind = useSetAtom(draftKindAtom);
   const setActiveId = useSetAtom(activeThreadIdAtom);
   const setPage = useSetAtom(activePageAtom);
-  const [threads, setThreads] = useAtom(threadsAtom);
+  const [threads] = useAtom(threadsAtom);
   const [params, setParams] = useAtom(quickParamsAtom);
   const [input, setInput] = React.useState("");
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => setMounted(true), []);
-
-  React.useEffect(() => {
-    (async () => {
-      try {
-        const data = await gqlRequest<{ threads: ThreadSummary[] }>(THREADS_QUERY);
-        setThreads(data.threads || []);
-      } catch {
-        /* 后端没起时静默 */
-      }
-    })();
-  }, [setThreads]);
 
   const start = (category: string) => {
     const c = category.trim();
@@ -114,21 +63,34 @@ export function WorkspaceHome() {
   const deep = mounted && params.modelChoice === "pro";
   const firstMarket = (params.markets[0] as string) || "US";
 
-  const recentRows = threads.length
-    ? threads.slice(0, 8).map((t) => {
-        const { name, market } = parseTitle(t.title);
-        return {
-          id: t.id,
-          name,
-          iso: marketIso(market),
-          market,
-          state: t.activeStreamId ? "running" : "done",
-          progress: t.activeStreamId ? 60 : 100,
-          time: formatDate(t.updatedAt),
-          real: true,
-        };
-      })
-    : DEMO_TASKS;
+  // 真实历史任务行（不再有任何 demo 兜底）。
+  const recentRows = threads.slice(0, 8).map((t) => {
+    const { name, market } = parseTitle(t.title);
+    return {
+      id: t.id,
+      name,
+      iso: marketIso(market),
+      market,
+      state: t.activeStreamId ? "running" : "done",
+      progress: t.activeStreamId ? 60 : 100,
+      time: formatDate(t.updatedAt),
+    };
+  });
+
+  // 真实「最近调研品类」：从历史任务标题里去重提取，无历史则不展示。
+  const recentCategories = React.useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const t of threads) {
+      const { name } = parseTitle(t.title);
+      if (name && name !== "未命名任务" && !seen.has(name)) {
+        seen.add(name);
+        out.push(name);
+      }
+      if (out.length >= 6) break;
+    }
+    return out;
+  }, [threads]);
 
   return (
     <div className="mx-auto w-full max-w-[1180px] px-8 py-7">
@@ -193,78 +155,45 @@ export function WorkspaceHome() {
         </div>
       </section>
 
-      {/* 品类快捷 —— 单行 pill chips */}
-      <section className="mt-5">
-        <div className="flex flex-wrap items-center gap-2.5">
-          {QUICK_CATEGORIES.map((c) => (
-            <button
-              key={c.label}
-              onClick={() => start(c.label)}
-              className="flex min-w-[140px] flex-1 items-center gap-2.5 rounded-xl border border-hairline bg-white px-4 py-2.5 transition-all hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-sm"
-            >
-              <span className={cn("flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg", c.tone)}>
-                {c.icon}
-              </span>
-              <span className="text-sm font-medium text-ink">{c.label}</span>
-            </button>
-          ))}
-          <button
-            onClick={() => start(input || "自定义品类")}
-            className="flex flex-shrink-0 items-center gap-1.5 rounded-xl border border-dashed border-hairline-strong bg-white px-4 py-2.5 text-sm font-medium text-ink-subtle transition-all hover:-translate-y-0.5 hover:border-brand/40 hover:text-brand"
-          >
-            <ChevronDown className="h-4 w-4" />
-            自定义调研
-          </button>
-        </div>
-      </section>
-
-      {/* 调研工作流 stepper（静态） */}
-      <section className="mt-6 rounded-2xl border border-hairline bg-white p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-ink">调研工作流</h2>
-            <p className="text-xs text-ink-subtle">从问题到洞察，AI 全流程为你就绪</p>
-          </div>
-        </div>
-        <div className="flex flex-col gap-5 md:flex-row md:items-start">
-          {WORKFLOW.map((s, i) => (
-            <div key={s.n} className="flex flex-1 flex-col">
-              <div className="flex items-center">
-                <span
-                  className={cn(
-                    "relative flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full",
-                    s.tone
-                  )}
-                >
-                  {s.icon}
+      {/* 最近调研品类（真实历史，去重；无历史时不展示） */}
+      {recentCategories.length > 0 && (
+        <section className="mt-5">
+          <div className="mb-2.5 text-xs font-medium text-ink-subtle">最近调研品类</div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {recentCategories.map((label) => (
+              <button
+                key={label}
+                onClick={() => start(label)}
+                className="flex min-w-[120px] items-center gap-2.5 rounded-xl border border-hairline bg-white px-4 py-2.5 transition-all hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-sm"
+              >
+                <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand">
+                  <Search className="h-4 w-4" />
                 </span>
-                {i < WORKFLOW.length - 1 && (
-                  <span className="mx-3 hidden flex-1 items-center md:flex">
-                    <span className="h-0 flex-1 border-t border-dashed border-hairline-strong" />
-                    <ChevronRight className="-ml-1 h-3.5 w-3.5 flex-shrink-0 text-ink-tertiary" />
-                  </span>
-                )}
-              </div>
-              <div className="mt-3">
-                <div className="text-sm font-semibold text-ink">
-                  {s.n}. {s.label}
-                </div>
-                <div className="mt-0.5 text-xs text-ink-subtle">{s.desc}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+                <span className="text-sm font-medium text-ink">{label}</span>
+              </button>
+            ))}
+            <button
+              onClick={() => start(input || "自定义品类")}
+              className="flex flex-shrink-0 items-center gap-1.5 rounded-xl border border-dashed border-hairline-strong bg-white px-4 py-2.5 text-sm font-medium text-ink-subtle transition-all hover:-translate-y-0.5 hover:border-brand/40 hover:text-brand"
+            >
+              <ChevronDown className="h-4 w-4" />
+              自定义调研
+            </button>
+          </div>
+        </section>
+      )}
 
-      {/* 常用工具 */}
+      {/* 调研工具：直达 5 个聚焦入口 */}
       <section className="mt-6">
         <div className="mb-3">
-          <h2 className="text-base font-semibold text-ink">常用工具</h2>
+          <h2 className="text-base font-semibold text-ink">调研工具</h2>
+          <p className="text-xs text-ink-subtle">同一个 AI 调研 Agent 的 5 个聚焦入口，点击直达。</p>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {TOOLS.map((t) => (
             <button
-              key={t.label}
+              key={t.key}
+              onClick={() => setPage(t.key)}
               className="group flex items-center gap-3 rounded-xl border border-hairline bg-white p-3.5 text-left transition-all hover:border-brand/30 hover:shadow-sm"
             >
               <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand">
@@ -276,93 +205,90 @@ export function WorkspaceHome() {
               </div>
             </button>
           ))}
-          <button
-            onClick={() => setPage("market")}
-            className="flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-hairline-strong bg-white p-3.5 text-sm font-medium text-ink-subtle transition-all hover:border-brand/40 hover:text-brand"
-          >
-            更多工具
-            <ChevronRight className="h-4 w-4" />
-          </button>
         </div>
       </section>
 
-      {/* 最近任务 */}
+      {/* 最近任务（真实历史） */}
       <section className="mt-6 rounded-2xl border border-hairline bg-white">
         <div className="flex items-center justify-between border-b border-hairline px-5 py-3.5">
           <h2 className="text-base font-semibold text-ink">最近任务</h2>
           <button onClick={() => setPage("tasks")} className="text-xs text-brand hover:underline">查看全部任务</button>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-hairline bg-surface-1 text-left text-[11px] text-ink-subtle">
-                <th className="px-5 py-2.5 font-medium">任务名称</th>
-                <th className="px-3 py-2.5 font-medium">目标市场</th>
-                <th className="px-3 py-2.5 font-medium">创建时间</th>
-                <th className="px-3 py-2.5 font-medium">进度</th>
-                <th className="px-5 py-2.5 text-right font-medium">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentRows.map((t) => (
-                <tr
-                  key={t.id}
-                  onClick={() => t.real && setActiveId(t.id)}
-                  className={cn(
-                    "border-t border-hairline transition-colors hover:bg-surface-1",
-                    t.real && "cursor-pointer"
-                  )}
-                >
-                  <td className="px-5 py-3 font-medium text-ink">{t.name}</td>
-                  <td className="px-3 py-3">
-                    <span className="inline-flex items-center gap-2 text-ink-muted">
-                      {t.iso ? <Flag iso={t.iso} size={16} /> : null}
-                      {t.iso ? `${t.iso.toUpperCase()} ${t.market}` : t.market}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-ink-subtle">{t.time}</td>
-                  <td className="px-3 py-3">
-                    {t.state === "running" ? (
-                      <div className="max-w-[170px]">
-                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted">
-                          <Loader2 className="h-3.5 w-3.5 animate-spin text-brand" />
-                          分析中 <span className="text-ink-subtle">{t.progress}%</span>
-                        </span>
-                        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
-                          <div
-                            className="h-full rounded-full bg-brand"
-                            style={{ width: `${t.progress}%` }}
-                          />
-                        </div>
-                      </div>
-                    ) : t.state === "done" ? (
-                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success">
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        已完成
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-subtle">
-                        <Circle className="h-3 w-3" />
-                        待开始
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (t.real) setActiveId(t.id);
-                      }}
-                      className="rounded p-1 text-ink-subtle transition-colors hover:bg-surface-2 hover:text-ink"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </button>
-                  </td>
+        {recentRows.length === 0 ? (
+          <div className="flex flex-col items-center justify-center px-5 py-14 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-2 text-ink-tertiary">
+              <Inbox className="h-6 w-6" />
+            </span>
+            <div className="mt-3 text-sm font-medium text-ink">还没有调研任务</div>
+            <div className="mt-1 max-w-sm text-xs text-ink-subtle">
+              在上方输入一个品类或市场，发起你的第一个真实调研，结果会自动出现在这里。
+            </div>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-hairline bg-surface-1 text-left text-[11px] text-ink-subtle">
+                  <th className="px-5 py-2.5 font-medium">任务名称</th>
+                  <th className="px-3 py-2.5 font-medium">目标市场</th>
+                  <th className="px-3 py-2.5 font-medium">创建时间</th>
+                  <th className="px-3 py-2.5 font-medium">进度</th>
+                  <th className="px-5 py-2.5 text-right font-medium">操作</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {recentRows.map((t) => (
+                  <tr
+                    key={t.id}
+                    onClick={() => setActiveId(t.id)}
+                    className="cursor-pointer border-t border-hairline transition-colors hover:bg-surface-1"
+                  >
+                    <td className="px-5 py-3 font-medium text-ink">{t.name}</td>
+                    <td className="px-3 py-3">
+                      <span className="inline-flex items-center gap-2 text-ink-muted">
+                        {t.iso ? <Flag iso={t.iso} size={16} /> : null}
+                        {t.iso ? `${t.iso.toUpperCase()} ${t.market}` : t.market}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-ink-subtle">{t.time}</td>
+                    <td className="px-3 py-3">
+                      {t.state === "running" ? (
+                        <div className="max-w-[170px]">
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-brand" />
+                            分析中 <span className="text-ink-subtle">{t.progress}%</span>
+                          </span>
+                          <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
+                            <div
+                              className="h-full rounded-full bg-brand"
+                              style={{ width: `${t.progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          已完成
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-right">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveId(t.id);
+                        }}
+                        className="rounded p-1 text-ink-subtle transition-colors hover:bg-surface-2 hover:text-ink"
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   );

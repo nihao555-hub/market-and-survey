@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { useAtom, useSetAtom } from "jotai";
+import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   Plus,
   Compass,
@@ -14,14 +14,12 @@ import {
   FileText,
   Star,
   Trash2,
-  Database,
   BellRing,
-  Plug,
   Settings,
   Crown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { activeThreadIdAtom, draftCategoryAtom, activePageAtom, type PageKey } from "@/lib/atoms";
+import { activeThreadIdAtom, draftCategoryAtom, activePageAtom, threadsAtom, type PageKey } from "@/lib/atoms";
 
 type NavItem = { key: PageKey; label: string; icon: React.ReactNode };
 type NavGroup = { title?: string; items: NavItem[] };
@@ -50,11 +48,9 @@ const NAV: NavGroup[] = [
     ],
   },
   {
-    title: "数据与工具",
+    title: "监控",
     items: [
-      { key: "datasources", label: "数据源管理", icon: <Database className="h-4 w-4" /> },
       { key: "monitor", label: "监控与订阅", icon: <BellRing className="h-4 w-4" /> },
-      { key: "api", label: "API 接入", icon: <Plug className="h-4 w-4" /> },
     ],
   },
 ];
@@ -63,6 +59,8 @@ export function Sidebar() {
   const setActiveId = useSetAtom(activeThreadIdAtom);
   const [, setDraft] = useAtom(draftCategoryAtom);
   const [active, setActive] = useAtom(activePageAtom);
+  const threads = useAtomValue(threadsAtom);
+  const runningCount = threads.filter((t) => t.activeStreamId).length;
 
   // 切换页面：清空会话与草稿，退出聊天态
   const onNav = (key: PageKey) => {
@@ -139,14 +137,16 @@ export function Sidebar() {
               <div className="text-[10px] text-ink-subtle">专业版</div>
             </div>
           </div>
-          <div className="mt-3 flex items-center justify-between text-[11px] text-ink-subtle">
-            <span>使用量</span>
-            <span className="font-medium text-ink-muted">68%</span>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="rounded-lg bg-white/60 px-2.5 py-1.5">
+              <div className="text-base font-semibold leading-none text-ink">{threads.length}</div>
+              <div className="mt-1 text-[10px] text-ink-subtle">累计调研</div>
+            </div>
+            <div className="rounded-lg bg-white/60 px-2.5 py-1.5">
+              <div className="text-base font-semibold leading-none text-ink">{runningCount}</div>
+              <div className="mt-1 text-[10px] text-ink-subtle">进行中</div>
+            </div>
           </div>
-          <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
-            <div className="h-full rounded-full bg-brand" style={{ width: "68%" }} />
-          </div>
-          <div className="mt-1.5 text-[10px] text-ink-tertiary">重置于 12 天后</div>
           <button className="mt-2.5 w-full rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-brand-hover">
             升级计划
           </button>
