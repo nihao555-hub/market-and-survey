@@ -15,6 +15,19 @@ import { BACKEND_BASE } from "@/lib/graphql-client";
  *   3. 本地化资源 assets/xxx.jpg（相对报告目录，已 localize）
  * 后端 /report-asset?path= 统一以 reports/ 为根解析，故相对路径直接透传即可。
  */
+// 模型偶尔把工具调用以 DSML / DeepSeek 控制标记写进正文，渲染出来是乱码尾巴。
+// 后端已在生成处剔除；此处再兜一层，保证历史线程也能干净渲染。
+const CTRL_TAG_RE = /<[^>\n]{0,40}(?:DSML|tool[\u2581_\s]?calls)[^>]*>/i;
+const TRAILING_INTENT_RE =
+  /(?:\n\s*)+[^\n]*?(?:补跑|继续(?:输出|调用)|调用(?:以下)?工具|工具调用|我(?:先|现在)[^\n]*工具)[^\n]*$/;
+
+function stripControlMarkup(text: string): string {
+  if (!text) return text;
+  const m = CTRL_TAG_RE.exec(text);
+  if (!m) return text;
+  return text.slice(0, m.index).replace(TRAILING_INTENT_RE, "").trimEnd();
+}
+
 function rewriteImg(src: string): string {
   if (!src) return src;
   const s = src.trim();
@@ -30,6 +43,7 @@ export const MarkdownRenderer = React.memo(function MarkdownRenderer({
 }: {
   text: string;
 }) {
+  const clean = React.useMemo(() => stripControlMarkup(text), [text]);
   return (
     <div className="markdown-body text-[15px] leading-relaxed text-gray-800">
       <ReactMarkdown
@@ -43,7 +57,7 @@ export const MarkdownRenderer = React.memo(function MarkdownRenderer({
           ),
         }}
       >
-        {text}
+        {clean}
       </ReactMarkdown>
     </div>
   );

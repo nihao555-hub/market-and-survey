@@ -10,7 +10,7 @@
 - drain 后发 message-persisted
 """
 from __future__ import annotations
-import asyncio, json, time, uuid
+import asyncio, json, re, time, uuid
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -361,6 +361,27 @@ def _sanitize_messages_for_completion(messages: list) -> list:
         out.append(m)
         i += 1
     return out
+
+
+# 模型偶尔会把工具调用以 DSML / DeepSeek 控制标记直接写进正文（尤其在生成最终报告
+# 这种「无工具」补全里），这些控制标记不是给用户看的，渲染出来就是一段乱码尾巴。
+# 这里把首个控制标记及其后的全部残留剔除，并去掉紧贴其前的「我先补跑工具…」过渡孤句。
+_CTRL_TAG_RE = re.compile(r"<[^>\n]{0,40}(?:DSML|tool[\u2581_\s]?calls)[^>]*>", re.IGNORECASE)
+_TRAILING_INTENT_RE = re.compile(
+    r"(?:\n\s*)+[^\n]*?(?:补跑|继续(?:输出|调用)|调用(?:以下)?工具|工具调用|我(?:先|现在)[^\n]*工具)[^\n]*$"
+)
+
+
+def _strip_control_markup(text: str) -> str:
+    """剔除正文里误混入的工具调用控制标记（DSML / DeepSeek tool-calls）及其尾随残留。"""
+    if not text:
+        return text
+    m = _CTRL_TAG_RE.search(text)
+    if not m:
+        return text
+    head = text[: m.start()].rstrip()
+    head = _TRAILING_INTENT_RE.sub("", head).rstrip()
+    return head
 
 
 SYSTEM_TEMPLATE = """你是资深跨境选品专家。严格按 procurement-research 8 阶段方法论。
@@ -732,12 +753,13 @@ async def run_selection_job(thread_id: str, stream_id: str, user_text: str,
                                 {"role": "user", "content": "❌ 输出有问题（DSML/太短），用纯 markdown 重写本部分。"},
                             ]
                             continue
-                        return ft
-                    return ft
+                        return _strip_control_markup(ft)
+                    return _strip_control_markup(ft)
 
                 part1 = await asyncio.to_thread(_gen_part, part1_prompt)
                 part2 = await asyncio.to_thread(_gen_part, part2_prompt)
                 final_content = (part1.rstrip() + "\n\n" + part2.lstrip()) if part1 else part2
+                final_content = _strip_control_markup(final_content)
                 await publish(thread_id, {"type": "stream-chunk",
                                             "chunk": {"type": "final-report",
                                                       "content": final_content[:200] + "..."}})
