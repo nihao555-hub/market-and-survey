@@ -25,9 +25,29 @@ from backend.ui_chunks import UIChunkAdapter
 
 
 # ─────────── 选品任务参数 → user_text 组装 ───────────
+# 按调研类型给出不同的开场与分析框架，让 5 个功能页产出不同侧重。
+_KIND_INTRO = {
+    "market": "我想做{c}的市场调研",
+    "trend": "我想做{c}的趋势探索",
+    "competitor": "我想做{c}的竞品分析",
+    "audience": "我想做{c}的受众洞察",
+    "opportunity": "我想做{c}的机会挖掘",
+    "general": "我想做{c}选品调研",
+}
+_KIND_FOCUS = {
+    "market": "。请聚焦：市场规模(TAM/SAM)、增长趋势、需求强度、竞争格局与利润空间。",
+    "trend": "。请聚焦：搜索热度与上升速度、季节性、相关上升词、平台话题声量与拐点判断。",
+    "competitor": "。请聚焦：Top 竞品 listing 对比、价格带与卖点、评分与评论痛点、差异化切入点。",
+    "audience": "。请聚焦：目标人群画像、使用场景与动机、购买决策因素、触达渠道与内容偏好。",
+    "opportunity": "。请聚焦：未被满足的需求缺口、差异化机会、进入壁垒与风险、机会评分与优先级。",
+    "general": "。请抓 BSR 子类目 Top + 多平台对比 + 真实评论痛点 + 利润测算。",
+}
+
+
 def _build_user_text(category: str, markets: list[str], positioning: str,
-                     monthly_budget: str, exclude: str) -> str:
-    parts = [f"我想做{category}选品调研"]
+                     monthly_budget: str, exclude: str, kind: str = "general") -> str:
+    intro = _KIND_INTRO.get(kind, _KIND_INTRO["general"]).format(c=category)
+    parts = [intro]
     if markets:
         parts.append(f"，目标市场：{'/'.join(markets)}")
     if positioning:
@@ -36,7 +56,7 @@ def _build_user_text(category: str, markets: list[str], positioning: str,
         parts.append(f"，月度预算：{monthly_budget}")
     if exclude:
         parts.append(f"，排除大牌：{exclude}")
-    parts.append("。请抓 BSR 子类目 Top + 多平台对比 + 真实评论痛点 + 利润测算。")
+    parts.append(_KIND_FOCUS.get(kind, _KIND_FOCUS["general"]))
     return "".join(parts)
 
 
@@ -72,6 +92,7 @@ class ThreadSummary:
     updated_at: typing.Optional[str]
     active_stream_id: typing.Optional[str]
     is_favorite: bool = False
+    kind: str = "general"
 
 
 @strawberry.type
@@ -130,6 +151,7 @@ def _thread_summary(t: Thread) -> ThreadSummary:
         updated_at=t.updated_at.isoformat() if t.updated_at else None,
         active_stream_id=t.active_stream_id,
         is_favorite=bool(t.is_favorite),
+        kind=getattr(t, "kind", None) or "general",
     )
 
 
@@ -189,6 +211,11 @@ class Query:
         return [_thread_summary(t) for t in st.list_threads(tenant_id, favorite=True)]
 
     @strawberry.field
+    def threads_by_kind(self, kind: str, tenant_id: str = "dev_tenant") -> typing.List[ThreadSummary]:
+        """按调研类型列出历史调研（供 5 个功能页各自展示本类型历史）。"""
+        return [_thread_summary(t) for t in st.list_threads(tenant_id, kind=kind)]
+
+    @strawberry.field
     def trashed_threads(self, tenant_id: str = "dev_tenant") -> typing.List[ThreadSummary]:
         return [_thread_summary(t) for t in st.list_threads(tenant_id, trashed=True)]
 
@@ -241,13 +268,14 @@ class Mutation:
         model_choice: str = "flash",
         thread_id: typing.Optional[str] = None,
         title: typing.Optional[str] = None,
+        kind: str = "general",
     ) -> StartResult:
         tid = thread_id or str(uuid.uuid4())
-        get_or_create_thread(tid, title=title or f"{category} · {'/'.join(markets) or '全球'}")
+        get_or_create_thread(tid, title=title or f"{category} · {'/'.join(markets) or '全球'}", kind=kind)
         stream_id = str(uuid.uuid4())
         set_active_stream(tid, stream_id)
 
-        user_text = _build_user_text(category, markets, positioning, monthly_budget, exclude)
+        user_text = _build_user_text(category, markets, positioning, monthly_budget, exclude, kind)
 
         # 控制面/数据面分离（steering §2.1）：入队 dramatiq（Redis 持久化），
         # 由 worker 进程消费跑 LLM。worker 未启动时回退 asyncio（仅 dev）。

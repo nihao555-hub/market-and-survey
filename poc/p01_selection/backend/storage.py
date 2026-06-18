@@ -35,6 +35,7 @@ class Thread(Base):
     total_output_tokens = Column(Integer, default=0)
     total_input_credits = Column(Float, default=0)
     total_output_credits = Column(Float, default=0)
+    kind = Column(String, default="general", index=True)  # 调研类型：market/trend/competitor/audience/opportunity/general
     is_favorite = Column(Boolean, default=False)        # 收藏夹
     deleted_at = Column(DateTime, nullable=True)        # 软删除（回收站）
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -113,6 +114,7 @@ def _ensure_thread_columns():
         "tenant_id": "ALTER TABLE threads ADD COLUMN tenant_id VARCHAR DEFAULT 'dev_tenant'",
         "is_favorite": "ALTER TABLE threads ADD COLUMN is_favorite BOOLEAN DEFAULT 0",
         "deleted_at": "ALTER TABLE threads ADD COLUMN deleted_at DATETIME",
+        "kind": "ALTER TABLE threads ADD COLUMN kind VARCHAR DEFAULT 'general'",
     }
     try:
         with _engine.begin() as conn:
@@ -126,12 +128,17 @@ def _ensure_thread_columns():
 _ensure_thread_columns()
 
 
-def get_or_create_thread(thread_id: str, title: str = "", tenant_id: str = "dev_tenant") -> Thread:
+def get_or_create_thread(thread_id: str, title: str = "", tenant_id: str = "dev_tenant",
+                         kind: str = "general") -> Thread:
     with SessionLocal() as s:
         t = s.get(Thread, thread_id)
         if t is None:
-            t = Thread(id=thread_id, title=title, tenant_id=tenant_id)
+            t = Thread(id=thread_id, title=title, tenant_id=tenant_id, kind=kind or "general")
             s.add(t); s.commit(); s.refresh(t)
+        elif kind and kind != "general" and (not getattr(t, "kind", None) or t.kind == "general"):
+            # 已存在但未打标签：补上调研类型（不覆盖已有非默认标签）
+            t.kind = kind
+            s.commit(); s.refresh(t)
         return t
 
 
@@ -214,8 +221,9 @@ def _owned(t: Thread, tenant_id: str) -> bool:
 # ─────────── 线程：收藏 / 软删除（回收站） ───────────
 def list_threads(tenant_id: str = "dev_tenant", *,
                  favorite: Optional[bool] = None,
-                 trashed: bool = False) -> list[Thread]:
-    """列出线程。默认排除回收站；trashed=True 只列回收站；favorite 过滤收藏。"""
+                 trashed: bool = False,
+                 kind: Optional[str] = None) -> list[Thread]:
+    """列出线程。默认排除回收站；trashed=True 只列回收站；favorite 过滤收藏；kind 过滤调研类型。"""
     with SessionLocal() as s:
         q = s.query(Thread).filter(Thread.tenant_id == tenant_id)
         if trashed:
@@ -224,6 +232,8 @@ def list_threads(tenant_id: str = "dev_tenant", *,
             q = q.filter(Thread.deleted_at.is_(None))
         if favorite is not None:
             q = q.filter(Thread.is_favorite == favorite)
+        if kind is not None:
+            q = q.filter(Thread.kind == kind)
         return list(q.order_by(Thread.updated_at.desc()).all())
 
 

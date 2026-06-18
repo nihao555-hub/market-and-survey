@@ -3,13 +3,16 @@
  */
 import { atom } from "jotai";
 import { atomFamily } from "jotai/utils";
-import type { UIMessage, ThreadSummary, ReportArtifacts } from "./agent-types";
+import type { UIMessage, ThreadSummary, ReportArtifacts, ResearchKind } from "./agent-types";
 
 // 当前激活会话 id（null = 新建任务草稿态）
 export const activeThreadIdAtom = atom<string | null>(null);
 
 // 草稿品类（工作台 hero / 品类快捷点击后，进入澄清态等待补参；null = 工作台首页）
 export const draftCategoryAtom = atom<string | null>(null);
+
+// 草稿调研类型（从某个功能页发起时带上，澄清态提交后写入 Thread.kind）
+export const draftKindAtom = atom<ResearchKind>("general");
 
 // 当前侧边栏页面（home = 工作台首页；其余对应导航 key）
 export type PageKey =

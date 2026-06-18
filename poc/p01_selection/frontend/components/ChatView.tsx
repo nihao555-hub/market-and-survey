@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import {
   activeThreadIdAtom,
   draftCategoryAtom,
+  draftKindAtom,
   isStreamingAtomFamily,
   messagesAtomFamily,
 } from "@/lib/atoms";
@@ -14,7 +15,7 @@ import { gqlRequest } from "@/lib/graphql-client";
 import { PromptInputBox } from "@/components/ui/ai-prompt-box";
 import { ClarifyForm } from "@/components/agent/ClarifyForm";
 import { MessageList } from "@/components/agent/MessageList";
-import type { SelectionParams, UIMessage } from "@/lib/agent-types";
+import type { SelectionParams, UIMessage, ResearchKind } from "@/lib/agent-types";
 
 const THREAD_QUERY = /* GraphQL */ `
   query Thread($id: String!) {
@@ -28,10 +29,12 @@ const THREAD_QUERY = /* GraphQL */ `
 /** 澄清态：用户已输入品类，显示 A2UI 表单等待补充参数 */
 function ClarifyState({
   category,
+  kind,
   onSubmit,
   onReset,
 }: {
   category: string;
+  kind: ResearchKind;
   onSubmit: (p: SelectionParams) => void;
   onReset: () => void;
 }) {
@@ -55,7 +58,7 @@ function ClarifyState({
           {/* A2UI 表单 */}
           <div className="flex justify-start">
             <div className="w-full max-w-xl">
-              <ClarifyForm category={category} onSubmit={onSubmit} />
+              <ClarifyForm category={category} kind={kind} onSubmit={onSubmit} />
             </div>
           </div>
         </div>
@@ -128,12 +131,21 @@ function ActiveThread({ threadId }: { threadId: string }) {
 export function ChatView() {
   const activeId = useAtomValue(activeThreadIdAtom);
   const [draftCategory, setDraftCategory] = useAtom(draftCategoryAtom);
+  const [draftKind, setDraftKind] = useAtom(draftKindAtom);
 
   const handleStartResearch = (p: SelectionParams) => {
     // 通过 BrowserEvent 总线触发发送（steering §8）；
     // sendSelection 内部会 setActiveThreadId → 切到会话态
     dispatchBrowserEvent<SelectionParams>(AGENT_SEND_EVENT, p);
-    setTimeout(() => setDraftCategory(null), 300);
+    setTimeout(() => {
+      setDraftCategory(null);
+      setDraftKind("general");
+    }, 300);
+  };
+
+  const reset = () => {
+    setDraftCategory(null);
+    setDraftKind("general");
   };
 
   if (activeId) {
@@ -143,8 +155,9 @@ export function ChatView() {
     return (
       <ClarifyState
         category={draftCategory}
+        kind={draftKind}
         onSubmit={handleStartResearch}
-        onReset={() => setDraftCategory(null)}
+        onReset={reset}
       />
     );
   }

@@ -5,7 +5,7 @@ import { useAtom } from "jotai";
 import { quickParamsAtom } from "@/lib/atoms";
 import { marketLabel, marketIso } from "@/lib/markets";
 import { Flag } from "@/components/ui/Flag";
-import type { SelectionParams } from "@/lib/agent-types";
+import type { SelectionParams, ResearchKind } from "@/lib/agent-types";
 
 /**
  * A2UI 澄清表单 —— 只负责"需要用户填写"的自由文本参数（月度预算 / 排除大牌）。
@@ -14,9 +14,11 @@ import type { SelectionParams } from "@/lib/agent-types";
  */
 export function ClarifyForm({
   category,
+  kind = "general",
   onSubmit,
 }: {
   category: string;
+  kind?: ResearchKind;
   onSubmit: (params: SelectionParams) => void;
 }) {
   const [quick] = useAtom(quickParamsAtom);
@@ -37,6 +39,7 @@ export function ClarifyForm({
       monthlyBudget: budget.trim(),
       exclude: exclude.trim(),
       modelChoice,
+      kind,
     });
   };
 

@@ -3,9 +3,9 @@
  * 页面只调用这里的函数，不直接拼 GraphQL 字符串。
  */
 import { gqlRequest } from "./graphql-client";
-import type { ThreadSummary } from "./agent-types";
+import type { ThreadSummary, ResearchKind } from "./agent-types";
 
-const THREAD_FIELDS = "id title updatedAt activeStreamId isFavorite";
+const THREAD_FIELDS = "id title updatedAt activeStreamId isFavorite kind";
 
 // ─────────── 线程：列表 / 收藏 / 回收站 ───────────
 export async function fetchThreads(): Promise<ThreadSummary[]> {
@@ -27,6 +27,15 @@ export async function fetchTrashedThreads(): Promise<ThreadSummary[]> {
     `query { trashedThreads { ${THREAD_FIELDS} } }`
   );
   return d.trashedThreads || [];
+}
+
+// 按调研类型列出历史调研（供 5 个功能页各自展示本类型历史）
+export async function fetchThreadsByKind(kind: ResearchKind): Promise<ThreadSummary[]> {
+  const d = await gqlRequest<{ threadsByKind: ThreadSummary[] }>(
+    `query($kind: String!) { threadsByKind(kind: $kind) { ${THREAD_FIELDS} } }`,
+    { kind }
+  );
+  return d.threadsByKind || [];
 }
 
 export async function toggleFavorite(threadId: string): Promise<boolean> {

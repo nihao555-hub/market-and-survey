@@ -1,13 +1,29 @@
 "use client";
 import React from "react";
 import { useSetAtom } from "jotai";
-import { ArrowUp, Sparkles } from "lucide-react";
+import { ArrowUp, Sparkles, History, Star, Trash2, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { draftCategoryAtom } from "@/lib/atoms";
-import { PageContainer, PageHeader, Panel } from "./primitives";
+import {
+  draftCategoryAtom,
+  draftKindAtom,
+  activeThreadIdAtom,
+} from "@/lib/atoms";
+import { fetchThreadsByKind, toggleFavorite, deleteThread } from "@/lib/api";
+import { formatDate, parseTitle } from "@/lib/thread-format";
+import type { ThreadSummary, ResearchKind } from "@/lib/agent-types";
+import {
+  PageContainer,
+  PageHeader,
+  Panel,
+  EmptyState,
+  StatusBadge,
+  DataTable,
+  Skeleton,
+  type Column,
+} from "./primitives";
 
 export interface ResearchConfig {
-  key: string;
+  key: ResearchKind;
   title: string;
   subtitle: string;
   icon: React.ReactNode;
@@ -18,11 +34,14 @@ export interface ResearchConfig {
 
 export function ResearchLauncher({ config }: { config: ResearchConfig }) {
   const setDraft = useSetAtom(draftCategoryAtom);
+  const setDraftKind = useSetAtom(draftKindAtom);
+  const setActiveId = useSetAtom(activeThreadIdAtom);
   const [input, setInput] = React.useState("");
 
   const start = (text: string) => {
     const c = text.trim();
     if (!c) return;
+    setDraftKind(config.key);
     setDraft(c);
   };
 
@@ -84,10 +103,150 @@ export function ResearchLauncher({ config }: { config: ResearchConfig }) {
           </Panel>
         ))}
       </div>
+
+      {/* 本类型历史调研 */}
+      <ResearchHistory
+        kind={config.key}
+        title={config.title}
+        onOpen={(id) => setActiveId(id)}
+      />
     </PageContainer>
   );
 }
 
-export function CenteredHint({ children }: { children: React.ReactNode }) {
-  return <div className={cn("text-center text-sm text-ink-subtle")}>{children}</div>;
+/** 该功能页专属的历史调研列表（按 kind 过滤，可重看 / 收藏 / 删除） */
+function ResearchHistory({
+  kind,
+  title,
+  onOpen,
+}: {
+  kind: ResearchKind;
+  title: string;
+  onOpen: (threadId: string) => void;
+}) {
+  const [items, setItems] = React.useState<ThreadSummary[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  const reload = React.useCallback(async () => {
+    try {
+      setItems(await fetchThreadsByKind(kind));
+    } catch {
+      /* 后端未启动时静默 */
+    } finally {
+      setLoading(false);
+    }
+  }, [kind]);
+
+  React.useEffect(() => {
+    reload();
+  }, [reload]);
+
+  const onFav = async (t: ThreadSummary) => {
+    setItems((prev) => prev.map((x) => (x.id === t.id ? { ...x, isFavorite: !x.isFavorite } : x)));
+    try {
+      await toggleFavorite(t.id);
+    } catch {
+      reload();
+    }
+  };
+
+  const onDelete = async (t: ThreadSummary) => {
+    setItems((prev) => prev.filter((x) => x.id !== t.id));
+    try {
+      await deleteThread(t.id);
+    } catch {
+      reload();
+    }
+  };
+
+  const columns: Column<ThreadSummary>[] = [
+    {
+      key: "name",
+      header: "调研名称",
+      render: (t) => <span className="font-medium text-ink">{parseTitle(t.title).name}</span>,
+    },
+    {
+      key: "market",
+      header: "目标市场",
+      render: (t) => <span className="text-ink-muted">{parseTitle(t.title).market}</span>,
+    },
+    {
+      key: "time",
+      header: "创建时间",
+      render: (t) => <span className="text-ink-subtle">{formatDate(t.updatedAt)}</span>,
+    },
+    {
+      key: "status",
+      header: "状态",
+      render: (t) =>
+        t.activeStreamId ? (
+          <StatusBadge status="running" label="分析中" />
+        ) : (
+          <StatusBadge status="done" label="已完成" />
+        ),
+    },
+    {
+      key: "actions",
+      header: "操作",
+      align: "right",
+      render: (t) => (
+        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => onFav(t)}
+            title={t.isFavorite ? "取消收藏" : "收藏"}
+            className={cn(
+              "rounded p-1.5 transition-colors hover:bg-surface-2",
+              t.isFavorite ? "text-brand" : "text-ink-subtle hover:text-ink"
+            )}
+          >
+            <Star className={cn("h-4 w-4", t.isFavorite && "fill-current")} />
+          </button>
+          <button
+            onClick={() => onDelete(t)}
+            title="移入回收站"
+            className="rounded p-1.5 text-ink-subtle transition-colors hover:bg-danger/10 hover:text-danger"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <section className="mt-7">
+      <div className="mb-3 flex items-center gap-2">
+        <History className="h-4 w-4 text-ink-subtle" />
+        <h3 className="text-sm font-semibold text-ink">{title}历史</h3>
+        {!loading && items.length > 0 && (
+          <span className="rounded-full bg-surface-2 px-1.5 text-[11px] text-ink-subtle">
+            {items.length}
+          </span>
+        )}
+      </div>
+      <Panel bodyClassName="p-0">
+        {loading ? (
+          <div className="space-y-2 p-5">
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : (
+          <DataTable
+            columns={columns}
+            rows={items}
+            getRowKey={(t) => t.id}
+            onRowClick={(t) => onOpen(t.id)}
+            empty={
+              <EmptyState
+                icon={<Inbox className="h-6 w-6" />}
+                title={`暂无${title}记录`}
+                hint="在上方输入一个关键词即可发起调研，完成后会出现在这里。"
+              />
+            }
+          />
+        )}
+      </Panel>
+    </section>
+  );
 }

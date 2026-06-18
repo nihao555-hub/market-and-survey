@@ -32,6 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   draftCategoryAtom,
+  draftKindAtom,
   activeThreadIdAtom,
   threadsAtom,
   quickParamsAtom,
@@ -82,6 +83,7 @@ const TOOLS = [
 
 export function WorkspaceHome() {
   const setDraft = useSetAtom(draftCategoryAtom);
+  const setDraftKind = useSetAtom(draftKindAtom);
   const setActiveId = useSetAtom(activeThreadIdAtom);
   const setPage = useSetAtom(activePageAtom);
   const [threads, setThreads] = useAtom(threadsAtom);
@@ -105,6 +107,7 @@ export function WorkspaceHome() {
   const start = (category: string) => {
     const c = category.trim();
     if (!c) return;
+    setDraftKind("general");
     setDraft(c);
   };
 
