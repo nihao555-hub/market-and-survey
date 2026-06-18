@@ -7,6 +7,7 @@ import {
   Database,
   ChevronDown,
   ChevronRight,
+  Circle,
   Home,
   Mountain,
   Sparkle,
@@ -64,9 +65,10 @@ const WORKFLOW = [
 ];
 
 const DEMO_TASKS = [
-  { id: "d1", name: "智能插座市场调研", iso: "us", market: "美国", time: "2024-05-20 14:30", running: true, progress: 68, real: false },
-  { id: "d2", name: "宠物用品趋势分析", iso: "gb", market: "英国", time: "2024-05-19 10:15", running: false, progress: 100, real: false },
-  { id: "d3", name: "户外装备竞品分析", iso: "de", market: "德国", time: "2024-05-18 16:45", running: false, progress: 100, real: false },
+  { id: "d1", name: "智能插座市场调研", iso: "us", market: "美国", time: "2024-05-20 14:30", state: "running", progress: 68, real: false },
+  { id: "d2", name: "宠物用品趋势分析", iso: "gb", market: "英国", time: "2024-05-19 10:15", state: "done", progress: 100, real: false },
+  { id: "d3", name: "户外装备竞品分析", iso: "de", market: "德国", time: "2024-05-18 16:45", state: "done", progress: 100, real: false },
+  { id: "d4", name: "美妆个护机会扫描", iso: "jp", market: "日本", time: "2024-05-17 09:20", state: "pending", progress: 0, real: false },
 ];
 
 const TOOLS = [
@@ -117,7 +119,7 @@ export function WorkspaceHome() {
           name,
           iso: marketIso(market),
           market,
-          running: !!t.activeStreamId,
+          state: t.activeStreamId ? "running" : "done",
           progress: t.activeStreamId ? 60 : 100,
           time: formatDate(t.updatedAt),
           real: true,
@@ -253,11 +255,10 @@ export function WorkspaceHome() {
 
       {/* 常用工具 */}
       <section className="mt-6">
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-3">
           <h2 className="text-base font-semibold text-ink">常用工具</h2>
-          <button onClick={() => setPage("market")} className="text-xs text-brand hover:underline">更多工具</button>
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {TOOLS.map((t) => (
             <button
               key={t.label}
@@ -270,9 +271,15 @@ export function WorkspaceHome() {
                 <div className="text-sm font-medium text-ink">{t.label}</div>
                 <div className="truncate text-[11px] text-ink-subtle">{t.desc}</div>
               </div>
-              <ArrowRight className="h-4 w-4 flex-shrink-0 text-ink-tertiary opacity-0 transition-opacity group-hover:opacity-100" />
             </button>
           ))}
+          <button
+            onClick={() => setPage("market")}
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-hairline-strong bg-white p-3.5 text-sm font-medium text-ink-subtle transition-all hover:border-brand/40 hover:text-brand"
+          >
+            更多工具
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
       </section>
 
@@ -312,7 +319,7 @@ export function WorkspaceHome() {
                   </td>
                   <td className="px-3 py-3 text-ink-subtle">{t.time}</td>
                   <td className="px-3 py-3">
-                    {t.running ? (
+                    {t.state === "running" ? (
                       <div className="max-w-[170px]">
                         <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted">
                           <Loader2 className="h-3.5 w-3.5 animate-spin text-brand" />
@@ -325,10 +332,15 @@ export function WorkspaceHome() {
                           />
                         </div>
                       </div>
-                    ) : (
+                    ) : t.state === "done" ? (
                       <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success">
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         已完成
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-subtle">
+                        <Circle className="h-3 w-3" />
+                        待开始
                       </span>
                     )}
                   </td>
