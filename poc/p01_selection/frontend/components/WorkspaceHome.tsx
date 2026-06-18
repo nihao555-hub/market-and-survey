@@ -37,6 +37,7 @@ import {
 import { gqlRequest } from "@/lib/graphql-client";
 import { marketIso, marketLabel } from "@/lib/markets";
 import { Flag } from "@/components/ui/Flag";
+import { HeroArt } from "@/components/HeroArt";
 import { formatDate, parseTitle } from "@/lib/thread-format";
 import type { ThreadSummary } from "@/lib/agent-types";
 
@@ -106,13 +107,8 @@ export function WorkspaceHome() {
       <section className="relative overflow-hidden rounded-2xl border border-brand/20 bg-gradient-to-br from-brand via-brand-light to-brand2 p-7 text-white shadow-md">
         <div className="pointer-events-none absolute -right-10 -top-12 h-48 w-48 rounded-full bg-white/10 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-12 right-32 h-32 w-32 rounded-full bg-white/10 blur-2xl" />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/hero-research.png"
-          alt=""
-          aria-hidden
-          className="pointer-events-none absolute right-2 top-1/2 hidden h-[230px] w-auto -translate-y-1/2 select-none drop-shadow-xl lg:block"
-        />
+        {/* 半透明矢量插画：天然融入橙色渐变（无栅格底/无硬边） */}
+        <HeroArt className="pointer-events-none absolute -right-4 top-1/2 hidden h-[280px] w-auto -translate-y-1/2 lg:block" />
         <div className="relative max-w-[640px]">
           <h1 className="text-[28px] font-bold leading-tight tracking-tight">你想调研什么？</h1>
           <p className="mt-2 text-sm text-white/90">
