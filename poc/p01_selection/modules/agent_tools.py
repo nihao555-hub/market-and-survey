@@ -2375,6 +2375,103 @@ def tool_youtube_search(query: str, country: str = "US", language: str = "en",
         return {"ok": False, "error": str(e)[:300], "videos": []}
 
 
+def _ddv_match(text: str, q: str) -> bool:
+    return (not q) or (q.lower() in (text or "").lower())
+
+
+def tool_browse_daily_dataset(query: str = "", kinds: list = None,
+                              tenant_id: str = "dev_tenant", limit: int = 30) -> dict:
+    """读取「每日刷新」已落库的大盘数据——**零额外 API 成本**（不重复消耗 TikHub 额度）。
+
+    覆盖每批刷新攒下的真实底盘：
+      - categories     28 个一级品类的实时商品榜（每类 Top 商品 + 价格/评分/销量统计）
+      - hot_selling    TikTok Shop 实时热销榜（爆品雷达）
+      - social_trends  8 平台社媒热词（tiktok/douyin/weibo/xiaohongshu/kuaishou/bilibili/twitter/lemon8）
+      - hashtags       TikTok 热门话题声量曲线 + 达人
+
+    用法：任何模式开局**先调本工具**用大盘底子定位方向（省额度）；需要更细/更新的实时数据再去调
+    tiktok_shop_search / social_trends 等付费工具补齐。query 非空时按关键词过滤（匹配商品标题/品类名/
+    热词/话题）。kinds 可限定只取某几类（如 ["social_trends","hashtags"]）。
+    """
+    logger.info(f"🔧 browse_daily_dataset(query={query!r}, kinds={kinds}, limit={limit})")
+    want = set(kinds) if kinds else {"categories", "hot_selling", "social_trends", "hashtags"}
+    q = (query or "").strip()
+    try:
+        from backend import storage as st
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": f"数据快照存储不可用：{str(e)[:160]}"}
+
+    snaps = st.list_latest_snapshots(tenant_id, limit=400)
+    if not snaps:
+        return {"ok": False, "error": "还没有任何每日刷新快照，请先在「监控与订阅」页点『立即刷新』或等待定时刷新。",
+                "categories": [], "hot_selling": [], "social_trends": {}, "hashtags": []}
+
+    captured_at = None
+    for s in snaps:
+        ca = getattr(s, "captured_at", None)
+        if ca:
+            captured_at = ca.isoformat() if hasattr(ca, "isoformat") else str(ca)
+            break
+
+    def _slim(p: dict) -> dict:
+        return {k: p.get(k) for k in ("title", "price", "currency_symbol", "rating",
+                                      "sold_count", "shop_name", "url") if p.get(k) is not None}
+
+    categories: list[dict] = []
+    hot_selling: list[dict] = []
+    social: dict[str, list] = {}
+    hashtags: list[dict] = []
+
+    for s in snaps:
+        src = s.source
+        pl = s.payload or {}
+        if not getattr(s, "real_data", False):
+            continue
+        if src == "category_rank" and "categories" in want:
+            cname = pl.get("category_name") or ""
+            prods = [p for p in (pl.get("products") or []) if isinstance(p, dict)]
+            if q:
+                prods = [p for p in prods if _ddv_match(p.get("title", ""), q)]
+                if not prods and not _ddv_match(cname, q):
+                    continue
+            if prods or _ddv_match(cname, q):
+                categories.append({"category": cname, "stats": pl.get("stats"),
+                                   "top_products": [_slim(p) for p in prods[:8]]})
+        elif src == "hot_selling" and "hot_selling" in want:
+            prods = [p for p in (pl.get("products") or []) if isinstance(p, dict)]
+            if q:
+                prods = [p for p in prods if _ddv_match(p.get("title", ""), q)]
+            hot_selling = [_slim(p) for p in prods[:limit]]
+        elif src.startswith("trend_") and "social_trends" in want:
+            items = [it for it in (pl.get("items") or []) if isinstance(it, dict)]
+            kws = [it for it in items if _ddv_match(it.get("keyword", ""), q)]
+            if kws:
+                social[pl.get("label") or src] = [
+                    {"keyword": it.get("keyword"), "heat": it.get("heat"), "views": it.get("views")}
+                    for it in kws[:limit]]
+        elif src == "hashtag_trends" and "hashtags" in want:
+            tags = [t for t in (pl.get("hashtags") or []) if isinstance(t, dict)]
+            if q:
+                tags = [t for t in tags if _ddv_match(t.get("hashtag", ""), q)]
+            hashtags = [{"hashtag": t.get("hashtag"), "views": t.get("vv") or t.get("views"),
+                         "rank": t.get("rank"), "publish_count": t.get("publish_cnt") or t.get("publish_count")}
+                        for t in tags[:limit]]
+
+    categories.sort(key=lambda c: len(c["top_products"]), reverse=True)
+    return {
+        "ok": True,
+        "captured_at": captured_at,
+        "query": q or None,
+        "note": "零成本：来自每日刷新已落库快照；如需更新/更细数据再调实时工具。",
+        "counts": {"categories": len(categories), "hot_selling": len(hot_selling),
+                   "social_platforms": len(social), "hashtags": len(hashtags)},
+        "categories": categories[:limit],
+        "hot_selling": hot_selling,
+        "social_trends": social,
+        "hashtags": hashtags,
+    }
+
+
 # =====================  工具 schema（DeepSeek function calling）=====================
 TOOLS_SCHEMA = [
     {"type": "function", "function": {
@@ -2426,10 +2523,10 @@ TOOLS_SCHEMA = [
         }, "required": ["product_id"]}}},
     {"type": "function", "function": {
         "name": "social_trends",
-        "description": "**社媒实时趋势**。一次拿 TikTok 趋势搜索词 / 抖音热榜 / 微博热搜 / 小红书热词，看『今天大家在搜什么、什么在火』。用于发现新兴选品方向、把社媒热度与电商销量做交叉验证。platforms 不传则全拿。",
+        "description": "**社媒实时趋势（8 平台）**。一次拿 TikTok 趋势搜索词 / 抖音热榜 / 微博热搜 / 小红书热词 / 快手热榜 / B站热搜 / X(Twitter) 趋势 / Lemon8 热词，看『今天大家在搜什么、什么在火』。用于发现新兴选品方向、把社媒热度与电商销量做交叉验证。platforms 不传则全拿。",
         "parameters": {"type": "object", "properties": {
             "platforms": {"type": "array", "items": {"type": "string"},
-                          "description": "tiktok/douyin/weibo/xiaohongshu，不传则全部"},
+                          "description": "tiktok/douyin/weibo/xiaohongshu/kuaishou/bilibili/twitter/lemon8，不传则全部"},
             "limit": {"type": "integer", "default": 20}
         }}}},
     {"type": "function", "function": {
@@ -2850,6 +2947,15 @@ TOOLS_SCHEMA = [
         "parameters": {"type": "object", "properties": {
             "png_path": {"type": "string", "description": "Keepa PNG 文件路径"}
         }, "required": ["png_path"]}}},
+    {"type": "function", "function": {
+        "name": "browse_daily_dataset",
+        "description": "**零成本大盘底子（首选开局工具）**。读取『每日刷新』已落库的真实快照——28 个一级品类实时商品榜 + TikTok Shop 热销榜 + 8 平台社媒热词 + 热门话题声量曲线，**不消耗任何 TikHub 额度**。任何模式都应先调它定位方向（哪些品类/热词/话题与本次调研相关），再用 tiktok_shop_search / social_trends 等实时工具补更新更细的数据。query 非空时按关键词过滤（匹配商品标题/品类名/热词/话题）；kinds 可只取某几类。",
+        "parameters": {"type": "object", "properties": {
+            "query": {"type": "string", "description": "关键词过滤，匹配商品标题/品类名/热词/话题；不传则取全部大盘"},
+            "kinds": {"type": "array", "items": {"type": "string"},
+                      "description": "限定取哪几类：categories/hot_selling/social_trends/hashtags，不传则全取"},
+            "limit": {"type": "integer", "default": 30}
+        }}}},
 ]
 
 TOOL_IMPL = {
@@ -2882,6 +2988,7 @@ TOOL_IMPL = {
     "tiktok_trending_hashtags": tool_tiktok_trending_hashtags,
     "reddit_search": tool_reddit_search,
     "youtube_search": tool_youtube_search,
+    "browse_daily_dataset": tool_browse_daily_dataset,
     "discover_bsr_url": tool_discover_bsr_url,
     "get_bestsellers_by_url": tool_get_bestsellers_by_url,
     "get_movers_shakers_by_url": tool_get_movers_shakers_by_url,

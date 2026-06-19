@@ -542,8 +542,15 @@ async def run_selection_job(thread_id: str, stream_id: str, user_text: str,
 
     await publish(thread_id, {"type": "start", "messageId": user_msg_id})
 
+    dataset_first = (
+        "\n## 📦 开局先用零成本大盘（省 TikHub 额度）：\n"
+        "正式调用任何付费实时工具前，**先调一次 browse_daily_dataset(query=本次品类/关键词)**，"
+        "用每日刷新已落库的真实快照（28 品类商品榜 + 热销榜 + 8 平台社媒热词 + 话题声量曲线）快速定位方向。"
+        "若它返回该方向已有数据，就以此为底子，只在需要更新/更细颗粒时再去调实时付费工具补齐；"
+        "若返回为空（还没刷新过），再正常走实时工具。这样既不浪费已花钱攒下的大盘，也减少重复调用。\n"
+    )
     messages = [
-        {"role": "system", "content": SYSTEM_TEMPLATE + mode.system_addendum},
+        {"role": "system", "content": SYSTEM_TEMPLATE + mode.system_addendum + dataset_first},
         {"role": "user", "content": user_text},
     ]
     asst_parts = []
