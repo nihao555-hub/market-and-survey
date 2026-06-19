@@ -27,6 +27,7 @@ export type PageKey =
   | "favorites"
   | "trash"
   | "social"
+  | "category"
   | "monitor"
   | "settings";
 export const activePageAtom = atom<PageKey>("home");

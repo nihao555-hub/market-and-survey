@@ -348,6 +348,96 @@ def _collect_social_trends(limit: int = 20) -> list[dict]:
     return rows
 
 
+# ─────── 按品类榜单 / 实时热销榜 / 热门话题曲线（每批一次，与追踪词无关）───────
+HOT_SELLING_TERM = "🛒 实时热销榜"
+HASHTAG_TREND_TERM = "🏷️ 热门话题榜"
+
+# 控制每批抓多少个一级品类、每类取多少商品（成本/时长可调）
+CATEGORY_MAX = int(os.getenv("DAILY_REFRESH_CATEGORIES", "12"))
+CATEGORY_TOP_N = int(os.getenv("DAILY_REFRESH_CATEGORY_TOPN", "10"))
+HASHTAG_TOP_N = int(os.getenv("DAILY_REFRESH_HASHTAGS", "20"))
+
+
+def _collect_category_rankings(geo: str = "US") -> list[dict]:
+    """按 TikTok Shop 一级品类抓实时商品榜（每类一条快照，含 Top N 商品 + 价格/评分/店铺统计）。"""
+    if not _tikhub_ok():
+        return [dict(source="category_rank", tier=2, status="unavailable", real_data=False,
+                     summary="按品类榜单通道未就绪（需 TIKHUB_API_KEY）", payload={"reason": "no_tikhub_key"})]
+    from modules import tikhub
+    try:
+        cats = tikhub.fetch_products_category_list(region=geo)
+    except Exception as e:  # noqa: BLE001
+        return [dict(source="category_rank", tier=2, status="error", real_data=False,
+                     summary=f"品类列表获取失败：{str(e)[:140]}", payload={"error": str(e)[:300]})]
+    rows: list[dict] = []
+    for cat in cats[:CATEGORY_MAX]:
+        cid = cat.get("category_id")
+        cname = cat.get("category_name") or cid
+        if not cid:
+            continue
+        try:
+            prods = tikhub.fetch_products_by_category(cid, region=geo, limit=CATEGORY_TOP_N)
+            if prods:
+                rows.append(dict(
+                    source="category_rank", tier=2, status="ok", real_data=True,
+                    summary=f"{cname}：实时 Top {len(prods)} · {tikhub.shop_summary(cname, prods)}",
+                    payload={"category_id": cid, "category_name": cname,
+                             "category_name_en": cat.get("category_name_en"),
+                             "products": prods, "stats": tikhub.product_stats(prods),
+                             "source_label": "TikTok Shop（按品类·实时）"},
+                ))
+            else:
+                rows.append(dict(source="category_rank", tier=2, status="empty", real_data=False,
+                                 summary=f"{cname}：未取到在售商品",
+                                 payload={"category_id": cid, "category_name": cname, "products": []}))
+        except Exception as e:  # noqa: BLE001
+            rows.append(dict(source="category_rank", tier=2, status="error", real_data=False,
+                             summary=f"{cname}：{str(e)[:120]}",
+                             payload={"category_id": cid, "category_name": cname, "error": str(e)[:300]}))
+    return rows
+
+
+def _collect_hot_selling(geo: str = "US", limit: int = 30) -> dict:
+    """TikTok Shop 实时热销榜（爆品雷达，每批一条快照）。"""
+    if not _tikhub_ok():
+        return dict(source="hot_selling", tier=2, status="unavailable", real_data=False,
+                    summary="热销榜通道未就绪（需 TIKHUB_API_KEY）", payload={"reason": "no_tikhub_key"})
+    from modules import tikhub
+    try:
+        prods = tikhub.fetch_hot_selling_products(region=geo, limit=limit)
+        if prods:
+            return dict(source="hot_selling", tier=2, status="ok", real_data=True,
+                        summary=f"实时热销 Top {len(prods)} · {tikhub.shop_summary('热销', prods)}",
+                        payload={"products": prods, "stats": tikhub.product_stats(prods),
+                                 "region": geo, "source_label": "TikTok Shop（热销·实时）"})
+        return dict(source="hot_selling", tier=2, status="empty", real_data=False,
+                    summary="未取到热销榜商品", payload={"region": geo, "products": []})
+    except Exception as e:  # noqa: BLE001
+        return dict(source="hot_selling", tier=2, status="error", real_data=False,
+                    summary=str(e)[:160], payload={"error": str(e)[:300]})
+
+
+def _collect_hashtag_trends(country: str = "US", time_range: int = 7, limit: int = HASHTAG_TOP_N) -> dict:
+    """TikTok 热门话题榜（声量曲线 + 达人侦察，每批一条快照）。"""
+    if not _tikhub_ok():
+        return dict(source="hashtag_trends", tier=2, status="unavailable", real_data=False,
+                    summary="话题榜通道未就绪（需 TIKHUB_API_KEY）", payload={"reason": "no_tikhub_key"})
+    from modules import tikhub
+    try:
+        tags = tikhub.trending_hashtags(time_range=time_range, country=country, limit=limit)
+        if tags:
+            head = "、".join(f"#{t['hashtag']}" for t in tags[:6] if t.get("hashtag"))
+            return dict(source="hashtag_trends", tier=2, status="ok", real_data=True,
+                        summary=f"近 {time_range} 天 Top {len(tags)} 话题：{head}",
+                        payload={"hashtags": tags, "country": country, "time_range": time_range,
+                                 "source_label": "TikTok 热门话题（实时）"})
+        return dict(source="hashtag_trends", tier=2, status="empty", real_data=False,
+                    summary="未取到热门话题", payload={"country": country, "hashtags": []})
+    except Exception as e:  # noqa: BLE001
+        return dict(source="hashtag_trends", tier=2, status="error", real_data=False,
+                    summary=str(e)[:160], payload={"error": str(e)[:300]})
+
+
 # ─────────── 批次刷新 ───────────
 def run_daily_refresh(tenant_id: str = "dev_tenant", terms: Optional[list[str]] = None,
                       geo: str = "US", trigger: str = "schedule") -> dict:
@@ -386,6 +476,11 @@ def run_daily_refresh(tenant_id: str = "dev_tenant", terms: Optional[list[str]] 
 
         # 跨平台实时社媒趋势：每批采集一次（与具体追踪词无关）
         _persist(SOCIAL_TREND_TERM, _collect_social_trends())
+
+        # 按品类榜单 / 实时热销榜 / 热门话题曲线：每批各采集一次（喂「品类榜单」页 + ④话题雷达）
+        _persist("📦 品类榜单", _collect_category_rankings(geo))
+        _persist(HOT_SELLING_TERM, [_collect_hot_selling(geo)])
+        _persist(HASHTAG_TREND_TERM, [_collect_hashtag_trends(geo)])
 
         for term in terms:
             rows = (_collect_tier1(term, geo)

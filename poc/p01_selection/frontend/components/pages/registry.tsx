@@ -23,6 +23,7 @@ import { TasksPage } from "./TasksPage";
 import { ReportsPage } from "./ReportsPage";
 import { MonitorPage } from "./MonitorPage";
 import { SocialTrendsPage } from "./SocialTrendsPage";
+import { CategoryRankPage } from "./CategoryRankPage";
 import { SettingsPage } from "./SettingsPage";
 import { FavoritesPage, TrashPage } from "./SimplePages";
 
@@ -116,6 +117,8 @@ export function renderPage(page: PageKey): React.ReactNode {
       return <MonitorPage />;
     case "social":
       return <SocialTrendsPage />;
+    case "category":
+      return <CategoryRankPage />;
     case "settings":
       return <SettingsPage />;
     default:
