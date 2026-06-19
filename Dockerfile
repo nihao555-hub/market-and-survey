@@ -11,6 +11,11 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
+# 自带 redis-server，使容器自包含（免费单容器平台无外部 Redis 时设 EMBEDDED_REDIS=1）。
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends redis-server \
+    && rm -rf /var/lib/apt/lists/*
+
 # 依赖层（先拷 requirements 命中缓存）
 COPY requirements/ requirements/
 RUN pip install --no-cache-dir -r requirements/backend.txt
