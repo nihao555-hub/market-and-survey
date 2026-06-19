@@ -100,11 +100,21 @@ async def _stop_daily_refresh_scheduler():
             pass
         _scheduler = None
 
-# ─── CORS（前端 Next.js dev server 跨域）───
+# ─── CORS（前端跨域）───
+# 本地默认放行 Next dev；部署到 Vercel 时用环境变量加上公网前端域名：
+#   CORS_ALLOW_ORIGINS       逗号分隔的精确来源（如 https://your-app.vercel.app）
+#   CORS_ALLOW_ORIGIN_REGEX  可选正则（如 https://.*\.vercel\.app 放行所有预览部署）
 from fastapi.middleware.cors import CORSMiddleware
+import os as _os_cors
+_cors_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+_extra_origins = (_os_cors.getenv("CORS_ALLOW_ORIGINS") or "").strip()
+if _extra_origins:
+    _cors_origins += [o.strip() for o in _extra_origins.split(",") if o.strip()]
+_cors_origin_regex = (_os_cors.getenv("CORS_ALLOW_ORIGIN_REGEX") or "").strip() or None
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=_cors_origins,
+    allow_origin_regex=_cors_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

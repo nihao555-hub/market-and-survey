@@ -1,0 +1,18 @@
+# 后端镜像无需前端与本地产物；缩小构建上下文、避免泄露 .env。
+.git
+.venv
+venv
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/node_modules
+poc/p01_selection/frontend/.next
+poc/p01_selection/frontend/out
+*.log
+**/*.log
+.env
+*.env
+poc/p01_selection/*.html
+poc/p01_selection/reports
+poc/**/*.db
+poc/**/*.sqlite3
