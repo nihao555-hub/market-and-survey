@@ -352,10 +352,36 @@ def _collect_social_trends(limit: int = 20) -> list[dict]:
 HOT_SELLING_TERM = "🛒 实时热销榜"
 HASHTAG_TREND_TERM = "🏷️ 热门话题榜"
 
-# 控制每批抓多少个一级品类、每类取多少商品（成本/时长可调）
-CATEGORY_MAX = int(os.getenv("DAILY_REFRESH_CATEGORIES", "12"))
-CATEGORY_TOP_N = int(os.getenv("DAILY_REFRESH_CATEGORY_TOPN", "10"))
+# 控制每批抓多少个一级品类、每类取多少商品（成本/时长可调）。
+# 默认覆盖全部 28 个一级品类，每类 20 商品（单次接口调用即返回，零额外成本）。
+# 想要更庞大的底盘时把 CATEGORY_PAGES 调大：每多一页 = 每类多一次接口调用、多约 20 商品。
+CATEGORY_MAX = int(os.getenv("DAILY_REFRESH_CATEGORIES", "28"))
+CATEGORY_TOP_N = int(os.getenv("DAILY_REFRESH_CATEGORY_TOPN", "20"))
+CATEGORY_PAGES = int(os.getenv("DAILY_REFRESH_CATEGORY_PAGES", "1"))
 HASHTAG_TOP_N = int(os.getenv("DAILY_REFRESH_HASHTAGS", "20"))
+# 热销榜单次接口约返回 95 条，默认全收（同一次调用，无额外成本）。
+HOT_SELLING_TOP_N = int(os.getenv("DAILY_REFRESH_HOTSELLING", "100"))
+
+
+def _fetch_category_products_paged(tikhub, category_id: str, geo: str,
+                                   per_page: int, pages: int) -> list[dict]:
+    """按 offset 翻页累计某品类的在售商品并按 product_id 去重。
+
+    per_page 为单页条数（接口单次约返回 ≤20），pages 为翻页次数（=接口调用次数）。
+    某页返回数 < per_page 视为到底，提前结束以省调用。
+    """
+    seen: set = set()
+    out: list[dict] = []
+    for i in range(max(1, pages)):
+        batch = tikhub.fetch_products_by_category(
+            category_id, region=geo, limit=per_page, offset=i * per_page)
+        new = [p for p in batch if p.get("product_id") and p["product_id"] not in seen]
+        for p in new:
+            seen.add(p["product_id"])
+        out.extend(new)
+        if len(batch) < per_page:
+            break
+    return out
 
 
 def _collect_category_rankings(geo: str = "US") -> list[dict]:
@@ -376,7 +402,7 @@ def _collect_category_rankings(geo: str = "US") -> list[dict]:
         if not cid:
             continue
         try:
-            prods = tikhub.fetch_products_by_category(cid, region=geo, limit=CATEGORY_TOP_N)
+            prods = _fetch_category_products_paged(tikhub, cid, geo, CATEGORY_TOP_N, CATEGORY_PAGES)
             if prods:
                 rows.append(dict(
                     source="category_rank", tier=2, status="ok", real_data=True,
@@ -397,7 +423,7 @@ def _collect_category_rankings(geo: str = "US") -> list[dict]:
     return rows
 
 
-def _collect_hot_selling(geo: str = "US", limit: int = 30) -> dict:
+def _collect_hot_selling(geo: str = "US", limit: int = HOT_SELLING_TOP_N) -> dict:
     """TikTok Shop 实时热销榜（爆品雷达，每批一条快照）。"""
     if not _tikhub_ok():
         return dict(source="hot_selling", tier=2, status="unavailable", real_data=False,
