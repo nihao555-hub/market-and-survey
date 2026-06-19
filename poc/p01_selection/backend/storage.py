@@ -8,6 +8,7 @@ PoC 用 SQLite + JSON 列；生产换 Postgres + JSONB 一行 SQL 改。
 from __future__ import annotations
 import hashlib
 import json
+import os
 import secrets
 import uuid
 from datetime import datetime
@@ -126,12 +127,36 @@ class DataSnapshot(Base):
     captured_at = Column(DateTime, default=datetime.utcnow, index=True)
 
 
-_engine = create_engine(f"sqlite:///{DB_PATH}", future=True)
+def _resolve_db_url() -> tuple[str, bool]:
+    """选库：设了 DATABASE_URL（如 Supabase Postgres）就用它，否则回落本地 SQLite。
+
+    返回 (sqlalchemy_url, is_sqlite)。把裸 postgres:// 归一到 psycopg(v3) 方言。
+    """
+    url = (os.getenv("DATABASE_URL") or "").strip()
+    if not url:
+        return f"sqlite:///{DB_PATH}", True
+    if url.startswith("postgres://"):
+        url = "postgresql+psycopg://" + url[len("postgres://"):]
+    elif url.startswith("postgresql://"):
+        url = "postgresql+psycopg://" + url[len("postgresql://"):]
+    return url, url.startswith("sqlite")
+
+
+DB_URL, _IS_SQLITE = _resolve_db_url()
+_engine_kwargs: dict = {"future": True}
+if not _IS_SQLITE:
+    # 托管 Postgres（Supabase）：连接易被回收，开 pre_ping + 适度连接池。
+    _engine_kwargs.update(pool_pre_ping=True, pool_size=5, max_overflow=10,
+                          pool_recycle=300)
+_engine = create_engine(DB_URL, **_engine_kwargs)
 Base.metadata.create_all(_engine)
 SessionLocal = sessionmaker(bind=_engine, future=True)
 
-# 轻量迁移：给已存在的旧 threads 表补新增列（SQLite ALTER 幂等处理）
+# 轻量迁移：给已存在的旧 threads 表补新增列。仅 SQLite 需要（PRAGMA/ALTER 幂等）；
+# Postgres 是全新建库，create_all 已含全部列，无需补。
 def _ensure_thread_columns():
+    if not _IS_SQLITE:
+        return
     adds = {
         "tenant_id": "ALTER TABLE threads ADD COLUMN tenant_id VARCHAR DEFAULT 'dev_tenant'",
         "is_favorite": "ALTER TABLE threads ADD COLUMN is_favorite BOOLEAN DEFAULT 0",
