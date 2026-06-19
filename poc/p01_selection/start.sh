@@ -10,19 +10,22 @@ PORT="${PORT:-8001}"
 export REDIS_URL="${REDIS_URL:-redis://127.0.0.1:6379/0}"
 WORKER_PID=""
 
-# USE_DRAMATIQ_WORKER=1 -> 控制面/数据面分离：Redis 队列 + 独立 worker（多实例/高并发）。
-# USE_DRAMATIQ_WORKER=0（默认）-> 单进程，调研任务在 web 进程内 asyncio 跑，无需 Redis。
-#   适合 512MB 免费单实例（Render/Koyeb 等）：零外部依赖、内存占用最小。
+# 事件/流式层（SSE chunk catch-up + pub/sub，见 backend/events.py）始终需要 Redis。
+# 免费单容器（无外部 Redis）：设 EMBEDDED_REDIS=1，本脚本在容器内起一个轻量 Redis
+#   （空载 ~5MB，512MB 实例绰绰有余），单进程内既当流式总线又做 catch-up。
+if [ "${EMBEDDED_REDIS:-0}" = "1" ]; then
+  echo "[start] launching embedded redis-server on 127.0.0.1:6379"
+  redis-server --daemonize yes --save "" --appendonly no \
+    --dir /tmp --bind 127.0.0.1 --port 6379 --loglevel warning
+  for _ in $(seq 1 20); do
+    redis-cli ping >/dev/null 2>&1 && break
+    sleep 0.3
+  done
+fi
+
+# USE_DRAMATIQ_WORKER=1 -> 控制面/数据面分离：独立 worker 消费 Redis 队列（多实例/高并发）。
+# USE_DRAMATIQ_WORKER=0（默认）-> 单进程，调研任务在 web 进程内 asyncio 跑（见 graphql_api.py）。
 if [ "${USE_DRAMATIQ_WORKER:-0}" = "1" ]; then
-  if [ "${EMBEDDED_REDIS:-0}" = "1" ]; then
-    echo "[start] launching embedded redis-server on 127.0.0.1:6379"
-    redis-server --daemonize yes --save "" --appendonly no \
-      --dir /tmp --bind 127.0.0.1 --port 6379 --loglevel warning
-    for _ in $(seq 1 20); do
-      redis-cli ping >/dev/null 2>&1 && break
-      sleep 0.3
-    done
-  fi
   echo "[start] launching dramatiq worker"
   python -m dramatiq backend.queue \
     --processes "${DRAMATIQ_PROCESSES:-1}" \
