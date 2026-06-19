@@ -350,10 +350,10 @@ class Mutation:
         use_worker = _os.getenv("USE_DRAMATIQ_WORKER", "0") == "1"
         if use_worker:
             from backend.queue import run_selection_actor
-            run_selection_actor.send(tid, stream_id, user_text, model_choice)
+            run_selection_actor.send(tid, stream_id, user_text, model_choice, kind)
         else:
             from backend.selection_job import run_selection_job
-            asyncio.create_task(run_selection_job(tid, stream_id, user_text, model_choice))
+            asyncio.create_task(run_selection_job(tid, stream_id, user_text, model_choice, kind))
 
         return StartResult(thread_id=tid, stream_id=stream_id, status="queued")
 
