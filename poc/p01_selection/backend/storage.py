@@ -17,6 +17,11 @@ from typing import Optional
 from sqlalchemy import (create_engine, Column, Integer, String, Float, DateTime,
                          JSON, ForeignKey, Boolean, text)
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+from dotenv import load_dotenv
+
+# storage 常被最先 import（早于 app 里加载 .env 的模块），这里自行加载，
+# 确保 DATABASE_URL（Supabase Postgres）在 _resolve_db_url() 执行前已就位。
+load_dotenv(Path(__file__).resolve().parents[3] / ".env")
 
 Base = declarative_base()
 
