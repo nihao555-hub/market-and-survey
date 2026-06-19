@@ -2,7 +2,7 @@
 import React from "react";
 import {
   LayoutList, RefreshCw, Clock, ShoppingCart, Star, Store, Flame, Hash,
-  TrendingUp, Package, Users,
+  TrendingUp, Package, Users, Search, X,
 } from "lucide-react";
 import {
   fetchDailyRefreshStatus, fetchDataSnapshots,
@@ -69,9 +69,14 @@ function rankBadge(i: number): string {
   if (i === 2) return "bg-amber-700 text-white";
   return "bg-white/90 text-ink";
 }
+function matchProduct(p: ShopProduct, q: string): boolean {
+  if (!q) return true;
+  const hay = `${p.title ?? ""} ${p.shop_name ?? ""}`.toLowerCase();
+  return hay.includes(q);
+}
 
 /** 商品卡（品类榜 / 热销榜共用，紧凑版） */
-function ProductCard({ p, rank }: { p: ShopProduct; rank: number }) {
+function ProductCard({ p, rank, catTag }: { p: ShopProduct; rank: number; catTag?: string }) {
   const sym = p.currency_symbol || "$";
   return (
     <a
@@ -103,6 +108,11 @@ function ProductCard({ p, rank }: { p: ShopProduct; rank: number }) {
         )}
       </div>
       <div className="flex flex-1 flex-col p-3">
+        {catTag && (
+          <span className="mb-1.5 inline-flex w-fit items-center gap-0.5 rounded bg-brand/10 px-1.5 py-0.5 text-[10px] font-medium text-brand">
+            <Package className="h-2.5 w-2.5" />{catTag}
+          </span>
+        )}
         <div className="line-clamp-2 min-h-[32px] text-[12px] font-medium leading-tight text-ink">{p.title}</div>
         <div className="mt-2 flex items-baseline gap-1.5">
           <span className="text-sm font-semibold text-ink">{sym}{p.price}</span>
@@ -166,6 +176,8 @@ export function CategoryRankPage() {
   const [reloading, setReloading] = React.useState(false);
   const [tab, setTab] = React.useState<Tab>("category");
   const [activeCat, setActiveCat] = React.useState<string | null>(null);
+  const [query, setQuery] = React.useState("");
+  const q = query.trim().toLowerCase();
 
   const reload = React.useCallback(async () => {
     setReloading(true);
@@ -193,13 +205,28 @@ export function CategoryRankPage() {
   const activeCatProducts: ShopProduct[] = Array.isArray(activeCatSnap?.payload?.products)
     ? activeCatSnap!.payload.products : [];
 
+  // 搜索（即时、零成本，只过滤已加载的当日榜单数据）
+  const searching = q.length > 0;
+  // 「品类 Top」tab 搜索时跨全部品类聚合命中（带品类标签），清空则恢复单品类视图
+  const crossCatHits: { p: ShopProduct; cat?: string }[] = searching
+    ? cats.flatMap((c) =>
+        (Array.isArray(c.payload?.products) ? c.payload.products : [])
+          .filter((p: ShopProduct) => matchProduct(p, q))
+          .map((p: ShopProduct) => ({ p, cat: c.payload?.category_name as string | undefined })),
+      )
+    : [];
+  const hotFiltered = searching ? hotProducts.filter((p) => matchProduct(p, q)) : hotProducts;
+  const hashtagsFiltered = searching
+    ? hashtags.filter((h) => (h.hashtag ?? "").toLowerCase().includes(q))
+    : hashtags;
+
   const channelOk = status?.tier2ChannelOk ?? false;
   const hasAny = cats.length > 0 || hotProducts.length > 0 || hashtags.length > 0;
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
-    { key: "category", label: "品类 Top", count: cats.length },
-    { key: "hot", label: "实时热销榜", count: hotProducts.length },
-    { key: "hashtag", label: "热门话题", count: hashtags.length },
+    { key: "category", label: "品类 Top", count: searching ? crossCatHits.length : cats.length },
+    { key: "hot", label: "实时热销榜", count: hotFiltered.length },
+    { key: "hashtag", label: "热门话题", count: hashtagsFiltered.length },
   ];
 
   return (
@@ -245,12 +272,49 @@ export function CategoryRankPage() {
             />
           ) : (
             <>
-              <div className="mb-4"><FilterTabs tabs={tabs} value={tab} onChange={setTab} /></div>
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <FilterTabs tabs={tabs} value={tab} onChange={setTab} />
+                <div className="relative w-full sm:w-64">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-tertiary" />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="搜商品 / 店铺 / 话题…"
+                    className="w-full rounded-lg border border-hairline bg-surface-1 py-1.5 pl-8 pr-8 text-sm text-ink outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/15"
+                  />
+                  {query && (
+                    <button
+                      onClick={() => setQuery("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-ink-tertiary hover:bg-surface-2 hover:text-ink"
+                      title="清空"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
 
               {/* 品类 Top */}
               {tab === "category" && (
                 cats.length === 0 ? (
                   <EmptyState icon={<Package className="h-6 w-6" />} title="暂无品类榜单" />
+                ) : searching ? (
+                  // 搜索态：跨全部品类聚合命中
+                  crossCatHits.length === 0 ? (
+                    <EmptyState icon={<Search className="h-6 w-6" />} title={`全部品类中没有匹配「${query.trim()}」的商品`} hint="换个关键词，或清空搜索看完整榜单。" />
+                  ) : (
+                    <>
+                      <div className="mb-3 flex items-center gap-2 text-xs text-ink-subtle">
+                        <Search className="h-3.5 w-3.5 text-brand" />
+                        在全部 {cats.length} 个品类中搜「<span className="font-medium text-ink-muted">{query.trim()}</span>」· 命中 {crossCatHits.length} 个商品
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+                        {crossCatHits.map(({ p, cat }, i) => (
+                          <ProductCard key={`${p.product_id ?? "x"}-${i}`} p={p} rank={i} catTag={cat} />
+                        ))}
+                      </div>
+                    </>
+                  )
                 ) : (
                   <>
                     <div className="mb-4 flex flex-wrap gap-2">
@@ -296,10 +360,20 @@ export function CategoryRankPage() {
               {tab === "hot" && (
                 hotProducts.length === 0 ? (
                   <EmptyState icon={<Flame className="h-6 w-6" />} title="暂无热销榜数据" hint={hot?.summary} />
+                ) : hotFiltered.length === 0 ? (
+                  <EmptyState icon={<Search className="h-6 w-6" />} title={`热销榜中没有匹配「${query.trim()}」的商品`} hint="换个关键词，或清空搜索看完整榜单。" />
                 ) : (
-                  <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-                    {hotProducts.map((p, i) => <ProductCard key={p.product_id ?? i} p={p} rank={i} />)}
-                  </div>
+                  <>
+                    {searching && (
+                      <div className="mb-3 flex items-center gap-2 text-xs text-ink-subtle">
+                        <Search className="h-3.5 w-3.5 text-brand" />
+                        命中 {hotFiltered.length} / {hotProducts.length} 个热销商品
+                      </div>
+                    )}
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
+                      {hotFiltered.map((p, i) => <ProductCard key={p.product_id ?? i} p={p} rank={i} />)}
+                    </div>
+                  </>
                 )
               )}
 
@@ -307,9 +381,11 @@ export function CategoryRankPage() {
               {tab === "hashtag" && (
                 hashtags.length === 0 ? (
                   <EmptyState icon={<Hash className="h-6 w-6" />} title="暂无热门话题数据" hint={hashtagSnap?.summary} />
+                ) : hashtagsFiltered.length === 0 ? (
+                  <EmptyState icon={<Search className="h-6 w-6" />} title={`没有匹配「${query.trim()}」的话题`} hint="换个关键词，或清空搜索看完整榜单。" />
                 ) : (
                   <div className="grid gap-3 sm:grid-cols-2">
-                    {hashtags.map((h, i) => (
+                    {hashtagsFiltered.map((h, i) => (
                       <div key={h.hashtag ?? i} className="rounded-2xl border border-hairline bg-white p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
