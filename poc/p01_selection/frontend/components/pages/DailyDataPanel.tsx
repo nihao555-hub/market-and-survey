@@ -18,6 +18,10 @@ const SOURCE_META: Record<string, { label: string; icon: React.ReactNode }> = {
   trend_douyin: { label: "抖音热榜", icon: <Flame className="h-3.5 w-3.5" /> },
   trend_weibo: { label: "微博热搜", icon: <Flame className="h-3.5 w-3.5" /> },
   trend_xiaohongshu: { label: "小红书热词", icon: <Flame className="h-3.5 w-3.5" /> },
+  trend_kuaishou: { label: "快手热榜", icon: <Flame className="h-3.5 w-3.5" /> },
+  trend_bilibili: { label: "B站热搜", icon: <Flame className="h-3.5 w-3.5" /> },
+  trend_twitter: { label: "X/Twitter 趋势", icon: <Flame className="h-3.5 w-3.5" /> },
+  trend_lemon8: { label: "Lemon8 热词", icon: <Flame className="h-3.5 w-3.5" /> },
   social_trends: { label: "社媒趋势", icon: <Flame className="h-3.5 w-3.5" /> },
 };
 const sourceMeta = (s: string) => SOURCE_META[s] ?? { label: s, icon: <Database className="h-3.5 w-3.5" /> };
@@ -98,7 +102,7 @@ export function DailyDataPanel() {
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-ink">实时数据刷新 · 真实数据底子</h2>
           <p className="mt-0.5 text-xs text-ink-subtle">
-            每 2 小时自动刷新一次：TikTok Shop 实时商品 + 社媒趋势（TikTok/抖音/微博/小红书）+ 搜索词/趋势，落库作为选品与调研的底子。
+            每 2 小时自动刷新一次：TikTok Shop 实时商品 + 社媒趋势（TikTok/抖音/微博/小红书/快手/B站/X/Lemon8）+ 搜索词/趋势，落库作为选品与调研的底子。
           </p>
         </div>
         <Button size="sm" loading={running} onClick={onRefresh} className="flex-shrink-0">

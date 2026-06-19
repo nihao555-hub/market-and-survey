@@ -473,12 +473,53 @@ def douyin_hot_search(limit: int = 30) -> list[dict]:
     return out[:limit]
 
 
-# 平台注册表：name → (中文标签, fetcher)
+def kuaishou_hot_list(limit: int = 30) -> list[dict]:
+    """快手热榜（热词 + 热度 + 浏览量）。"""
+    d = _get("/api/v1/kuaishou/web/fetch_kuaishou_hot_list_v2", params={"board_type": "1"})
+    hots = ((d or {}).get("data") or {}).get("hots") or []
+    out = [{"keyword": h.get("keyword"), "heat": h.get("hotValue"),
+            "views": h.get("viewCount")}
+           for h in hots if isinstance(h, dict) and h.get("keyword")]
+    return out[:limit]
+
+
+def bilibili_hot_search(limit: int = 30) -> list[dict]:
+    """B 站热搜榜（热词 + 热度分）。"""
+    d = _get("/api/v1/bilibili/web/fetch_hot_search", params={"limit": max(limit, 30)})
+    lst = ((((d or {}).get("data") or {}).get("data") or {}).get("trending") or {}).get("list") or []
+    out = [{"keyword": it.get("show_name") or it.get("keyword"), "heat": it.get("heat_score")}
+           for it in lst if isinstance(it, dict) and (it.get("show_name") or it.get("keyword"))]
+    return out[:limit]
+
+
+def twitter_trending(limit: int = 30) -> list[dict]:
+    """X / Twitter 全球趋势（默认美国）。"""
+    d = _get("/api/v1/twitter/web/fetch_trending", params={"country": "UnitedStates"})
+    trends = ((d or {}).get("data") or {}).get("trends") or []
+    out = [{"keyword": t.get("name"), "tag": t.get("context")}
+           for t in trends if isinstance(t, dict) and t.get("name")]
+    return out[:limit]
+
+
+def lemon8_hot_keywords(limit: int = 30) -> list[dict]:
+    """Lemon8 热搜词（字节跳动海外种草社区）。"""
+    d = _get("/api/v1/lemon8/app/fetch_hot_search_keywords")
+    words = (((d or {}).get("data") or {}).get("data") or {}).get("hot_words") or []
+    out = [{"keyword": w.get("query")} for w in words
+           if isinstance(w, dict) and w.get("query")]
+    return out[:limit]
+
+
+# 平台注册表：name → (中文标签, fetcher)。逐个用便宜调用实测可用后才登记。
 TREND_SOURCES: dict[str, tuple[str, Any]] = {
     "tiktok": ("TikTok 趋势搜索词", tiktok_trending_searchwords),
     "douyin": ("抖音热榜", douyin_hot_search),
     "weibo": ("微博热搜", weibo_hot_search),
     "xiaohongshu": ("小红书热词", xhs_trending),
+    "kuaishou": ("快手热榜", kuaishou_hot_list),
+    "bilibili": ("B站热搜", bilibili_hot_search),
+    "twitter": ("X/Twitter 趋势", twitter_trending),
+    "lemon8": ("Lemon8 热词", lemon8_hot_keywords),
 }
 
 
@@ -486,11 +527,13 @@ def social_trends(platforms: Optional[list[str]] = None, limit: int = 20) -> dic
     """聚合多平台实时社媒趋势。返回 {platform: {ok, label, items|error}}（逐平台容错）。"""
     platforms = platforms or list(TREND_SOURCES.keys())
     out: dict[str, dict] = {}
-    for plat in platforms:
+    for i, plat in enumerate(platforms):
         meta = TREND_SOURCES.get(plat)
         if not meta:
             continue
         label, fn = meta
+        if i:
+            time.sleep(0.4)  # 限流友好（微博等限 1 次/秒）
         try:
             items = fn(limit=limit)
             out[plat] = {"ok": True, "label": label, "items": items}

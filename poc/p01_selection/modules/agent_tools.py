@@ -2276,7 +2276,11 @@ def tool_tiktok_shop_reviews(product_id: str, region: str = "US", limit: int = 2
 
 
 def tool_social_trends(platforms: list = None, limit: int = 20) -> dict:
-    """跨平台实时社媒热搜/热词（tiktok/douyin/weibo/xiaohongshu）。看「今天大家在搜什么、什么在火」。"""
+    """跨平台实时社媒热搜/热词。看「今天大家在搜什么、什么在火」。
+
+    可选平台（不传则全抓）：tiktok / douyin / weibo / xiaohongshu / kuaishou /
+    bilibili / twitter（X，海外）/ lemon8（字节海外种草）。
+    """
     logger.info(f"🔧 social_trends(platforms={platforms}, limit={limit})")
     from modules import tikhub
     if not tikhub.is_configured():

@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { Flame, RefreshCw, Clock, Hash, Layers, Music2, Sparkles, MessageCircle, BookOpen } from "lucide-react";
+import { Flame, RefreshCw, Clock, Hash, Layers, Music2, Sparkles, MessageCircle, BookOpen, Video, Tv, Twitter, Citrus } from "lucide-react";
 import {
   fetchDailyRefreshStatus, fetchDataSnapshots,
   type DataSnapshot, type RefreshStatus,
@@ -20,6 +20,10 @@ const PLATFORMS: { source: string; label: string; icon: React.ReactNode; accent:
   { source: "trend_douyin", label: "抖音热榜", icon: <Sparkles className="h-4 w-4" />, accent: "text-rose-500" },
   { source: "trend_weibo", label: "微博热搜", icon: <MessageCircle className="h-4 w-4" />, accent: "text-orange-500" },
   { source: "trend_xiaohongshu", label: "小红书热词", icon: <BookOpen className="h-4 w-4" />, accent: "text-red-500" },
+  { source: "trend_kuaishou", label: "快手热榜", icon: <Video className="h-4 w-4" />, accent: "text-amber-500" },
+  { source: "trend_bilibili", label: "B站热搜", icon: <Tv className="h-4 w-4" />, accent: "text-sky-500" },
+  { source: "trend_twitter", label: "X / Twitter 趋势", icon: <Twitter className="h-4 w-4" />, accent: "text-blue-500" },
+  { source: "trend_lemon8", label: "Lemon8 热词", icon: <Citrus className="h-4 w-4" />, accent: "text-lime-500" },
 ];
 
 const STATUS_MAP: Record<string, { kind: StatusKind; label: string }> = {
@@ -86,7 +90,7 @@ export function SocialTrendsPage() {
       <PageHeader
         icon={<Flame className="h-5 w-5" />}
         title="社媒趋势"
-        subtitle="TikTok / 抖音 / 微博 / 小红书 实时热搜与趋势词，每 2 小时自动刷新一次，落库作为选品与内容的风向标。"
+        subtitle="TikTok / 抖音 / 微博 / 小红书 / 快手 / B站 / X / Lemon8 实时热搜与趋势词，每 2 小时自动刷新一次，落库作为选品与内容的风向标。"
         actions={
           <Button variant="secondary" size="sm" loading={reloading} onClick={reload}>
             <RefreshCw className="h-3.5 w-3.5" />刷新
