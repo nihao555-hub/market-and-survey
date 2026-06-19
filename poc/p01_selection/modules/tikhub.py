@@ -117,6 +117,42 @@ def _sku_price_info(p: dict) -> dict:
 
 
 # ─────────────────────── TikTok Shop（实时电商底盘）───────────────────────
+def _normalize_product(p: dict) -> dict:
+    """把一条 TikTok Shop 原始商品归一化（搜索/分类榜/热销榜共用同一字段 schema）。"""
+    price = p.get("product_price_info") or {}
+    rate = p.get("rate_info") or {}
+    sold = p.get("sold_info") or {}
+    seller = p.get("seller_info") or {}
+    skup = _sku_price_info(p)
+    sale = _num(price.get("sale_price_format") or price.get("sale_price_decimal"))
+    # 原价 / 折扣：优先用 SKU PriceInfo 的 origin_price（最准），仅当 > 现价时才认定为有折扣
+    origin = _num(skup.get("origin_price_format") or skup.get("origin_price_decimal"))
+    discount_pct: Optional[int] = None
+    if origin and sale and origin > sale:
+        discount_pct = round((origin - sale) / origin * 100)
+    else:
+        origin = None  # 无真实折扣则不展示原价，避免误导
+    return {
+        "product_id": p.get("product_id"),
+        "title": (p.get("title") or "").strip(),
+        "price": sale,
+        "original_price": origin,
+        "discount_pct": discount_pct,
+        "currency": price.get("currency_name") or "USD",
+        "currency_symbol": price.get("currency_symbol") or "$",
+        "rating": _num(rate.get("score")),
+        "review_count": int(_num(rate.get("review_count")) or 0),
+        "sold_count": sold.get("sold_count"),
+        "sku_count": len(p.get("sku_info") or []) or None,
+        "marketing_labels": _marketing_labels(p),
+        "shop_name": seller.get("shop_name"),
+        "seller_id": seller.get("seller_id"),
+        "shop_logo": _first_img(seller.get("shop_logo")),
+        "image": _first_img(p.get("image")),
+        "url": _product_url(p.get("seo_url"), p.get("product_id")),
+    }
+
+
 def shop_search(keyword: str, region: str = "US", limit: int = 20) -> list[dict]:
     """实时搜 TikTok Shop 商品。返回归一化商品列表（价格/评分/评论数/销量/店铺/图/链接）。"""
     d = _get("/api/v1/tiktok/shop/web/fetch_search_products_list_v2",
@@ -126,40 +162,196 @@ def shop_search(keyword: str, region: str = "US", limit: int = 20) -> list[dict]
         node = node.get(k) if isinstance(node, dict) else None
     comp = (node or {}).get("component_data") if isinstance(node, dict) else None
     prods = (comp or {}).get("products") or []
+    return [_normalize_product(p) for p in prods[:limit]]
+
+
+def _product_list_node(d: Any) -> list:
+    """分类榜 / 热销榜的商品列表都在 data.data.data.productList。"""
+    node: Any = d
+    for k in ("data", "data", "data"):
+        node = node.get(k) if isinstance(node, dict) else None
+    if isinstance(node, dict):
+        return node.get("productList") or node.get("products") or []
+    return []
+
+
+def fetch_products_category_list(region: str = "US") -> list[dict]:
+    """TikTok Shop 一级品类树（每个一级类带二级子类）。用于「按品类」选品的导航。"""
+    d = _get("/api/v1/tiktok/shop/web/fetch_products_category_list", {"region": region})
+    cats = ((d or {}).get("data") or {}).get("data") or []
+
+    def _norm_cat(node: dict) -> dict:
+        s = node.get("self") or {}
+        children = node.get("children") or []
+        return {
+            "category_id": s.get("category_id"),
+            "category_name": s.get("category_name"),
+            "category_name_en": s.get("category_name_en"),
+            "level": s.get("category_level"),
+            "is_leaf": s.get("is_leaf"),
+            "parent_category_id": s.get("parent_category_id"),
+            "children": [
+                {"category_id": (c.get("self") or {}).get("category_id"),
+                 "category_name": (c.get("self") or {}).get("category_name"),
+                 "is_leaf": (c.get("self") or {}).get("is_leaf")}
+                for c in children if isinstance(c, dict)
+            ],
+        }
+
+    return [_norm_cat(c) for c in cats if isinstance(c, dict)]
+
+
+def fetch_products_by_category(category_id: str, region: str = "US",
+                                limit: int = 20, offset: int = 0) -> list[dict]:
+    """某品类下的实时在售商品（同 shop_search 的归一化 schema）。用于「按品类 Top5/榜单」。"""
+    d = _get("/api/v1/tiktok/shop/web/fetch_products_by_category_id",
+             {"category_id": str(category_id), "region": region, "offset": str(offset)})
+    return [_normalize_product(p) for p in _product_list_node(d)[:limit]]
+
+
+def fetch_hot_selling_products(region: str = "US", limit: int = 20) -> list[dict]:
+    """TikTok Shop 实时热销榜（同 shop_search 的归一化 schema）。用于「实时爆品雷达」。"""
+    d = _get("/api/v1/tiktok/shop/web/fetch_hot_selling_products_list", {"region": region})
+    return [_normalize_product(p) for p in _product_list_node(d)[:limit]]
+
+
+# ─────────────────── 话题热度曲线（历史趋势的可用替代）+ 达人侦察 ───────────────────
+def trending_hashtags(time_range: int = 7, country: str = "US", limit: int = 10) -> list[dict]:
+    """TikTok Creative Center 热门话题榜。
+
+    用于「趋势探索 / 机会挖掘」：返回每个话题的浏览量(vv)、发布数、排名、
+    `popularity_curve`（time_range 天的时间序列，可看声量拐点）以及 `top_creators`
+    （顺带做达人侦察——官方 search_creators 已废弃，用这个替代）。
+    time_range 取值通常为 7 / 30 / 120 天。
+    """
+    d = _get("/api/v1/tiktok/ads/get_trends_hashtag_list",
+             {"time_range": str(time_range), "country_code": country, "limit": str(limit)})
+    items = ((d or {}).get("data") or {}).get("items") or []
     out: list[dict] = []
-    for p in prods[:limit]:
-        price = p.get("product_price_info") or {}
-        rate = p.get("rate_info") or {}
-        sold = p.get("sold_info") or {}
-        seller = p.get("seller_info") or {}
-        skup = _sku_price_info(p)
-        sale = _num(price.get("sale_price_format") or price.get("sale_price_decimal"))
-        # 原价 / 折扣：优先用 SKU PriceInfo 的 origin_price（最准），仅当 > 现价时才认定为有折扣
-        origin = _num(skup.get("origin_price_format") or skup.get("origin_price_decimal"))
-        discount_pct: Optional[int] = None
-        if origin and sale and origin > sale:
-            discount_pct = round((origin - sale) / origin * 100)
-        else:
-            origin = None  # 无真实折扣则不展示原价，避免误导
+    for it in items[:limit]:
+        if not isinstance(it, dict):
+            continue
+        curve = [{"t": pt.get("time") or pt.get("timestamp"), "v": _num(pt.get("value"))}
+                 for pt in (it.get("popularityCurve") or it.get("popularity_curve") or [])
+                 if isinstance(pt, dict)]
+        creators = []
+        for c in (it.get("topCreators") or it.get("top_creators") or [])[:5]:
+            if isinstance(c, dict):
+                creators.append({
+                    "nickname": c.get("nickName") or c.get("nickname") or c.get("name"),
+                    "avatar": c.get("avatarUrl") or c.get("avatar"),
+                    "followers": c.get("followerCount") or c.get("follower_count"),
+                })
         out.append({
-            "product_id": p.get("product_id"),
-            "title": (p.get("title") or "").strip(),
-            "price": sale,
-            "original_price": origin,
-            "discount_pct": discount_pct,
-            "currency": price.get("currency_name") or "USD",
-            "currency_symbol": price.get("currency_symbol") or "$",
-            "rating": _num(rate.get("score")),
-            "review_count": int(_num(rate.get("review_count")) or 0),
-            "sold_count": sold.get("sold_count"),
-            "sku_count": len(p.get("sku_info") or []) or None,
-            "marketing_labels": _marketing_labels(p),
-            "shop_name": seller.get("shop_name"),
-            "seller_id": seller.get("seller_id"),
-            "shop_logo": _first_img(seller.get("shop_logo")),
-            "image": _first_img(p.get("image")),
-            "url": _product_url(p.get("seo_url"), p.get("product_id")),
+            "hashtag": it.get("hashtagName") or it.get("hashtag_name"),
+            "hashtag_id": it.get("hashtagID") or it.get("hashtag_id"),
+            "views": it.get("vv"),
+            "publish_count": it.get("publishCnt") or it.get("publish_cnt"),
+            "rank": it.get("rankIndex") or it.get("rank_index"),
+            "popularity_curve": curve,
+            "top_creators": creators,
         })
+    return out
+
+
+# ─────────────────────── 需求验证层（Reddit / YouTube 口碑）───────────────────────
+def reddit_search(query: str, time_range: str = "year", sort: str = "relevance",
+                  limit: int = 10) -> list[dict]:
+    """Reddit 帖子搜索（真实用户讨论 = 需求/吐槽/比较的一手声音）。
+
+    用于「受众洞察 / 机会挖掘」的需求验证：返回标题、所在子版块、分数、评论数、
+    发帖时间、正文摘要与链接。time_range: hour/day/week/month/year/all；sort: relevance/hot/top/new。
+    """
+    d = _get("/api/v1/reddit/app/fetch_dynamic_search",
+             {"query": query, "search_type": "posts", "sort": sort, "time_range": time_range})
+    posts: list[dict] = []
+
+    def _walk(o: Any) -> None:
+        if isinstance(o, dict):
+            if o.get("__typename") == "SearchPost" and isinstance(o.get("post"), dict):
+                posts.append(o["post"])
+            for v in o.values():
+                _walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                _walk(v)
+
+    _walk((d or {}).get("data"))
+    out: list[dict] = []
+    for p in posts[:limit]:
+        sub = p.get("subreddit") or {}
+        content = p.get("content") or {}
+        body = content.get("markdown") if isinstance(content, dict) else None
+        out.append({
+            "title": (p.get("postTitle") or "").strip(),
+            "subreddit": sub.get("prefixedName") if isinstance(sub, dict) else None,
+            "subreddit_subscribers": (sub.get("subscribersCount") if isinstance(sub, dict) else None),
+            "score": p.get("score"),
+            "comments": p.get("commentCount"),
+            "created_at": p.get("createdAt"),
+            "snippet": (body or "")[:500] or None,
+            "url": p.get("url") or p.get("permalink"),
+        })
+    return [o for o in out if o["title"]]
+
+
+def _yt_text(v: Any) -> Optional[str]:
+    """YouTube innertube 文本字段：可能是 {simpleText} 或 {runs:[{text}]}。"""
+    if isinstance(v, str):
+        return v
+    if isinstance(v, dict):
+        if v.get("simpleText"):
+            return v["simpleText"]
+        runs = v.get("runs")
+        if isinstance(runs, list):
+            return "".join(r.get("text", "") for r in runs if isinstance(r, dict)) or None
+    return None
+
+
+def youtube_search(query: str, country: str = "US", language: str = "en",
+                   limit: int = 12) -> list[dict]:
+    """YouTube 视频搜索（测评/开箱 = 内容偏好 + 触达渠道信号）。
+
+    用于「受众洞察 / 竞品分析」：返回标题、频道、观看量、发布时间、时长、链接与描述摘要。
+    """
+    d = _get("/api/v1/youtube/web/get_general_search",
+             {"search_query": query, "country_code": country, "language_code": language})
+    vids: list[dict] = []
+
+    def _walk(o: Any) -> None:
+        if isinstance(o, dict):
+            if o.get("videoId") and ("title" in o):
+                vids.append(o)
+            for v in o.values():
+                _walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                _walk(v)
+
+    _walk((d or {}).get("data"))
+    out: list[dict] = []
+    seen: set[str] = set()
+    for v in vids:
+        vid = v.get("videoId")
+        if not vid or vid in seen:
+            continue
+        seen.add(vid)
+        snippets = v.get("detailedMetadataSnippets") or []
+        snip = None
+        if snippets and isinstance(snippets[0], dict):
+            snip = _yt_text(snippets[0].get("snippetText"))
+        out.append({
+            "video_id": vid,
+            "title": _yt_text(v.get("title")),
+            "channel": _yt_text(v.get("ownerText") or v.get("longBylineText")),
+            "views": _yt_text(v.get("viewCountText")),
+            "published": _yt_text(v.get("publishedTimeText")),
+            "length": _yt_text((v.get("lengthText") or {})),
+            "snippet": (snip or "")[:300] or None,
+            "url": f"https://www.youtube.com/watch?v={vid}",
+        })
+        if len(out) >= limit:
+            break
     return out
 
 
