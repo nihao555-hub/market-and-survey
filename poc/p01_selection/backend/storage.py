@@ -553,3 +553,16 @@ def list_latest_snapshots(tenant_id: str = "dev_tenant", *,
         if source:
             q = q.filter(DataSnapshot.source == source)
         return list(q.order_by(DataSnapshot.captured_at.asc()).limit(limit).all())
+
+
+def list_all_snapshots(tenant_id: str = "dev_tenant", *,
+                       source: Optional[str] = None,
+                       limit: int = 500) -> list[DataSnapshot]:
+    """列出所有刷新批次的快照（跨 run_id），按时间倒序，用于展示历史趋势。"""
+    with SessionLocal() as s:
+        q = (s.query(DataSnapshot)
+             .filter(DataSnapshot.tenant_id == tenant_id,
+                     DataSnapshot.real_data == True))
+        if source:
+            q = q.filter(DataSnapshot.source == source)
+        return list(q.order_by(DataSnapshot.captured_at.desc()).limit(limit).all())

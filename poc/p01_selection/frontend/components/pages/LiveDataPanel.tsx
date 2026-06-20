@@ -3,11 +3,12 @@ import React from "react";
 import {
   Database, ShoppingCart, Star, Store, Flame, Hash,
   TrendingUp, Package, Music2, Sparkles, MessageCircle,
-  BookOpen, Video, Tv, Twitter, Citrus,
+  BookOpen, Video, Tv, Twitter, Citrus, BarChart3,
 } from "lucide-react";
 import { fetchDataSnapshots, type DataSnapshot } from "@/lib/api";
 import type { ResearchKind } from "@/lib/agent-types";
 import { Panel, Skeleton, EmptyState, FilterTabs } from "./primitives";
+import { CategoryTrendTable } from "./CategoryTrendTable";
 import { cn } from "@/lib/utils";
 
 /* ─── 复用 CategoryRankPage 的类型 ─── */
@@ -59,15 +60,15 @@ function fmtInt(n?: number | null): string {
 }
 
 /* ─── 每种模式展示哪些数据 tab ─── */
-type DataTab = "products" | "hot" | "trends" | "hashtags";
+type DataTab = "products" | "hot" | "trends" | "hashtags" | "cat_trends";
 
 const MODE_TABS: Record<ResearchKind, DataTab[]> = {
-  market: ["products", "hot", "trends"],
-  trend: ["trends", "hashtags", "hot"],
-  competitor: ["hot", "products"],
-  audience: ["trends", "hashtags"],
-  opportunity: ["hot", "hashtags", "products"],
-  general: ["products", "hot", "trends", "hashtags"],
+  market: ["products", "hot", "cat_trends", "trends"],
+  trend: ["trends", "hashtags", "hot", "cat_trends"],
+  competitor: ["hot", "products", "cat_trends"],
+  audience: ["trends", "hashtags", "cat_trends"],
+  opportunity: ["hot", "hashtags", "products", "cat_trends"],
+  general: ["products", "hot", "trends", "hashtags", "cat_trends"],
 };
 
 const TAB_META: Record<DataTab, { label: string; icon: React.ReactNode }> = {
@@ -75,6 +76,7 @@ const TAB_META: Record<DataTab, { label: string; icon: React.ReactNode }> = {
   hot: { label: "\u5b9e\u65f6\u70ed\u9500", icon: <Flame className="h-3.5 w-3.5" /> },
   trends: { label: "\u793e\u5a92\u8d8b\u52bf", icon: <TrendingUp className="h-3.5 w-3.5" /> },
   hashtags: { label: "\u70ed\u95e8\u8bdd\u9898", icon: <Hash className="h-3.5 w-3.5" /> },
+  cat_trends: { label: "\u54c1\u7c7b\u8d8b\u52bf", icon: <BarChart3 className="h-3.5 w-3.5" /> },
 };
 
 /** 各研究模式页内嵌的「今日实时数据」面板 */
@@ -357,6 +359,11 @@ export function LiveDataPanel({ kind }: { kind: ResearchKind }) {
                 })}
               </div>
             )
+          )}
+
+          {/* 品类趋势分析 */}
+          {activeTab === "cat_trends" && (
+            <CategoryTrendTable />
           )}
 
           {/* 热门话题表 */}

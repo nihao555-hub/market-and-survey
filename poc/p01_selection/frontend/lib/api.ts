@@ -229,6 +229,19 @@ export async function fetchDataSnapshots(opts?: {
   return d.dataSnapshots || [];
 }
 
+export async function fetchAllSnapshots(opts?: {
+  source?: string;
+  limit?: number;
+}): Promise<DataSnapshot[]> {
+  const d = await gqlRequest<{ allSnapshots: DataSnapshot[] }>(
+    `query($source: String, $limit: Int!) {
+       allSnapshots(source: $source, limit: $limit) { ${SNAPSHOT_FIELDS} }
+     }`,
+    { source: opts?.source ?? null, limit: opts?.limit ?? 500 }
+  );
+  return d.allSnapshots || [];
+}
+
 export async function triggerDailyRefresh(): Promise<boolean> {
   const d = await gqlRequest<{ triggerDailyRefresh: boolean }>(
     `mutation { triggerDailyRefresh }`

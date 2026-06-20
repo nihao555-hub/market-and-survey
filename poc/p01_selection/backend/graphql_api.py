@@ -289,6 +289,16 @@ class Query:
         return [_snapshot_type(d) for d in rows]
 
     @strawberry.field
+    def all_snapshots(
+        self, tenant_id: str = "dev_tenant",
+        source: typing.Optional[str] = None,
+        limit: int = 500,
+    ) -> typing.List[DataSnapshotType]:
+        """所有刷新批次的快照（跨 run_id），用于展示历史趋势。"""
+        rows = st.list_all_snapshots(tenant_id, source=source, limit=limit)
+        return [_snapshot_type(d) for d in rows]
+
+    @strawberry.field
     def daily_refresh_status(self, tenant_id: str = "dev_tenant") -> DailyRefreshStatus:
         """最近一次每日刷新的状态摘要（时间/词表/各状态计数/Tier2 通道是否就绪）。"""
         from backend.daily_refresh import get_refresh_state

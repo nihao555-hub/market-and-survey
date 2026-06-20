@@ -12,6 +12,7 @@ import {
   PageContainer, PageHeader, StatTile, Button, EmptyState, Skeleton, FilterTabs,
 } from "./primitives";
 import { cn } from "@/lib/utils";
+import { CategoryTrendTable } from "./CategoryTrendTable";
 
 // 后端 daily_refresh 落库时的固定 term 标签
 const HOT_SELLING_TERM = "🛒 实时热销榜";
@@ -272,6 +273,11 @@ export function CategoryRankPage() {
             />
           ) : (
             <>
+              {/* 品类趋势分析表格（跨日期对比） */}
+              <div className="mb-5">
+                <CategoryTrendTable />
+              </div>
+
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <FilterTabs tabs={tabs} value={tab} onChange={setTab} />
                 <div className="relative w-full sm:w-64">
