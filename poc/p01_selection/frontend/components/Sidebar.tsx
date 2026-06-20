@@ -28,33 +28,33 @@ type NavGroup = { title?: string; items: NavItem[] };
 
 const NAV: NavGroup[] = [
   {
-    items: [{ key: "home", label: "Workspace", icon: <LayoutGrid className="h-4 w-4" /> }],
+    items: [{ key: "home", label: "工作台", icon: <LayoutGrid className="h-4 w-4" /> }],
   },
   {
-    title: "Research",
+    title: "调研",
     items: [
-      { key: "market", label: "Market scan", icon: <Search className="h-4 w-4" /> },
-      { key: "trend", label: "Trend analysis", icon: <TrendingUp className="h-4 w-4" /> },
-      { key: "competitor", label: "Competitors", icon: <Swords className="h-4 w-4" /> },
-      { key: "audience", label: "Audience", icon: <Users className="h-4 w-4" /> },
-      { key: "opportunity", label: "Opportunities", icon: <Lightbulb className="h-4 w-4" /> },
+      { key: "market", label: "市场扫描", icon: <Search className="h-4 w-4" /> },
+      { key: "trend", label: "趋势分析", icon: <TrendingUp className="h-4 w-4" /> },
+      { key: "competitor", label: "竞品分析", icon: <Swords className="h-4 w-4" /> },
+      { key: "audience", label: "受众分析", icon: <Users className="h-4 w-4" /> },
+      { key: "opportunity", label: "机会发现", icon: <Lightbulb className="h-4 w-4" /> },
     ],
   },
   {
-    title: "Tasks",
+    title: "任务",
     items: [
-      { key: "tasks", label: "My tasks", icon: <ListTodo className="h-4 w-4" /> },
-      { key: "reports", label: "Reports", icon: <FileText className="h-4 w-4" /> },
-      { key: "favorites", label: "Favorites", icon: <Star className="h-4 w-4" /> },
-      { key: "trash", label: "Trash", icon: <Trash2 className="h-4 w-4" /> },
+      { key: "tasks", label: "我的任务", icon: <ListTodo className="h-4 w-4" /> },
+      { key: "reports", label: "报告", icon: <FileText className="h-4 w-4" /> },
+      { key: "favorites", label: "收藏", icon: <Star className="h-4 w-4" /> },
+      { key: "trash", label: "回收站", icon: <Trash2 className="h-4 w-4" /> },
     ],
   },
   {
-    title: "Data",
+    title: "数据",
     items: [
-      { key: "category", label: "Categories", icon: <LayoutList className="h-4 w-4" /> },
-      { key: "social", label: "Social trends", icon: <Flame className="h-4 w-4" /> },
-      { key: "monitor", label: "Monitors", icon: <BellRing className="h-4 w-4" /> },
+      { key: "category", label: "品类库", icon: <LayoutList className="h-4 w-4" /> },
+      { key: "social", label: "社交趋势", icon: <Flame className="h-4 w-4" /> },
+      { key: "monitor", label: "监控", icon: <BellRing className="h-4 w-4" /> },
     ],
   },
 ];
@@ -87,7 +87,7 @@ export function Sidebar() {
           className="flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-[13px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50 active:bg-neutral-100"
         >
           <Plus className="h-3.5 w-3.5" />
-          New research
+          新建调研
         </button>
       </div>
 
@@ -134,14 +134,14 @@ export function Sidebar() {
           )}
         >
           <Settings className={cn("h-4 w-4", active === "settings" ? "text-neutral-900" : "text-neutral-400")} />
-          Settings
+          设置
         </button>
         <button
           onClick={() => { clearAuth(); window.location.href = "/"; }}
           className="flex w-full items-center gap-2.5 rounded-md px-2 py-[7px] text-[13px] text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900 transition-colors"
         >
           <LogOut className="h-4 w-4 text-neutral-400" />
-          Log out
+          退出
         </button>
       </div>
     </aside>

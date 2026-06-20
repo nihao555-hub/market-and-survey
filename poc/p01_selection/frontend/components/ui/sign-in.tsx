@@ -161,13 +161,13 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
                   <button type="submit" disabled={loading}
                     className="animate-element animate-delay-400 w-full rounded-lg bg-neutral-900 py-3.5 text-[14px] font-medium text-white hover:bg-neutral-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><KeyRound className="w-4 h-4" /> Verify & sign in</>}
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><KeyRound className="w-4 h-4" /> 验证并登录</>}
                   </button>
                 </form>
 
                 <p className="animate-element animate-delay-500 text-center text-sm text-muted-foreground">
-  {countdown > 0 ? `Resend in ${countdown}s` : (
-                    <button onClick={handleResend} className="text-neutral-900 hover:underline">Resend code</button>
+  {countdown > 0 ? `${countdown}秒后可重发` : (
+                    <button onClick={handleResend} className="text-neutral-900 hover:underline">重新发送验证码</button>
                   )}
                 </p>
               </>
@@ -176,13 +176,13 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               <>
                 <h1 className="animate-element animate-delay-100 text-[28px] md:text-[32px] font-semibold leading-tight tracking-tight">
                   {isLogin ? (
-                    <span className="text-neutral-900">Welcome back</span>
+                    <span className="text-neutral-900">欢迎回来</span>
                   ) : (
-                    <span className="text-neutral-900">Create your account</span>
+                    <span className="text-neutral-900">创建你的账户</span>
                   )}
                 </h1>
                 <p className="animate-element animate-delay-200 text-neutral-500 text-[14px]">
-                  {isLogin ? "Sign in to continue your product research" : "Free to start. AI-powered product selection."}
+                  {isLogin ? "登录以继续你的选品调研" : "免费开始。AI 驱动的智能选品。"}
                 </p>
 
                 {/* Login tab switcher */}
@@ -190,11 +190,11 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                   <div className="animate-element animate-delay-200 flex rounded-lg border border-neutral-200 p-0.5 bg-neutral-50">
                     <button type="button" onClick={() => setLoginTab("password")}
                       className={`flex-1 rounded-md py-2 text-[13px] font-medium transition-all ${loginTab === "password" ? "bg-white shadow-sm text-neutral-900" : "text-neutral-500 hover:text-neutral-900"}`}>
-                      Password
+                      密码登录
                     </button>
                     <button type="button" onClick={() => setLoginTab("code")}
                       className={`flex-1 rounded-md py-2 text-[13px] font-medium transition-all ${loginTab === "code" ? "bg-white shadow-sm text-neutral-900" : "text-neutral-500 hover:text-neutral-900"}`}>
-                      Email code
+                      邮箱验证码
                     </button>
                   </div>
                 )}
@@ -258,7 +258,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                         <span className="text-foreground/90">保持登录</span>
                       </label>
                       <button type="button" onClick={onResetPassword} className="hover:underline text-neutral-900 transition-colors text-[13px]">
-                        Forgot password?
+                        忘记密码？
                       </button>
                     </div>
                   )}
@@ -267,7 +267,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                     className={`animate-element ${isLogin ? "animate-delay-600" : "animate-delay-600"} w-full rounded-lg bg-neutral-900 py-3.5 text-[14px] font-medium text-white hover:bg-neutral-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2`}>
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                       <>
-                        {isLogin ? (loginTab === "code" ? "Send code" : "Sign in") : "Create account"}
+                        {isLogin ? (loginTab === "code" ? "发送验证码" : "登录") : "创建账户"}
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
@@ -276,9 +276,9 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
                 <p className="animate-element animate-delay-800 text-center text-[13px] text-neutral-500">
                   {isLogin ? (
-                    <>Don&apos;t have an account? <button onClick={onSwitchMode} className="text-neutral-900 font-medium hover:underline transition-colors">Sign up</button></>
+                    <>还没有账户？ <button onClick={onSwitchMode} className="text-neutral-900 font-medium hover:underline transition-colors">注册</button></>
                   ) : (
-                    <>Already have an account? <button onClick={onSwitchMode} className="text-neutral-900 font-medium hover:underline transition-colors">Sign in</button></>
+                    <>已有账户？ <button onClick={onSwitchMode} className="text-neutral-900 font-medium hover:underline transition-colors">登录</button></>
                   )}
                 </p>
               </>

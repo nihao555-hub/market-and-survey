@@ -32,11 +32,11 @@ import { HotProductsSection } from "@/components/HotProductsSection";
 import { formatDate, parseTitle } from "@/lib/thread-format";
 
 const TOOLS: { key: PageKey; label: string; desc: string; icon: React.ReactNode }[] = [
-  { key: "market", label: "Market scan", desc: "Size / trends / competitive landscape", icon: <Search className="h-4 w-4" /> },
-  { key: "trend", label: "Trend analysis", desc: "Google Trends & social signals", icon: <TrendingUp className="h-4 w-4" /> },
-  { key: "competitor", label: "Competitors", desc: "Listing & pricing deep-dive", icon: <Swords className="h-4 w-4" /> },
-  { key: "audience", label: "Audience", desc: "Target persona insights", icon: <Users className="h-4 w-4" /> },
-  { key: "opportunity", label: "Opportunities", desc: "Gaps & blue ocean niches", icon: <Lightbulb className="h-4 w-4" /> },
+  { key: "market", label: "市场扫描", desc: "规模 / 趋势 / 竞争格局", icon: <Search className="h-4 w-4" /> },
+  { key: "trend", label: "趋势分析", desc: "Google Trends 与社交信号", icon: <TrendingUp className="h-4 w-4" /> },
+  { key: "competitor", label: "竞品分析", desc: "Listing 与定价深度研究", icon: <Swords className="h-4 w-4" /> },
+  { key: "audience", label: "受众分析", desc: "目标用户画像洞察", icon: <Users className="h-4 w-4" /> },
+  { key: "opportunity", label: "机会发现", desc: "差异化与蓝海市场", icon: <Lightbulb className="h-4 w-4" /> },
 ];
 
 export function WorkspaceHome() {
@@ -99,9 +99,9 @@ export function WorkspaceHome() {
     <div className="mx-auto w-full max-w-[1100px]">
       {/* Hero research input */}
       <section className="rounded-xl border border-neutral-200 bg-white p-6">
-        <h1 className="text-[20px] font-semibold text-neutral-900">What would you like to research?</h1>
+        <h1 className="text-[20px] font-semibold text-neutral-900">你想调研什么？</h1>
         <p className="mt-1 text-[13px] text-neutral-500">
-          Describe a product category or market. AI will automatically complete trend, competitor, pain-point, profit, and IP risk analysis.
+          输入产品品类或市场。AI 将自动完成趋势、竞品、痛点、利润和知识产权风险分析。
         </p>
 
         <div className="mt-4 flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 p-1">
@@ -109,7 +109,7 @@ export function WorkspaceHome() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && start(input)}
-            placeholder="e.g. smart plugs, pet water fountain, camping gear, US market"
+            placeholder="例如：智能插座、宠物饮水机、户外露营装备、美国市场"
             className="min-w-0 flex-1 bg-transparent px-3 py-2 text-[13px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
           />
           <button
@@ -129,11 +129,11 @@ export function WorkspaceHome() {
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-[12px] font-medium text-neutral-600">
             <Clock className="h-3 w-3 text-neutral-400" />
-            Last 30 days
+            近 30 天
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-[12px] font-medium text-neutral-600">
             <Database className="h-3 w-3 text-neutral-400" />
-            All sources
+            所有数据源
           </span>
         </div>
       </section>
@@ -144,7 +144,7 @@ export function WorkspaceHome() {
       {/* Recent categories */}
       {recentCategories.length > 0 && (
         <section className="mt-5">
-          <div className="mb-2 text-[12px] font-medium text-neutral-500">Recent categories</div>
+          <div className="mb-2 text-[12px] font-medium text-neutral-500">最近调研品类</div>
           <div className="flex flex-wrap items-center gap-2">
             {recentCategories.map((label) => (
               <button
@@ -161,7 +161,7 @@ export function WorkspaceHome() {
 
       {/* Research tools */}
       <section className="mt-6">
-        <h2 className="text-[14px] font-semibold text-neutral-900 mb-3">Research tools</h2>
+        <h2 className="text-[14px] font-semibold text-neutral-900 mb-3">调研工具</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {TOOLS.map((t) => (
             <button
@@ -184,17 +184,17 @@ export function WorkspaceHome() {
       {/* Recent tasks */}
       <section className="mt-6 rounded-xl border border-neutral-200 bg-white overflow-hidden">
         <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-3">
-          <h2 className="text-[14px] font-semibold text-neutral-900">Recent tasks</h2>
-          <button onClick={() => setPage("tasks")} className="text-[12px] text-neutral-500 hover:text-neutral-900 transition-colors">View all</button>
+          <h2 className="text-[14px] font-semibold text-neutral-900">最近任务</h2>
+          <button onClick={() => setPage("tasks")} className="text-[12px] text-neutral-500 hover:text-neutral-900 transition-colors">查看全部</button>
         </div>
         {recentRows.length === 0 ? (
           <div className="flex flex-col items-center justify-center px-5 py-14 text-center">
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-400">
               <Inbox className="h-5 w-5" />
             </span>
-            <div className="mt-3 text-[13px] font-medium text-neutral-900">No research tasks yet</div>
+            <div className="mt-3 text-[13px] font-medium text-neutral-900">还没有调研任务</div>
             <div className="mt-1 max-w-sm text-[12px] text-neutral-500">
-              Enter a category above to start your first research. Results will appear here automatically.
+              在上方输入品类开始你的第一次调研。结果将自动显示在此处。
             </div>
           </div>
         ) : (
@@ -202,10 +202,10 @@ export function WorkspaceHome() {
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-b border-neutral-100 bg-neutral-50 text-left text-[11px] text-neutral-500">
-                  <th className="px-5 py-2.5 font-medium">Name</th>
-                  <th className="px-3 py-2.5 font-medium">Market</th>
-                  <th className="px-3 py-2.5 font-medium">Created</th>
-                  <th className="px-3 py-2.5 font-medium">Status</th>
+                  <th className="px-5 py-2.5 font-medium">名称</th>
+                  <th className="px-3 py-2.5 font-medium">市场</th>
+                  <th className="px-3 py-2.5 font-medium">创建时间</th>
+                  <th className="px-3 py-2.5 font-medium">状态</th>
                   <th className="px-5 py-2.5 text-right font-medium"></th>
                 </tr>
               </thead>
@@ -228,12 +228,12 @@ export function WorkspaceHome() {
                       {t.state === "running" ? (
                         <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-neutral-600">
                           <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-400" />
-                          Analyzing
+                          分析中
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-green-700">
                           <CheckCircle2 className="h-3.5 w-3.5" />
-                          Done
+                          已完成
                         </span>
                       )}
                     </td>
