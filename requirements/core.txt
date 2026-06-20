@@ -21,6 +21,7 @@ lxml==6.1.1
 # 趋势 / 关键词
 pytrends==4.9.2
 thefuzz==0.22.1
+ddgs>=6.0
 
 # 图表 / 报告导出（一页纸 PNG + PDF）
 matplotlib==3.11.0

@@ -155,14 +155,27 @@ def _normalize_product(p: dict) -> dict:
 
 def shop_search(keyword: str, region: str = "US", limit: int = 20) -> list[dict]:
     """实时搜 TikTok Shop 商品。返回归一化商品列表（价格/评分/评论数/销量/店铺/图/链接）。"""
-    d = _get("/api/v1/tiktok/shop/web/fetch_search_products_list_v2",
-             {"search_word": keyword, "region": region})
-    node: Any = d
-    for k in ("data", "data", "data"):
-        node = node.get(k) if isinstance(node, dict) else None
-    comp = (node or {}).get("component_data") if isinstance(node, dict) else None
-    prods = (comp or {}).get("products") or []
-    return [_normalize_product(p) for p in prods[:limit]]
+    endpoints = [
+        "/api/v1/tiktok_shop/web/fetch_search_products_list_v2",
+        "/api/v1/tiktok/shop/web/fetch_search_products_list_v2",
+    ]
+    last_err: Exception | None = None
+    for path in endpoints:
+        try:
+            d = _get(path, {"search_word": keyword, "region": region})
+            node: Any = d
+            for k in ("data", "data", "data"):
+                node = node.get(k) if isinstance(node, dict) else None
+            comp = (node or {}).get("component_data") if isinstance(node, dict) else None
+            prods = (comp or {}).get("products") or []
+            result = [_normalize_product(p) for p in prods[:limit]]
+            if result:
+                return result
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+    if last_err:
+        raise last_err
+    return []
 
 
 def _product_list_node(d: Any) -> list:
@@ -212,10 +225,15 @@ def fetch_products_by_category(category_id: str, region: str = "US",
 def fetch_hot_selling_products(region: str = "US", limit: int = 20) -> list[dict]:
     """TikTok Shop 实时热销榜（同 shop_search 的归一化 schema）。用于「实时爆品雷达」。
 
-    先尝试 web 端点；若返回 400 则退回 app 端点（传 count 参数）。
-    两者都失败时上抛让调用方标 error。
+    按优先级尝试多个端点版本（API 版本迭代可能导致旧端点 404）。
+    全部失败时回退到 shop_search 热度排序。
     """
     endpoints = [
+        # v2 新端点
+        ("/api/v1/tiktok_shop/web/fetch_hot_selling_products_list", {"region": region}),
+        ("/api/v1/tiktok_shop/app/fetch_hot_selling_products_list",
+         {"region": region, "count": str(limit)}),
+        # v1 旧端点（可能已废弃但保留兼容）
         ("/api/v1/tiktok/shop/web/fetch_hot_selling_products_list", {"region": region}),
         ("/api/v1/tiktok/shop/app/fetch_hot_selling_products_list",
          {"region": region, "count": str(limit)}),
@@ -229,6 +247,13 @@ def fetch_hot_selling_products(region: str = "US", limit: int = 20) -> list[dict
                 return prods
         except Exception as e:  # noqa: BLE001
             last_err = e
+    # 全部端点失败时，回退到 shop_search（空词=热门）作为替代
+    try:
+        prods = shop_search("", region=region, limit=limit)
+        if prods:
+            return prods
+    except Exception as e:  # noqa: BLE001
+        last_err = last_err or e
     if last_err:
         raise last_err
     return []

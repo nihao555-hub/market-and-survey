@@ -1004,7 +1004,7 @@ def _parse_bought_count(raw: str) -> int:
 # Agent 反复在同一个 partial/坏掉的平台试错时，设置硬上限节省时间
 # 单个平台连续失败 ≥ N 次后，本 case 内不再真请求，直接返回 cooldown_skipped
 _PLATFORM_FAIL_COUNT: dict[str, int] = {}
-_PLATFORM_FAIL_THRESHOLD = 2  # 连续失败 N 次后熔断
+_PLATFORM_FAIL_THRESHOLD = 4  # 连续失败 N 次后熔断（从 2 提高到 4，给引擎链更多机会）
 _FAIL_COOLDOWN_REASON = "platform_fail_cooldown"
 
 
