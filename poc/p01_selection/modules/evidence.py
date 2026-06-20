@@ -111,7 +111,7 @@ def capture_evidence_for_asin(asin: str, use_proxy: bool = True, geo: str = "US"
     """对一个候选 Amazon ASIN 抓三类证据：① 详情页截图 ② 搜索页截图 ③ 主图 URL（嵌报告用）。
     支持多站（US/UK/DE/FR/JP/IN/MX/BR 等），按 geo 选 amazon 域名。
     
-    **C 优化（2026-06）**：dp 截图 / search 截图 / 主图抓取三路并发（独立 driver/HTTP 连接），
+    **C 优化（2026-06）**：dp 截图 / search 截图 / 主图获取三路并发（独立 driver/HTTP 连接），
     单 ASIN 从 ~90s 降到 ~40s。
     """
     from concurrent.futures import ThreadPoolExecutor
@@ -165,7 +165,7 @@ def capture_evidence_for_url(listing_url: str, save_name: str = None,
     （Lazada SG / Yandex Market / MercadoLibre MX/BR 等）。
     返回 listing 截图 + 主图 URL（如能抓到）。
     
-    **C 优化（2026-06）**：截图 + 主图抓取并发。
+    **C 优化（2026-06）**：截图 + 主图获取并发。
     """
     from concurrent.futures import ThreadPoolExecutor
     if not save_name:

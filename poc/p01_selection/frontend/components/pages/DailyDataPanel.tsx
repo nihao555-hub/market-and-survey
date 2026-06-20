@@ -29,9 +29,9 @@ const sourceMeta = (s: string) => SOURCE_META[s] ?? { label: s, icon: <Database 
 
 // 快照状态 → 徽章样式
 const STATUS_MAP: Record<string, { kind: StatusKind; label: string }> = {
-  ok: { kind: "done", label: "已抓取" },
+  ok: { kind: "done", label: "已获取" },
   empty: { kind: "neutral", label: "暂无数据" },
-  error: { kind: "error", label: "抓取失败" },
+  error: { kind: "error", label: "获取失败" },
   unavailable: { kind: "pending", label: "通道未就绪" },
 };
 const statusInfo = (s: string) => STATUS_MAP[s] ?? { kind: "neutral" as StatusKind, label: s };
@@ -147,7 +147,7 @@ export function DailyDataPanel() {
             <EmptyState
               icon={<Database className="h-6 w-6" />}
               title="还没有数据快照"
-              hint="点击右上角「立即刷新」抓取一次真实数据，或等待每 2 小时一次的自动刷新。"
+              hint="点击右上角「立即刷新」获取一次真实数据，或等待每 2 小时一次的自动刷新。"
             />
           ) : (
             <div className="space-y-3">

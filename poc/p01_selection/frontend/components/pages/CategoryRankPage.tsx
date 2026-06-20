@@ -341,7 +341,7 @@ export function CategoryRankPage() {
             <EmptyState
               icon={<LayoutList className="h-6 w-6" />}
               title="还没有榜单数据"
-              hint="等待每日自动刷新，或在「监控与订阅」页点击「立即刷新」抓取一次真实榜单。"
+              hint="等待每日自动刷新，或点击「立即刷新」获取一次真实榜单数据。"
             />
           ) : (
             <>

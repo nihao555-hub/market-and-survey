@@ -52,11 +52,11 @@ const NAV: NavGroup[] = [
     ],
   },
   {
-    title: "榜单与监控",
+    title: "榜单与订阅",
     items: [
       { key: "category", label: "品类榜单", icon: <LayoutList className="h-4 w-4" /> },
       { key: "social", label: "社媒趋势", icon: <Flame className="h-4 w-4" /> },
-      { key: "monitor", label: "监控与订阅", icon: <BellRing className="h-4 w-4" /> },
+      { key: "monitor", label: "订阅管理", icon: <BellRing className="h-4 w-4" /> },
     ],
   },
 ];

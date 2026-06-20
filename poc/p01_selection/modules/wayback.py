@@ -71,7 +71,7 @@ def get_wayback_snapshots(url: str, limit: int = 30, from_year: int = 2020) -> d
 
 
 def fetch_wayback_snapshot(snapshot_url: str) -> dict:
-    """抓取一个特定快照的 HTML（用于对比历史标题/价格）"""
+    """获取一个特定快照的 HTML（用于对比历史标题/价格）"""
     try:
         r = requests.get(snapshot_url, timeout=30, headers={"User-Agent": "Mozilla/5.0"})
         if r.status_code != 200:

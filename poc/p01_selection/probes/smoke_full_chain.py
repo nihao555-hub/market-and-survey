@@ -53,7 +53,7 @@ for asin in test_asins:
         buf.append(f"- ⚠ error: {rev['error']}")
 
 # 4. 1688 真实采购成本
-buf.append("\n## 4. 1688 采购成本（真实抓取，失败时返回 error）")
+buf.append("\n## 4. 1688 采购成本（真实获取，失败时返回 error）")
 sp = get_real_procurement_cost("蓝牙耳机", use_proxy=False)
 buf.append(f"```json\n{json.dumps(sp, ensure_ascii=False, indent=2)[:1000]}\n```")
 

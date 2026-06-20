@@ -17,7 +17,7 @@ const PAGE_TITLES: Record<PageKey, string> = {
   trash: "回收站",
   social: "社媒趋势",
   category: "品类榜单",
-  monitor: "监控与订阅",
+  monitor: "订阅管理",
   settings: "设置",
 };
 

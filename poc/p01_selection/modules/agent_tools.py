@@ -577,7 +577,7 @@ def tool_validate_keywords(keywords: list[str], platform: str = "amazon",
        "geladeira em ingles=冰箱用英语怎么说"类查资料词）
     3. 综合打分 = 真实商品数(主) + 相关度(辅)，降序返回
 
-    返回每个词的 real_product_count / relevance / verdict（keep/drop）+ 推荐用哪些词正式抓取。
+    返回每个词的 real_product_count / relevance / verdict（keep/drop）+ 推荐用哪些词正式获取。
     """
     logger.info(f"🔧 validate_keywords({len(keywords)} 词, platform={platform})")
     if not keywords:
@@ -635,7 +635,7 @@ def tool_validate_keywords(keywords: list[str], platform: str = "amazon",
                      "⚠️ 候选词全部验证失败（搜不到对口商品或跑偏），"
                      "请换种子词/换平台/换本地语言词重新扩展"),
         "_method": "真实商品数(70%) + thefuzz 语义相关度(30%) 综合打分；"
-                   "keep = 真搜到≥min_products件 且 相关度≥55，杜绝跑偏词进入正式抓取",
+                   "keep = 真搜到≥min_products件 且 相关度≥55，杜绝跑偏词进入正式获取",
     }
 
 
@@ -1768,7 +1768,7 @@ def tool_validate_candidate(asin: str) -> dict:
     if not item:
         return {
             "asin": asin, "valid": False,
-            "error": f"ASIN {asin} 不在池中。候选品必须来自真实抓取，请先调用 get_bestsellers / search_products / get_movers_shakers 来扩充 ASIN 池。",
+            "error": f"ASIN {asin} 不在池中。候选品必须来自真实获取，请先调用 get_bestsellers / search_products / get_movers_shakers 来扩充 ASIN 池。",
         }
     return {"asin": asin, "valid": True, "real_data": item}
 
@@ -1799,7 +1799,7 @@ def tool_provide_procurement_cost(
     notes: str = "",
 ) -> dict:
     """
-    **用户手工提供真实采购成本**，用于 1688 抓取失败时的合法兜底。
+    **用户手工提供真实采购成本**，用于 1688 获取失败时的合法兜底。
     
     使用场景：
     - Agent 调用 get_real_procurement_cost / search_1688 全失败时（被验证码挡）
@@ -2621,7 +2621,7 @@ TOOLS_SCHEMA = [
         }, "required": ["products"]}}},
     {"type": "function", "function": {
         "name": "get_reviews",
-        "description": "抓单个 Amazon 商品的 AI 评论摘要 + 8 条代表评论（详情页公开抓取）",
+        "description": "抓单个 Amazon 商品的 AI 评论摘要 + 8 条代表评论（详情页公开获取）",
         "parameters": {"type": "object", "properties": {
             "asin": {"type": "string"}
         }, "required": ["asin"]}}},
@@ -2633,7 +2633,7 @@ TOOLS_SCHEMA = [
                        "description": "ASIN 列表，从 BSR 或 search_products 拿到，建议 25-30 个"},
             "max_total": {"type": "integer", "description": "评论总数上限，默认 500"},
             "concurrency": {"type": "integer", "default": 8,
-                              "description": "并发抓取线程数（D 优化）。默认 8，最大建议 12"}
+                              "description": "并发获取线程数（D 优化）。默认 8，最大建议 12"}
         }, "required": ["asins"]}}},
     {"type": "function", "function": {
         "name": "analyze_reviews",
@@ -2756,7 +2756,7 @@ TOOLS_SCHEMA = [
         }, "required": ["keyword"]}}},
     {"type": "function", "function": {
         "name": "provide_procurement_cost",
-        "description": "**用户在对话中提供采购成本时调用**。当用户回复'采购成本是 $X，来自 PingPong 报价单 / 工厂订单 #YYY' 这类信息时，把它登记进会话。登记后即可用此值+source_label 走 full_cost_breakdown。这是 1688 抓取失败时的合法兜底。",
+        "description": "**用户在对话中提供采购成本时调用**。当用户回复'采购成本是 $X，来自 PingPong 报价单 / 工厂订单 #YYY' 这类信息时，把它登记进会话。登记后即可用此值+source_label 走 full_cost_breakdown。这是 1688 获取失败时的合法兜底。",
         "parameters": {"type": "object", "properties": {
             "procurement_cost_usd": {"type": "number", "description": "采购成本（USD），必须 > 0"},
             "source_label": {"type": "string", "description": "来源凭证。可以是 1688 URL、'user-input: 报价单标识'、订单号等。不能为空。"},
@@ -2877,7 +2877,7 @@ TOOLS_SCHEMA = [
         }, "required": ["keywords"]}}},
     {"type": "function", "function": {
         "name": "get_amazon_product_details_api",
-        "description": "**真实商品详情 API**（RapidAPI Real-Time Amazon Data）：真实 BSR/月销 sales_volume/评分/评论数/价格。需配 RAPIDAPI_KEY（免费档~100-500次/月）；未配置返回 available=False，改用 capture_evidence 抓取。利润测算需要真实月销时用本工具。",
+        "description": "**真实商品详情 API**（RapidAPI Real-Time Amazon Data）：真实 BSR/月销 sales_volume/评分/评论数/价格。需配 RAPIDAPI_KEY（免费档~100-500次/月）；未配置返回 available=False，改用 capture_evidence 获取。利润测算需要真实月销时用本工具。",
         "parameters": {"type": "object", "properties": {
             "asin": {"type": "string"},
             "geo": {"type": "string", "default": "US"}
@@ -2919,7 +2919,7 @@ TOOLS_SCHEMA = [
         }, "required": ["seed_keyword"]}}},
     {"type": "function", "function": {
         "name": "validate_keywords",
-        "description": "**关键词验证闭环（强烈推荐，直接决定结果质量）**：把候选关键词用『真实能搜到多少对口商品』反向打分，淘汰搜不到/跑偏的词，只留高质量词再正式抓取。能杜绝『防盗门→搜出门锁配件』『geladeira em ingles→查资料词』这类品类错位。返回每个词的真实商品数+语义相关度+keep/drop，以及 recommended_keywords。扩展出候选词后、正式 search_multi_platform 之前调用。",
+        "description": "**关键词验证闭环（强烈推荐，直接决定结果质量）**：把候选关键词用『真实能搜到多少对口商品』反向打分，淘汰搜不到/跑偏的词，只留高质量词再正式获取。能杜绝『防盗门→搜出门锁配件』『geladeira em ingles→查资料词』这类品类错位。返回每个词的真实商品数+语义相关度+keep/drop，以及 recommended_keywords。扩展出候选词后、正式 search_multi_platform 之前调用。",
         "parameters": {"type": "object", "properties": {
             "keywords": {"type": "array", "items": {"type": "string"}, "description": "待验证的候选关键词（最多15个）"},
             "platform": {"type": "string", "default": "amazon", "description": "用哪个平台验证（应是目标市场的 verified 平台）"},

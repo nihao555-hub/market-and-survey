@@ -28,7 +28,7 @@ ROOT = Path(__file__).parent
 DATA_DIR = ROOT / "data"
 REPORT_DIR = ROOT / "reports"
 
-# ---- PoC 抓取目标（公开练习站，无反爬，演示链路）----
+# ---- PoC 获取目标（公开练习站，无反爬，演示链路）----
 TARGET_URLS = [
     "https://books.toscrape.com/",
     "https://books.toscrape.com/catalogue/page-2.html",
@@ -48,7 +48,7 @@ def step_collect_and_parse():
             items = parse_book_list(html, base_url=url if url.endswith("/") else "https://books.toscrape.com/")
             all_products.extend([p.model_dump() for p in items])
         except Exception as e:
-            logger.error(f"抓取失败 {url}：{e}")
+            logger.error(f"获取失败 {url}：{e}")
     logger.success(f"共采集 {len(all_products)} 件商品")
     return all_products
 

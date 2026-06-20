@@ -246,7 +246,7 @@ export function SettingsPage() {
 
           <Panel title="通知" bodyClassName="px-5 py-1">
             <div className="divide-y divide-hairline">
-              <Row title="邮件通知" desc="监控触发与报告完成时发送邮件">
+              <Row title="邮件通知" desc="订阅提醒与报告完成时发送邮件">
                 <Switch checked={!!settings?.notifyEmail} onChange={(v) => patch({ notifyEmail: v })} />
               </Row>
               <Row title="站内通知" desc="在应用内显示提醒与动态">
@@ -259,7 +259,7 @@ export function SettingsPage() {
             <div className="flex items-start gap-3 rounded-xl bg-success/5 p-3">
               <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-success" />
               <div className="text-xs leading-relaxed text-ink-muted">
-                已启用<span className="font-medium text-ink">「零幻觉铁律」</span>：候选品的 ASIN / 价格 / 销量必须来自真实抓取数据并通过校验，
+                已启用<span className="font-medium text-ink">「零幻觉铁律」</span>：候选品的 ASIN / 价格 / 销量必须来自真实获取数据并通过校验，
                 成本来自 1688 实价，无法获取的数据会被诚实标注而非编造。该策略为强制开启，保障调研结论可追溯。
               </div>
             </div>

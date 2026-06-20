@@ -276,7 +276,7 @@ def run():
                   f"{r.bytes_or_chars:>9} {r.elapsed_ms:>6}ms {r.products_found:>5}  "
                   f"{mark} {r.blocked_reason}")
     print("=" * 95)
-    print(f"\n🎯 可直接抓取的站：{', '.join(success_sites) or '（全失败，需配代理/FlareSolverr）'}")
+    print(f"\n🎯 可直接获取的站：{', '.join(success_sites) or '（全失败，需配代理/FlareSolverr）'}")
     print(f"📌 不通过的站：{', '.join([n for n in (s['name'] for s in SITES) if n not in success_sites])}")
     return results, success_sites
 

@@ -91,10 +91,10 @@ def fetch_with_scrapling(url: str, proxy: Optional[str] = None) -> Optional[str]
     return None
 
 
-# ─────────────────────────── L2.5: crawl4ai（Scrapling 的回退，AI 友好渲染抓取）───────────────────────────
+# ─────────────────────────── L2.5: crawl4ai（Scrapling 的回退，AI 友好渲染获取）───────────────────────────
 def fetch_with_crawl4ai(url: str, proxy: Optional[str] = None) -> Optional[str]:
     """
-    用 crawl4ai 渲染抓取（内置 Playwright + 反检测 + 自动等待）。
+    用 crawl4ai 渲染获取（内置 Playwright + 反检测 + 自动等待）。
     作为 Scrapling(L2) 之后、重浏览器引擎(L3+)之前的一层回退。
     返回渲染后的完整 HTML（crawl4ai 的 result.html），失败返回 None。
     """
@@ -136,7 +136,7 @@ def fetch_with_patchright(url: str, proxy: Optional[str] = None,
                           wait_ms: int = 6000,
                           wait_for_selector: Optional[str] = None) -> Optional[str]:
     """
-    完整渲染抓取：① domcontentloaded → ② 等 networkidle → ③ 多次滚动触发懒加载 →
+    完整渲染获取：① domcontentloaded → ② 等 networkidle → ③ 多次滚动触发懒加载 →
     ④ 可选等待关键 selector → ⑤ 等额外 wait_ms → ⑥ 抓完整 HTML（不截断）
 
     僵尸进程防护：browser 用 try/finally 强制 close，异常也不残留 chrome。
@@ -412,7 +412,7 @@ def fetch(url: str, proxy: Optional[str] = None,
           force_browser: bool = False, use_proxy: bool = False,
           wait_for_selector: Optional[str] = None) -> str:
     """
-    9 级降级抓取（命中即止）。
+    9 级降级获取（命中即止）。
     - proxy: 显式代理；不给且 use_proxy=True 用 DEFAULT_PROXY
     - force_browser: 强制走浏览器引擎（适合 SPA/重 JS 站）
     - use_proxy: 简化开关
@@ -449,7 +449,7 @@ def fetch(url: str, proxy: Optional[str] = None,
                         logger.warning(f"[fetch] 代理重启失败，降级直连: {url}")
                         eff = None
                 else:
-                    logger.info(f"[fetch] 无代理环境（云部署），直连抓取: {url}")
+                    logger.info(f"[fetch] 无代理环境（云部署），直连获取: {url}")
                     eff = None
             else:
                 logger.warning(f"[fetch] 国家代理端口 {_port} 不可用，降级直连: {url}")

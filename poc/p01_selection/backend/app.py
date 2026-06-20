@@ -316,7 +316,7 @@ async def thread_state(thread_id: str, tenant_id: str = Depends(require_tenant))
 
 @app.get("/metrics")
 async def metrics():
-    """监控端点：请求数/各租户用量/错误数/运行时长（供 Prometheus/健康检查抓取）。"""
+    """指标端点：请求数/各租户用量/错误数/运行时长（供 Prometheus/健康检查获取）。"""
     return get_metrics()
 
 

@@ -18,7 +18,7 @@ _SCRAPEGRAPH_MODEL = f"openai/{MODEL_FLASH}"
 
 # ─────────── crawl4ai：网页清洗成 LLM 友好 markdown ───────────
 async def webpage_to_markdown(url: str) -> str:
-    """用 crawl4ai 抓取并转成干净 markdown"""
+    """用 crawl4ai 获取并转成干净 markdown"""
     try:
         from crawl4ai import AsyncWebCrawler
         async with AsyncWebCrawler(verbose=False) as crawler:
