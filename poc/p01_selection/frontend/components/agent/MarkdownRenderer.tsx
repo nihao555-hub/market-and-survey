@@ -3,6 +3,7 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { BACKEND_BASE } from "@/lib/graphql-client";
+import { AgentChart, chartDataToOption, type ChartData } from "@/components/charts/AgentChart";
 
 /**
  * Markdown 流式渲染（steering §9.4.1）。memo 化避免流式时频繁 re-render。
@@ -56,6 +57,28 @@ export const MarkdownRenderer = React.memo(function MarkdownRenderer({
               {children}
             </a>
           ),
+          code: ({ className, children, ...props }) => {
+            const match = /language-chart/.exec(className || "");
+            if (match) {
+              try {
+                const chartData: ChartData = JSON.parse(String(children).trim());
+                if (chartData && chartData.series) {
+                  return <AgentChart option={chartDataToOption(chartData)} />;
+                }
+              } catch {}
+            }
+            return <code className={className} {...props}>{children}</code>;
+          },
+          pre: ({ children }) => {
+            const child = React.Children.toArray(children)[0];
+            if (React.isValidElement(child)) {
+              const childClassName = (child.props as Record<string, unknown>)?.className;
+              if (typeof childClassName === "string" && /language-chart/.test(childClassName)) {
+                return <>{children}</>;
+              }
+            }
+            return <pre>{children}</pre>;
+          },
         }}
       >
         {clean}
