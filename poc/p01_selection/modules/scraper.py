@@ -392,7 +392,96 @@ def fetch_with_flaresolverr(url: str, proxy: Optional[str] = None) -> Optional[s
     return None
 
 
+# ─────────────── L0 级：API 代理服务（云 IP 被封时的首选通道） ───────────────
+
+SCRAPERAPI_KEY = os.getenv("SCRAPERAPI_KEY", "")
+SCRAPEOPS_KEY = os.getenv("SCRAPEOPS_KEY", "")
+
+
+def fetch_with_scraperapi(url: str, proxy: Optional[str] = None) -> Optional[str]:
+    """ScraperAPI — 付费代理 API（免费额度 1000 次/月）。设置 SCRAPERAPI_KEY 启用。"""
+    if not SCRAPERAPI_KEY:
+        return None
+    try:
+        import requests as _req
+        api_url = "https://api.scraperapi.com"
+        params = {"api_key": SCRAPERAPI_KEY, "url": url, "render": "false"}
+        r = _req.get(api_url, params=params, timeout=30)
+        if r.status_code == 200 and r.text and len(r.text) > 1000:
+            blocked, sign = is_blocked_page(r.text)
+            if blocked:
+                logger.warning(f"[L0 ScraperAPI] blocked ({sign})，丢弃")
+                return None
+            logger.info(f"[L0 ScraperAPI] OK {len(r.text)} chars")
+            return r.text
+        logger.debug(f"[L0 ScraperAPI] status={r.status_code}, len={len(r.text)}")
+    except Exception as e:
+        logger.debug(f"[L0 ScraperAPI] fail: {str(e)[:120]}")
+    return None
+
+
+def fetch_with_scrapeops(url: str, proxy: Optional[str] = None) -> Optional[str]:
+    """ScrapeOps — 付费代理 API（免费额度 1000 次/月）。设置 SCRAPEOPS_KEY 启用。"""
+    if not SCRAPEOPS_KEY:
+        return None
+    try:
+        import requests as _req
+        api_url = "https://proxy.scrapeops.io/v1/"
+        params = {"api_key": SCRAPEOPS_KEY, "url": url}
+        r = _req.get(api_url, params=params, timeout=30)
+        if r.status_code == 200 and r.text and len(r.text) > 1000:
+            blocked, sign = is_blocked_page(r.text)
+            if blocked:
+                logger.warning(f"[L0 ScrapeOps] blocked ({sign})，丢弃")
+                return None
+            logger.info(f"[L0 ScrapeOps] OK {len(r.text)} chars")
+            return r.text
+        logger.debug(f"[L0 ScrapeOps] status={r.status_code}, len={len(r.text)}")
+    except Exception as e:
+        logger.debug(f"[L0 ScrapeOps] fail: {str(e)[:120]}")
+    return None
+
+
+def fetch_with_free_proxy(url: str, proxy: Optional[str] = None) -> Optional[str]:
+    """ProxyScrape 免费代理池 — 无需 API Key，轮换公共代理 IP。"""
+    try:
+        import requests as _req
+        # 获取一个免费 HTTP 代理
+        pool_url = "https://api.proxyscrape.com/v2/?request=getproxies&protocol=http&timeout=5000&country=us&ssl=yes&anonymity=elite&simplified=true"
+        pool_resp = _req.get(pool_url, timeout=5)
+        proxies_list = [p.strip() for p in pool_resp.text.strip().split("\n") if p.strip()]
+        if not proxies_list:
+            logger.debug("[L0.8 FreeProxy] 代理池为空")
+            return None
+        # 尝试前 3 个代理
+        for px in proxies_list[:3]:
+            px_url = f"http://{px}"
+            try:
+                r = _req.get(url, proxies={"http": px_url, "https": px_url},
+                             timeout=15, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
+                if r.status_code == 200 and r.text and len(r.text) > 1000:
+                    blocked, sign = is_blocked_page(r.text)
+                    if blocked:
+                        continue
+                    logger.info(f"[L0.8 FreeProxy] OK {len(r.text)} chars via {px}")
+                    return r.text
+            except Exception:
+                continue
+        logger.debug("[L0.8 FreeProxy] 所有免费代理均失败")
+    except Exception as e:
+        logger.debug(f"[L0.8 FreeProxy] fail: {str(e)[:120]}")
+    return None
+
+
 # ─────────────────────────── 主降级链 ───────────────────────────
+
+# API 代理引擎（优先级最高：云 IP 常被电商平台封禁，API 代理绕过）
+ENGINES_API: list[tuple[str, Callable]] = [
+    ("L0 ScraperAPI", fetch_with_scraperapi),
+    ("L0 ScrapeOps", fetch_with_scrapeops),
+    ("L0.8 FreeProxy", fetch_with_free_proxy),
+]
+
 ENGINES_FAST: list[tuple[str, Callable]] = [
     ("L1 curl_cffi", fetch_with_curl_cffi),
     ("L2 Scrapling", fetch_with_scrapling),
@@ -456,6 +545,8 @@ def fetch(url: str, proxy: Optional[str] = None,
                 eff = None
     
     chain = []
+    # API 代理优先（云 IP 被电商封禁时直接绕过，无需本地浏览器）
+    chain.extend(ENGINES_API)
     # 即使 force_browser=True 也先试 HTTP 引擎（curl_cffi TLS 指纹已够强，
     # 很多 SPA 站其实只是服务端渲染+JSON 嵌入，HTTP 层能直接拿到完整 HTML）。
     # 只有 HTTP 引擎全部失败才回退到浏览器引擎。

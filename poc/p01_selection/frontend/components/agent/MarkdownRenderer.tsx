@@ -4,6 +4,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { BACKEND_BASE } from "@/lib/graphql-client";
 import { AgentChart, chartDataToOption, type ChartData } from "@/components/charts/AgentChart";
+import { AutoChart } from "@/components/charts/AutoChart";
 
 /**
  * Markdown 流式渲染（steering §9.4.1）。memo 化避免流式时频繁 re-render。
@@ -79,6 +80,7 @@ export const MarkdownRenderer = React.memo(function MarkdownRenderer({
             }
             return <pre>{children}</pre>;
           },
+          table: ({ children }) => <AutoChart>{children}</AutoChart>,
         }}
       >
         {clean}
