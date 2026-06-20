@@ -78,12 +78,10 @@ export function Sidebar() {
     <aside className="flex h-full w-60 flex-shrink-0 flex-col border-r border-hairline bg-white">
       {/* 品牌 */}
       <div className="flex h-16 items-center gap-2.5 px-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white shadow-sm">
-          <Compass className="h-5 w-5" strokeWidth={2} />
-        </div>
+        <img src="/images/logo-icon.png" alt="SelectPilot" className="h-8 w-8 rounded-lg" />
         <div className="leading-tight">
-          <div className="text-sm font-semibold text-ink">MarketAgent</div>
-          <div className="text-[10px] text-ink-subtle">选品 &amp; 市场调研 Agent</div>
+          <div className="text-sm font-semibold text-ink">SelectPilot</div>
+          <div className="text-[10px] text-ink-subtle">AI 跨境选品决策引擎</div>
         </div>
       </div>
 
