@@ -75,10 +75,7 @@
   }
 }
 
-/* 标题字距（设计稿② Typography：H1-H4 行高 140%） */
-h1, .display-xl { letter-spacing: -0.02em; font-weight: 600; }
-h2, .display-lg { letter-spacing: -0.018em; font-weight: 600; }
-h3, .display-md { letter-spacing: -0.012em; font-weight: 600; }
+/* Typography — taito.ai style: light headings (400), tight tracking */
 .eyebrow { letter-spacing: 0.04em; font-weight: 500; text-transform: uppercase; font-size: 12px; color: var(--ink-subtle); }
 
 /* ShimmeringText —— 进行中文案水波光效（orange） */
@@ -192,3 +189,15 @@ textarea::-webkit-scrollbar-thumb:hover, .scroll-area::-webkit-scrollbar-thumb:h
 
 /* Geist font family alias */
 .font-geist { font-family: Inter, -apple-system, "PingFang SC", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; }
+
+/* Logo marquee animation — taito.ai style */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee { animation: none; }
+}
