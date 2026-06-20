@@ -112,9 +112,9 @@ def _send_email(to: str, subject: str, html_body: str) -> bool:
         msg.attach(MIMEText(html_body, "html", "utf-8"))
 
         if SMTP_PORT == 465:
-            server = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10)
+            server = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15)
         else:
-            server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10)
+            server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15)
             server.starttls()
         server.login(SMTP_USER, SMTP_PASS)
         server.sendmail(SMTP_FROM, [to], msg.as_string())
@@ -122,7 +122,7 @@ def _send_email(to: str, subject: str, html_body: str) -> bool:
         logger.info(f"Email sent to {to}: {subject}")
         return True
     except Exception as e:
-        logger.error(f"Email send failed to {to}: {e}")
+        logger.error(f"Email send failed to {to}: {type(e).__name__}: {e}")
         return False
 
 
@@ -163,7 +163,9 @@ def register(email: str, name: str, password: str) -> dict:
         conn.execute("INSERT INTO verification_codes (email, code, purpose) VALUES (?, ?, 'verify')",
                      (email, code))
 
-    _send_email(email, f"【SelectPilot】验证码：{code}", _verification_email_html(code, "verify"))
+    sent = _send_email(email, f"【SelectPilot】验证码：{code}", _verification_email_html(code, "verify"))
+    if not sent:
+        return {"ok": False, "detail": "邮件发送失败，请稍后重试"}
     return {"ok": True, "message": "验证码已发送到邮箱"}
 
 
@@ -179,7 +181,9 @@ def send_code(email: str, purpose: str = "login") -> dict:
         conn.execute("INSERT INTO verification_codes (email, code, purpose) VALUES (?, ?, ?)",
                      (email, code, purpose))
 
-    _send_email(email, f"【SelectPilot】验证码：{code}", _verification_email_html(code, purpose))
+    sent = _send_email(email, f"【SelectPilot】验证码：{code}", _verification_email_html(code, purpose))
+    if not sent:
+        return {"ok": False, "detail": "邮件发送失败，请稍后重试"}
     return {"ok": True, "message": "验证码已发送"}
 
 
