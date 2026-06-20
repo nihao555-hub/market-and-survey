@@ -22,9 +22,10 @@ from backend.events import (publish, get_pub, get_accumulated_chunks, request_ca
                               EVENT_CHANNEL, REDIS_URL)
 from backend.storage import (get_or_create_thread, list_messages, set_active_stream,
                               assert_thread_owner, SessionLocal, Thread)
-from backend.stream_job import run_stream_job
-from backend.selection_job import run_selection_job
-from backend.auth import require_tenant, get_metrics, record_error, record_job_start
+# 注：stream_job / selection_job 依赖完整 LLM/采集栈，按需在路由内惰性导入，
+# 这样仅跑控制面 + GraphQL（管理类页面）时无需安装重型依赖。
+from backend.auth import (require_tenant, require_tenant_query, get_metrics,
+                          record_error, record_job_start)
 
 app = FastAPI(title="选品 Agent — Backend Steering 对齐版")
 
@@ -38,11 +39,92 @@ async def _clear_stale_streams():
     except Exception:
         pass
 
-# ─── CORS（前端 Next.js dev server 跨域）───
+
+# ─── 每日定时刷新（北京 0 点 = UTC 16:00）调度器 ───
+# 用 APScheduler BackgroundScheduler：采集器是同步阻塞调用，跑在独立线程池里，
+# 不占用 FastAPI 的事件循环。可用环境变量调节：
+#   DAILY_REFRESH_ENABLED   默认 1（关掉设 0）
+#   DAILY_REFRESH_HOUR_UTC  默认 16（= 北京 0 点）
+#   DAILY_REFRESH_MINUTE    默认 0
+#   DAILY_REFRESH_ON_STARTUP 默认 0（设 1 时启动即先跑一次做底子）
+_scheduler = None
+
+
+def _scheduled_refresh():
+    """定时触发时读用户设置拿目标国家列表。"""
+    from backend import storage as _st
+    from backend.daily_refresh import run_daily_refresh
+    settings = _st.get_settings("dev_tenant")
+    geos = settings.get("targetCountries") or ["US"]
+    run_daily_refresh(geos=geos, trigger="schedule")
+
+
+@app.on_event("startup")
+async def _start_daily_refresh_scheduler():
+    global _scheduler
+    import os as _os
+    if _os.getenv("DAILY_REFRESH_ENABLED", "1") != "1":
+        return
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from apscheduler.triggers.cron import CronTrigger
+
+        # 每 N 小时刷新一次（用户要求「每两小时更新一次」），默认 2 小时。
+        interval = int(_os.getenv("DAILY_REFRESH_INTERVAL_HOURS", "2"))
+        minute = int(_os.getenv("DAILY_REFRESH_MINUTE", "0"))
+        hour_spec = f"*/{interval}" if interval > 1 else "*"
+        _scheduler = BackgroundScheduler(timezone="UTC")
+        _scheduler.add_job(
+            _scheduled_refresh,
+            trigger=CronTrigger(hour=hour_spec, minute=minute, timezone="UTC"),
+            id="daily_refresh",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=3600,
+        )
+        _scheduler.start()
+        import logging
+        logging.getLogger("uvicorn").info(
+            f"刷新调度已启动：cron {minute} {hour_spec} * * * (UTC) = 每 {interval} 小时一次"
+            f"（含北京 0:00 = UTC 16:00）")
+
+        if _os.getenv("DAILY_REFRESH_ON_STARTUP", "0") == "1":
+            from backend.daily_refresh import run_in_background
+            from backend import storage as _st
+            settings = _st.get_settings("dev_tenant")
+            geos = settings.get("targetCountries") or ["US"]
+            run_in_background(geos=geos, trigger="startup")
+    except Exception as _e:
+        import logging
+        logging.getLogger("uvicorn").warning(f"每日刷新调度未启动: {_e}")
+
+
+@app.on_event("shutdown")
+async def _stop_daily_refresh_scheduler():
+    global _scheduler
+    if _scheduler is not None:
+        try:
+            _scheduler.shutdown(wait=False)
+        except Exception:
+            pass
+        _scheduler = None
+
+# ─── CORS（前端跨域）───
+# 本地默认放行 Next dev；部署到 Vercel 时用环境变量加上公网前端域名：
+#   CORS_ALLOW_ORIGINS       逗号分隔的精确来源（如 https://your-app.vercel.app）
+#   CORS_ALLOW_ORIGIN_REGEX  可选正则（如 https://.*\.vercel\.app 放行所有预览部署）
 from fastapi.middleware.cors import CORSMiddleware
+import os as _os_cors
+_cors_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+_extra_origins = (_os_cors.getenv("CORS_ALLOW_ORIGINS") or "").strip()
+if _extra_origins:
+    _cors_origins += [o.strip() for o in _extra_origins.split(",") if o.strip()]
+_cors_origin_regex = (_os_cors.getenv("CORS_ALLOW_ORIGIN_REGEX") or "").strip() or None
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=_cors_origins,
+    allow_origin_regex=_cors_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -70,24 +152,32 @@ class ChatBody(BaseModel):
 
 
 @app.post("/chat")
-async def chat(body: ChatBody):
+async def chat(body: ChatBody, tenant_id: str = Depends(require_tenant)):
     thread_id = body.thread_id or str(uuid.uuid4())
-    get_or_create_thread(thread_id)
+    # 多租户隔离：复用已有 thread 时校验归属
+    if not assert_thread_owner(thread_id, tenant_id):
+        record_error()
+        raise HTTPException(403, "thread belongs to another tenant")
+    get_or_create_thread(thread_id, tenant_id=tenant_id)
     stream_id = str(uuid.uuid4())
     set_active_stream(thread_id, stream_id)
 
     # 后台执行（PoC 用 asyncio.create_task 模拟 worker 队列；
     # 生产换 dramatiq actor 异步触发即可）
+    from backend.stream_job import run_stream_job
     asyncio.create_task(run_stream_job(thread_id, stream_id, body.text, body.model_choice))
 
     return {"thread_id": thread_id, "stream_id": stream_id, "status": "queued"}
 
 
 @app.post("/stop")
-async def stop(body: dict):
+async def stop(body: dict, tenant_id: str = Depends(require_tenant)):
     thread_id = body.get("thread_id")
     if not thread_id:
         raise HTTPException(400, "thread_id required")
+    if not assert_thread_owner(thread_id, tenant_id):
+        record_error()
+        raise HTTPException(403, "thread belongs to another tenant")
     await request_cancel(thread_id)
     return {"thread_id": thread_id, "cancelled": True}
 
@@ -118,18 +208,27 @@ async def selection_start(body: SelectionBody, tenant_id: str = Depends(require_
     set_active_stream(thread_id, stream_id)
     record_job_start()
     
-    # 真任务队列：dramatiq 入队（Redis 持久化），worker 进程消费
-    # 备选：如果 worker 没起，回退到 asyncio.create_task（仅 dev 用）
-    try:
-        from backend.queue import run_selection_actor
-        run_selection_actor.send(thread_id, stream_id, body.user_text, body.model_choice)
-        queued_via = "dramatiq"
-    except Exception as e:
-        # dev fallback
+    # 与 GraphQL sendSelectionMessage 保持一致：
+    # USE_DRAMATIQ_WORKER=1 时走 dramatiq 入队（Redis 持久化），worker 进程消费；
+    # 否则（lean 单进程模式）回退到 asyncio.create_task 原地跑。
+    import os as _os_sel
+    if _os_sel.getenv("USE_DRAMATIQ_WORKER", "0") == "1":
+        try:
+            from backend.queue import run_selection_actor
+            run_selection_actor.send(thread_id, stream_id, body.user_text, body.model_choice)
+            queued_via = "dramatiq"
+        except Exception as e:
+            from backend.selection_job import run_selection_job
+            asyncio.create_task(run_selection_job(
+                thread_id, stream_id, body.user_text, body.model_choice
+            ))
+            queued_via = f"asyncio_fallback ({str(e)[:60]})"
+    else:
+        from backend.selection_job import run_selection_job
         asyncio.create_task(run_selection_job(
             thread_id, stream_id, body.user_text, body.model_choice
         ))
-        queued_via = f"asyncio_fallback ({str(e)[:60]})"
+        queued_via = "asyncio_inprocess"
     
     return {
         "thread_id": thread_id, "stream_id": stream_id, "status": "queued",
@@ -142,10 +241,17 @@ async def selection_start(body: SelectionBody, tenant_id: str = Depends(require_
 
 # ─── SSE 订阅事件流 ───
 @app.get("/events")
-async def events(thread_id: str, last_seq: int = 0):
+async def events(thread_id: str, last_seq: int = 0,
+                 tenant_id: str = Depends(require_tenant_query)):
     """
     SSE 端点。客户端可传 last_seq 做 catch-up 衔接。
+    鉴权：EventSource 无法设请求头，故用 `?api_key=`（dev 模式可省略）。
+    多租户隔离：只能订阅本租户的 thread。
     """
+    if not assert_thread_owner(thread_id, tenant_id):
+        record_error()
+        raise HTTPException(403, "thread belongs to another tenant")
+
     async def event_gen():
         # 1. 先重放未消费的 chunk
         chunks = await get_accumulated_chunks(thread_id)
@@ -173,7 +279,10 @@ async def events(thread_id: str, last_seq: int = 0):
 
 
 @app.get("/catchup")
-async def catchup(thread_id: str):
+async def catchup(thread_id: str, tenant_id: str = Depends(require_tenant_query)):
+    if not assert_thread_owner(thread_id, tenant_id):
+        record_error()
+        raise HTTPException(403, "thread belongs to another tenant")
     chunks = await get_accumulated_chunks(thread_id)
     return {"thread_id": thread_id, "chunks": chunks}
 
@@ -208,6 +317,22 @@ async def thread_state(thread_id: str, tenant_id: str = Depends(require_tenant))
 async def metrics():
     """监控端点：请求数/各租户用量/错误数/运行时长（供 Prometheus/健康检查抓取）。"""
     return get_metrics()
+
+
+# ─── 每日定时刷新：手动触发 + 状态查询 ───
+@app.post("/admin/daily-refresh")
+async def admin_daily_refresh(tenant_id: str = Depends(require_tenant)):
+    """手动触发一次刷新（后台线程跑，立即返回）。供「立即刷新」按钮与测试用。"""
+    from backend.daily_refresh import run_in_background, get_refresh_state
+    started = run_in_background(tenant_id=tenant_id, trigger="manual")
+    return {"started": started, "state": get_refresh_state(tenant_id)}
+
+
+@app.get("/admin/daily-refresh/status")
+async def admin_daily_refresh_status(tenant_id: str = Depends(require_tenant)):
+    """查询最近一次刷新批次的状态摘要。"""
+    from backend.daily_refresh import get_refresh_state
+    return get_refresh_state(tenant_id)
 
 
 @app.get("/healthz")

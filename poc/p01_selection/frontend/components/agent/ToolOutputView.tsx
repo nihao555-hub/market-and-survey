@@ -153,7 +153,7 @@ function ProductCards({ items }: { items: Array<Record<string, unknown>> }) {
                 )}
               </div>
               <div className="mt-0.5 flex flex-wrap gap-x-2.5 gap-y-0.5 text-[11px] text-ink-subtle">
-                {price != null && <span className="text-accent">价 {String(price)}</span>}
+                {price != null && <span className="text-brand">价 {String(price)}</span>}
                 {rating != null && <span>★ {String(rating)}</span>}
                 {reviews != null && <span>{String(reviews)} 评价</span>}
                 {bought != null && <span className="text-success">月销 {String(bought)}</span>}
@@ -164,7 +164,7 @@ function ProductCards({ items }: { items: Array<Record<string, unknown>> }) {
                     href={url}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-0.5 text-ink-muted hover:text-accent"
+                    className="inline-flex items-center gap-0.5 text-ink-muted hover:text-brand"
                   >
                     打开 <ExternalLink className="h-2.5 w-2.5" />
                   </a>
@@ -177,7 +177,7 @@ function ProductCards({ items }: { items: Array<Record<string, unknown>> }) {
       {items.length > COLLAPSED && (
         <button
           onClick={() => setShowAll((v) => !v)}
-          className="px-1 text-[11px] text-accent hover:underline"
+          className="px-1 text-[11px] text-brand hover:underline"
         >
           {showAll ? "收起" : `展开全部 ${items.length} 个`}
         </button>

@@ -23,12 +23,12 @@ const SEND_MUTATION = /* GraphQL */ `
   mutation Send(
     $category: String!, $markets: [String!]!, $positioning: String!,
     $monthlyBudget: String!, $exclude: String!, $modelChoice: String!,
-    $threadId: String, $title: String
+    $threadId: String, $title: String, $kind: String!
   ) {
     sendSelectionMessage(
       category: $category, markets: $markets, positioning: $positioning,
       monthlyBudget: $monthlyBudget, exclude: $exclude, modelChoice: $modelChoice,
-      threadId: $threadId, title: $title
+      threadId: $threadId, title: $title, kind: $kind
     ) { threadId streamId status }
   }
 `;
@@ -46,6 +46,7 @@ export function useAgentChat() {
     async (params: SelectionParams) => {
       const threadId = uuid();
       const title = `${params.category} · ${params.markets.join("/") || "全球"}`;
+      const kind = params.kind ?? "general";
 
       // 乐观 UI：立即建会话 + 塞 user message（steering §7.1）
       const userText = buildUserSummary(params);
@@ -59,7 +60,7 @@ export function useAgentChat() {
       store.set(isStreamingAtomFamily(threadId), true);
       setActiveThreadId(threadId);
       setThreads((prev) => [
-        { id: threadId, title, activeStreamId: "pending" },
+        { id: threadId, title, activeStreamId: "pending", kind },
         ...prev,
       ]);
 
@@ -73,6 +74,7 @@ export function useAgentChat() {
           modelChoice: params.modelChoice,
           threadId,
           title,
+          kind,
         });
       } catch (e) {
         // 失败回滚（steering §7.1）

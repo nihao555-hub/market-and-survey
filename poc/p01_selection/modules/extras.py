@@ -10,6 +10,11 @@
 from __future__ import annotations
 from loguru import logger
 
+from modules.llm import MODEL_FLASH  # 模型名单一来源
+
+# ScrapeGraphAI 用 "provider/model" 形式；provider=openai（OpenAI 兼容协议）
+_SCRAPEGRAPH_MODEL = f"openai/{MODEL_FLASH}"
+
 
 # ─────────── crawl4ai：网页清洗成 LLM 友好 markdown ───────────
 async def webpage_to_markdown(url: str) -> str:
@@ -60,7 +65,7 @@ def scrapegraph_extract_products(html_or_url: str, max_items: int = 20) -> list[
         from scrapegraphai.graphs import SmartScraperGraph
         graph_config = {
             "llm": {
-                "model": "openai/deepseek-v4-flash",
+                "model": _SCRAPEGRAPH_MODEL,
                 "api_key": os.getenv("DEEPSEEK_API_KEY"),
                 "base_url": os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"),
             },
@@ -98,7 +103,7 @@ def llm_extract(html: str, prompt: str, openai_api_key: str = None) -> dict:
         from scrapegraphai.graphs import SmartScraperGraph
         graph_config = {
             "llm": {
-                "model": "openai/deepseek-v4-flash",
+                "model": _SCRAPEGRAPH_MODEL,
                 "api_key": openai_api_key or os.getenv("DEEPSEEK_API_KEY"),
                 "base_url": os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"),
             },

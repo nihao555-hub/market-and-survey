@@ -18,12 +18,12 @@ from modules.real_cost_data import get_usd_cny_rate
 
 
 def search_made_in_china(keyword_en: str, use_proxy: bool = False, limit: int = 20) -> dict:
-    """搜 Made-in-China.com，英文界面反爬轻很多。"""
+    """搜 Made-in-China.com，英文界面反爬轻很多（curl_cffi 即可，不需要浏览器渲染）。"""
     q = urllib.parse.quote(keyword_en.replace(" ", "_"))
     url = f"https://www.made-in-china.com/products-search/hot-china-products/{q}.html"
     logger.info(f"🏭 搜 Made-in-China → {keyword_en}")
     try:
-        html = fetch(url, use_proxy=use_proxy, force_browser=True)
+        html = fetch(url, use_proxy=use_proxy)
     except Exception as e:
         return {"keyword": keyword_en, "url": url, "error": str(e)[:120], "items": []}
     
@@ -235,12 +235,12 @@ def search_globalsources(keyword_en: str, use_proxy: bool = True, limit: int = 2
 
 
 def search_dhgate(keyword_en: str, use_proxy: bool = True, limit: int = 20) -> dict:
-    """搜 DHgate.com（跨境批发，英文界面，反爬中等）。价格通常含 MOQ 阶梯。"""
+    """搜 DHgate.com（跨境批发，英文界面，curl_cffi 即可）。价格通常含 MOQ 阶梯。"""
     q = urllib.parse.quote(keyword_en)
     url = f"https://www.dhgate.com/wholesale/search.do?act=search&searchkey={q}"
     logger.info(f"🏭 搜 DHgate → {keyword_en}")
     try:
-        html = fetch(url, use_proxy=use_proxy, force_browser=True)
+        html = fetch(url, use_proxy=use_proxy)
     except Exception as e:
         return {"keyword": keyword_en, "url": url, "error": str(e)[:120], "items": []}
 

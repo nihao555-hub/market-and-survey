@@ -20,13 +20,34 @@ from backend.events import (get_accumulated_chunks, request_cancel,
                               EVENT_CHANNEL, REDIS_URL)
 from backend.storage import (get_or_create_thread, list_messages, set_active_stream,
                               SessionLocal, Thread, delete_thread)
+from backend import storage as st
 from backend.ui_chunks import UIChunkAdapter
 
 
 # ─────────── 选品任务参数 → user_text 组装 ───────────
+# 按调研类型给出不同的开场与分析框架，让 5 个功能页产出不同侧重。
+_KIND_INTRO = {
+    "market": "我想做{c}的市场调研",
+    "trend": "我想做{c}的趋势探索",
+    "competitor": "我想做{c}的竞品分析",
+    "audience": "我想做{c}的受众洞察",
+    "opportunity": "我想做{c}的机会挖掘",
+    "general": "我想做{c}选品调研",
+}
+_KIND_FOCUS = {
+    "market": "。请聚焦：市场规模(TAM/SAM)、增长趋势、需求强度、竞争格局与利润空间。",
+    "trend": "。请聚焦：搜索热度与上升速度、季节性、相关上升词、平台话题声量与拐点判断。",
+    "competitor": "。请聚焦：Top 竞品 listing 对比、价格带与卖点、评分与评论痛点、差异化切入点。",
+    "audience": "。请聚焦：目标人群画像、使用场景与动机、购买决策因素、触达渠道与内容偏好。",
+    "opportunity": "。请聚焦：未被满足的需求缺口、差异化机会、进入壁垒与风险、机会评分与优先级。",
+    "general": "。请抓 BSR 子类目 Top + 多平台对比 + 真实评论痛点 + 利润测算。",
+}
+
+
 def _build_user_text(category: str, markets: list[str], positioning: str,
-                     monthly_budget: str, exclude: str) -> str:
-    parts = [f"我想做{category}选品调研"]
+                     monthly_budget: str, exclude: str, kind: str = "general") -> str:
+    intro = _KIND_INTRO.get(kind, _KIND_INTRO["general"]).format(c=category)
+    parts = [intro]
     if markets:
         parts.append(f"，目标市场：{'/'.join(markets)}")
     if positioning:
@@ -35,7 +56,7 @@ def _build_user_text(category: str, markets: list[str], positioning: str,
         parts.append(f"，月度预算：{monthly_budget}")
     if exclude:
         parts.append(f"，排除大牌：{exclude}")
-    parts.append("。请抓 BSR 子类目 Top + 多平台对比 + 真实评论痛点 + 利润测算。")
+    parts.append(_KIND_FOCUS.get(kind, _KIND_FOCUS["general"]))
     return "".join(parts)
 
 
@@ -70,6 +91,153 @@ class ThreadSummary:
     title: str
     updated_at: typing.Optional[str]
     active_stream_id: typing.Optional[str]
+    is_favorite: bool = False
+    kind: str = "general"
+
+
+@strawberry.type
+class DataSourceType:
+    id: str
+    name: str
+    description: str
+    kind: str
+    frequency: str
+    connected: bool
+    builtin: bool
+
+
+@strawberry.type
+class MonitorType:
+    id: str
+    name: str
+    description: str
+    kind: str
+    cadence: str
+    enabled: bool
+
+
+@strawberry.type
+class DataSnapshotType:
+    id: str
+    term: str
+    source: str
+    geo: str
+    tier: int
+    status: str
+    real_data: bool
+    summary: str
+    payload: JSON
+    captured_at: typing.Optional[str]
+
+
+@strawberry.type
+class DailyRefreshStatus:
+    status: str
+    run_id: typing.Optional[str] = None
+    trigger: typing.Optional[str] = None
+    started_at: typing.Optional[str] = None
+    finished_at: typing.Optional[str] = None
+    elapsed_sec: typing.Optional[float] = None
+    tier2_channel_ok: bool = False
+    terms: typing.List[str] = strawberry.field(default_factory=list)
+    counts: JSON = strawberry.field(default_factory=dict)
+
+
+@strawberry.type
+class ApiKeyType:
+    id: str
+    name: str
+    prefix: str
+    last4: str
+    revoked: bool
+    created_at: typing.Optional[str]
+    last_used_at: typing.Optional[str]
+
+
+@strawberry.type
+class ApiKeyCreated:
+    key: ApiKeyType
+    token: str   # 明文，仅创建时返回一次
+
+
+@strawberry.type
+class SettingsType:
+    display_name: str
+    email: str
+    plan: str
+    default_model: str
+    default_market: str
+    default_positioning: str
+    notify_email: bool
+    notify_in_app: bool
+    target_countries: typing.List[str] = strawberry.field(default_factory=lambda: ["US"])
+    refresh_hour_utc: int = 16
+
+
+def _thread_summary(t: Thread) -> ThreadSummary:
+    return ThreadSummary(
+        id=t.id, title=t.title or "未命名任务",
+        updated_at=t.updated_at.isoformat() if t.updated_at else None,
+        active_stream_id=t.active_stream_id,
+        is_favorite=bool(t.is_favorite),
+        kind=getattr(t, "kind", None) or "general",
+    )
+
+
+def _data_source_type(d: st.DataSource) -> DataSourceType:
+    return DataSourceType(
+        id=d.id, name=d.name, description=d.description or "", kind=d.kind,
+        frequency=d.frequency, connected=bool(d.connected), builtin=bool(d.builtin),
+    )
+
+
+def _monitor_type(m: st.Monitor) -> MonitorType:
+    return MonitorType(
+        id=m.id, name=m.name, description=m.description or "", kind=m.kind,
+        cadence=m.cadence, enabled=bool(m.enabled),
+    )
+
+
+def _snapshot_type(d: st.DataSnapshot) -> DataSnapshotType:
+    return DataSnapshotType(
+        id=d.id, term=d.term, source=d.source, geo=d.geo or "US",
+        tier=d.tier or 1, status=d.status or "ok", real_data=bool(d.real_data),
+        summary=d.summary or "", payload=d.payload or {},
+        captured_at=d.captured_at.isoformat() if d.captured_at else None,
+    )
+
+
+def _refresh_status(d: dict) -> DailyRefreshStatus:
+    return DailyRefreshStatus(
+        status=d.get("status", "never_run"),
+        run_id=d.get("run_id"),
+        trigger=d.get("trigger"),
+        started_at=d.get("started_at"),
+        finished_at=d.get("finished_at"),
+        elapsed_sec=d.get("elapsed_sec"),
+        tier2_channel_ok=bool(d.get("tier2_channel_ok", False)),
+        terms=list(d.get("terms") or []),
+        counts=d.get("counts") or {},
+    )
+
+
+def _api_key_type(k: st.ApiKey) -> ApiKeyType:
+    return ApiKeyType(
+        id=k.id, name=k.name, prefix=k.prefix, last4=k.last4, revoked=bool(k.revoked),
+        created_at=k.created_at.isoformat() if k.created_at else None,
+        last_used_at=k.last_used_at.isoformat() if k.last_used_at else None,
+    )
+
+
+def _settings_type(d: dict) -> SettingsType:
+    return SettingsType(
+        display_name=d["displayName"], email=d["email"], plan=d["plan"],
+        default_model=d["defaultModel"], default_market=d["defaultMarket"],
+        default_positioning=d["defaultPositioning"],
+        notify_email=bool(d["notifyEmail"]), notify_in_app=bool(d["notifyInApp"]),
+        target_countries=list(d.get("targetCountries") or ["US"]),
+        refresh_hour_utc=int(d.get("refreshHourUtc") or 16),
+    )
 
 
 @strawberry.type
@@ -90,15 +258,63 @@ class AgentEventPayload:
 class Query:
     @strawberry.field
     def threads(self, tenant_id: str = "dev_tenant") -> typing.List[ThreadSummary]:
-        with SessionLocal() as s:
-            rows = (s.query(Thread)
-                    .filter(Thread.tenant_id == tenant_id)
-                    .order_by(Thread.updated_at.desc()).all())
-            return [ThreadSummary(
-                id=t.id, title=t.title or "未命名任务",
-                updated_at=t.updated_at.isoformat() if t.updated_at else None,
-                active_stream_id=t.active_stream_id,
-            ) for t in rows]
+        return [_thread_summary(t) for t in st.list_threads(tenant_id)]
+
+    @strawberry.field
+    def favorite_threads(self, tenant_id: str = "dev_tenant") -> typing.List[ThreadSummary]:
+        return [_thread_summary(t) for t in st.list_threads(tenant_id, favorite=True)]
+
+    @strawberry.field
+    def threads_by_kind(self, kind: str, tenant_id: str = "dev_tenant") -> typing.List[ThreadSummary]:
+        """按调研类型列出历史调研（供 5 个功能页各自展示本类型历史）。"""
+        return [_thread_summary(t) for t in st.list_threads(tenant_id, kind=kind)]
+
+    @strawberry.field
+    def trashed_threads(self, tenant_id: str = "dev_tenant") -> typing.List[ThreadSummary]:
+        return [_thread_summary(t) for t in st.list_threads(tenant_id, trashed=True)]
+
+    @strawberry.field
+    def data_sources(self, tenant_id: str = "dev_tenant") -> typing.List[DataSourceType]:
+        return [_data_source_type(d) for d in st.list_data_sources(tenant_id)]
+
+    @strawberry.field
+    def monitors(self, tenant_id: str = "dev_tenant") -> typing.List[MonitorType]:
+        return [_monitor_type(m) for m in st.list_monitors(tenant_id)]
+
+    @strawberry.field
+    def data_snapshots(
+        self, tenant_id: str = "dev_tenant",
+        term: typing.Optional[str] = None,
+        source: typing.Optional[str] = None,
+        limit: int = 200,
+    ) -> typing.List[DataSnapshotType]:
+        """最近一次每日刷新批次落库的真实数据快照（可按 term/source 过滤）。"""
+        rows = st.list_latest_snapshots(tenant_id, term=term, source=source, limit=limit)
+        return [_snapshot_type(d) for d in rows]
+
+    @strawberry.field
+    def all_snapshots(
+        self, tenant_id: str = "dev_tenant",
+        source: typing.Optional[str] = None,
+        limit: int = 500,
+    ) -> typing.List[DataSnapshotType]:
+        """所有刷新批次的快照（跨 run_id），用于展示历史趋势。"""
+        rows = st.list_all_snapshots(tenant_id, source=source, limit=limit)
+        return [_snapshot_type(d) for d in rows]
+
+    @strawberry.field
+    def daily_refresh_status(self, tenant_id: str = "dev_tenant") -> DailyRefreshStatus:
+        """最近一次每日刷新的状态摘要（时间/词表/各状态计数/Tier2 通道是否就绪）。"""
+        from backend.daily_refresh import get_refresh_state
+        return _refresh_status(get_refresh_state(tenant_id))
+
+    @strawberry.field
+    def api_keys(self, tenant_id: str = "dev_tenant") -> typing.List[ApiKeyType]:
+        return [_api_key_type(k) for k in st.list_api_keys(tenant_id)]
+
+    @strawberry.field
+    def settings(self, tenant_id: str = "dev_tenant") -> SettingsType:
+        return _settings_type(st.get_settings(tenant_id))
 
     @strawberry.field
     def thread(self, id: str) -> typing.Optional[ThreadState]:
@@ -133,13 +349,14 @@ class Mutation:
         model_choice: str = "flash",
         thread_id: typing.Optional[str] = None,
         title: typing.Optional[str] = None,
+        kind: str = "general",
     ) -> StartResult:
         tid = thread_id or str(uuid.uuid4())
-        get_or_create_thread(tid, title=title or f"{category} · {'/'.join(markets) or '全球'}")
+        get_or_create_thread(tid, title=title or f"{category} · {'/'.join(markets) or '全球'}", kind=kind)
         stream_id = str(uuid.uuid4())
         set_active_stream(tid, stream_id)
 
-        user_text = _build_user_text(category, markets, positioning, monthly_budget, exclude)
+        user_text = _build_user_text(category, markets, positioning, monthly_budget, exclude, kind)
 
         # 控制面/数据面分离（steering §2.1）：入队 dramatiq（Redis 持久化），
         # 由 worker 进程消费跑 LLM。worker 未启动时回退 asyncio（仅 dev）。
@@ -147,10 +364,10 @@ class Mutation:
         use_worker = _os.getenv("USE_DRAMATIQ_WORKER", "0") == "1"
         if use_worker:
             from backend.queue import run_selection_actor
-            run_selection_actor.send(tid, stream_id, user_text, model_choice)
+            run_selection_actor.send(tid, stream_id, user_text, model_choice, kind)
         else:
             from backend.selection_job import run_selection_job
-            asyncio.create_task(run_selection_job(tid, stream_id, user_text, model_choice))
+            asyncio.create_task(run_selection_job(tid, stream_id, user_text, model_choice, kind))
 
         return StartResult(thread_id=tid, stream_id=stream_id, status="queued")
 
@@ -161,12 +378,114 @@ class Mutation:
 
     @strawberry.mutation
     async def delete_thread(self, thread_id: str, tenant_id: str = "dev_tenant") -> bool:
-        """删除会话及其消息。若该会话正在运行，先发取消信号再删。"""
+        """软删除：移入回收站（可恢复）。若正在运行，先发取消信号。"""
+        try:
+            await request_cancel(thread_id)
+        except Exception:
+            pass
+        return st.soft_delete_thread(thread_id, tenant_id)
+
+    @strawberry.mutation
+    def restore_thread(self, thread_id: str, tenant_id: str = "dev_tenant") -> bool:
+        """从回收站恢复会话。"""
+        return st.restore_thread(thread_id, tenant_id)
+
+    @strawberry.mutation
+    async def purge_thread(self, thread_id: str, tenant_id: str = "dev_tenant") -> bool:
+        """彻底删除会话及其消息（不可恢复）。"""
         try:
             await request_cancel(thread_id)
         except Exception:
             pass
         return delete_thread(thread_id, tenant_id)
+
+    @strawberry.mutation
+    def toggle_favorite(self, thread_id: str, tenant_id: str = "dev_tenant") -> bool:
+        """切换收藏态，返回新状态。"""
+        result = st.toggle_favorite(thread_id, tenant_id)
+        return bool(result)
+
+    # ── 数据源 ──
+    @strawberry.mutation
+    def create_data_source(
+        self, name: str, description: str = "", kind: str = "trends",
+        frequency: str = "每日", tenant_id: str = "dev_tenant",
+    ) -> DataSourceType:
+        return _data_source_type(
+            st.create_data_source(tenant_id, name, description, kind, frequency))
+
+    @strawberry.mutation
+    def set_data_source_connected(
+        self, source_id: str, connected: bool, tenant_id: str = "dev_tenant",
+    ) -> bool:
+        result = st.set_data_source_connected(source_id, connected, tenant_id)
+        return bool(result)
+
+    # ── 监控规则 ──
+    @strawberry.mutation
+    def create_monitor(
+        self, name: str, description: str = "", kind: str = "trend",
+        cadence: str = "每日", tenant_id: str = "dev_tenant",
+    ) -> MonitorType:
+        return _monitor_type(st.create_monitor(tenant_id, name, description, kind, cadence))
+
+    @strawberry.mutation
+    def set_monitor_enabled(
+        self, monitor_id: str, enabled: bool, tenant_id: str = "dev_tenant",
+    ) -> bool:
+        result = st.set_monitor_enabled(monitor_id, enabled, tenant_id)
+        return bool(result)
+
+    @strawberry.mutation
+    def delete_monitor(self, monitor_id: str, tenant_id: str = "dev_tenant") -> bool:
+        return st.delete_monitor(monitor_id, tenant_id)
+
+    # ── 每日数据刷新 ──
+    @strawberry.mutation
+    def trigger_daily_refresh(self, tenant_id: str = "dev_tenant") -> bool:
+        """手动触发一次每日刷新（后台线程跑，立即返回是否已启动）。按用户设置的目标国家逐个刷新。"""
+        from backend.daily_refresh import run_in_background
+        settings = st.get_settings(tenant_id)
+        geos = settings.get("targetCountries") or ["US"]
+        return run_in_background(tenant_id=tenant_id, geos=geos, trigger="manual")
+
+    # ── API Key ──
+    @strawberry.mutation
+    def create_api_key(self, name: str = "默认 Key", tenant_id: str = "dev_tenant") -> ApiKeyCreated:
+        rec, token = st.create_api_key(tenant_id, name)
+        return ApiKeyCreated(key=_api_key_type(rec), token=token)
+
+    @strawberry.mutation
+    def revoke_api_key(self, key_id: str, tenant_id: str = "dev_tenant") -> bool:
+        return st.revoke_api_key(key_id, tenant_id)
+
+    # ── 设置 ──
+    @strawberry.mutation
+    def update_settings(
+        self,
+        tenant_id: str = "dev_tenant",
+        display_name: typing.Optional[str] = None,
+        email: typing.Optional[str] = None,
+        default_model: typing.Optional[str] = None,
+        default_market: typing.Optional[str] = None,
+        default_positioning: typing.Optional[str] = None,
+        notify_email: typing.Optional[bool] = None,
+        notify_in_app: typing.Optional[bool] = None,
+        target_countries: typing.Optional[typing.List[str]] = None,
+        refresh_hour_utc: typing.Optional[int] = None,
+    ) -> SettingsType:
+        patch = {
+            "displayName": display_name,
+            "email": email,
+            "defaultModel": default_model,
+            "defaultMarket": default_market,
+            "defaultPositioning": default_positioning,
+            "notifyEmail": notify_email,
+            "notifyInApp": notify_in_app,
+            "targetCountries": target_countries,
+            "refreshHourUtc": refresh_hour_utc,
+        }
+        return _settings_type(st.update_settings(tenant_id, patch))
 
 
 # ─────────── Subscription ───────────

@@ -4,6 +4,7 @@
 """
 from __future__ import annotations
 from typing import Optional
+import numpy as np
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -236,11 +237,74 @@ def stress_test(sale_price: float, procurement_cost: float, **kw) -> dict:
             for k, v in scenarios.items()}
 
 
+def _mc_draw_samples(rng, sale_price: float, procurement_cost: float,
+                     monthly_sales_estimate: int, n: int,
+                     is_new_product: bool) -> dict:
+    """抽取 6 个波动变量（抽取顺序与原实现完全一致，保证同 seed 结果不变）。"""
+    # 1. ACOS
+    if is_new_product:
+        acos = np.clip(rng.lognormal(mean=np.log(0.65), sigma=0.25, size=n), 0.30, 1.20)
+    else:
+        acos = rng.normal(0.20, 0.05, size=n).clip(0.10, 0.40)
+    # 2. 退货率
+    if is_new_product:
+        ret = rng.normal(0.15, 0.04, size=n).clip(0.05, 0.30)
+    else:
+        ret = rng.normal(0.08, 0.02, size=n).clip(0.03, 0.15)
+    # 3-4. 头程（海运 60% / 空运 40%）
+    shipping_mode = rng.random(n) < 0.6
+    ship = np.where(
+        shipping_mode,
+        rng.normal(4.5, 1.0, size=n),
+        rng.normal(18.0, 4.0, size=n),
+    ).clip(2.0, 30.0)
+    # 5. 汇率
+    fx = rng.normal(0.02, 0.03, size=n).clip(-0.05, 0.10)
+    # 6. 月销量（不影响净利，仍抽取以保持随机序列一致）
+    monthly_sales = rng.normal(
+        monthly_sales_estimate, monthly_sales_estimate * 0.30, size=n
+    ).clip(monthly_sales_estimate * 0.3, monthly_sales_estimate * 2.0)
+    # 采购成本谈判波动
+    proc = procurement_cost * rng.normal(1.0, 0.05, size=n).clip(0.85, 1.15)
+    return {"acos": acos, "return_rate": ret, "shipping": ship,
+            "fx": fx, "monthly_sales": monthly_sales, "procurement": proc}
+
+
+def _mc_net_profit(sale_price: float, samples: dict, stage: str = "stable") -> "np.ndarray":
+    """向量化净利计算 —— 与 full_cost_breakdown 的 14 项口径逐项一致，
+    仅 ACOS/退货/头程/汇率/采购 5 项随样本波动，其余取 stage 默认。
+    每元素 round(2) 与 full_cost_breakdown 输出对齐。"""
+    p = NEW_PRODUCT_DEFAULTS if stage == "new_product" else STABLE_DEFAULTS
+    proc = samples["procurement"]
+    ship = samples["shipping"]
+    acos = samples["acos"]
+    ret = samples["return_rate"]
+    fx = samples["fx"]
+
+    c01 = proc
+    c02 = ship
+    c03 = proc * p["duty_rate"]
+    c04 = p["test_certification_amortized"]
+    c05 = p["fba_fulfillment_fee"]
+    c06 = p["fba_storage_per_month"]
+    c07 = sale_price * p["amazon_referral_rate"]
+    c08 = sale_price * acos
+    c09 = (proc + c02 + c05) * ret
+    c10 = p["return_handling_per_unit"] * ret
+    c11 = sale_price * p["vat_rate"]
+    c12 = sale_price * p["payment_fee_rate"]
+    c13 = sale_price * fx
+    c14 = 0.20
+    total = c01 + c02 + c03 + c04 + c05 + c06 + c07 + c08 + c09 + c10 + c11 + c12 + c13 + c14
+    return np.round(sale_price - total, 2)
+
+
 def monte_carlo_stress_test(
     sale_price: float, procurement_cost: float,
     moq: int = 500, monthly_sales_estimate: int = 300,
     n_simulations: int = 5000,
     is_new_product: bool = True,
+    seed: int = 42,
 ) -> dict:
     """
     蒙特卡洛压力测试 — 5000 次模拟，给出净利分布 + 亏损概率 + VaR/CVaR
@@ -261,62 +325,16 @@ def monte_carlo_stress_test(
     - 推荐判定（新品冷启动期是否值得做）
     
     比简单 stress_test 真实得多 — 真实业务里 6 个变量同时波动。
+
+    seed 默认 42（可复现）；向量化计算净利，与逐次调用 full_cost_breakdown 等价但快得多。
     """
-    import numpy as np
-    
-    rng = np.random.default_rng(42)  # 可复现
-    
-    # 1. ACOS 分布（新品 vs 老品）
-    if is_new_product:
-        # 新品冷启动：ACOS 60%-100%，对数正态分布偏右
-        acos_samples = rng.lognormal(mean=np.log(0.65), sigma=0.25, size=n_simulations)
-        acos_samples = np.clip(acos_samples, 0.30, 1.20)
-    else:
-        acos_samples = rng.normal(0.20, 0.05, size=n_simulations).clip(0.10, 0.40)
-    
-    # 2. 退货率
-    if is_new_product:
-        return_samples = rng.normal(0.15, 0.04, size=n_simulations).clip(0.05, 0.30)
-    else:
-        return_samples = rng.normal(0.08, 0.02, size=n_simulations).clip(0.03, 0.15)
-    
-    # 3. 头程成本（海运 60% 概率 / 空运 40% 概率）
-    shipping_mode = rng.random(n_simulations) < 0.6
-    shipping_samples = np.where(
-        shipping_mode,
-        rng.normal(4.5, 1.0, size=n_simulations),  # 海运
-        rng.normal(18.0, 4.0, size=n_simulations),  # 空运
-    ).clip(2.0, 30.0)
-    
-    # 4. 汇率波动
-    fx_loss_samples = rng.normal(0.02, 0.03, size=n_simulations).clip(-0.05, 0.10)
-    
-    # 5. 月销量误差（BSR 估算 ±50%）
-    monthly_sales_samples = rng.normal(
-        monthly_sales_estimate, monthly_sales_estimate * 0.30, size=n_simulations
-    ).clip(monthly_sales_estimate * 0.3, monthly_sales_estimate * 2.0)
-    
-    # 6. 采购成本谈判后波动 ±10%
-    procurement_samples = procurement_cost * rng.normal(1.0, 0.05, size=n_simulations).clip(0.85, 1.15)
-    
-    # 跑 N 次
-    profits = []
-    for i in range(n_simulations):
-        try:
-            r = full_cost_breakdown(
-                sale_price, procurement_samples[i], moq, int(monthly_sales_samples[i]),
-                overrides={
-                    "ad_acos": float(acos_samples[i]),
-                    "return_rate": float(return_samples[i]),
-                    "shipping_per_unit_to_fba": float(shipping_samples[i]),
-                    "exchange_loss": float(fx_loss_samples[i]),
-                }
-            )
-            profits.append(r["net_profit"])
-        except Exception:
-            profits.append(0)
-    
-    profits_arr = np.array(profits)
+    rng = np.random.default_rng(seed)
+
+    samples = _mc_draw_samples(
+        rng, sale_price, procurement_cost, monthly_sales_estimate,
+        n_simulations, is_new_product,
+    )
+    profits_arr = _mc_net_profit(sale_price, samples)
     
     p_loss = float((profits_arr < 0).mean())
     var_95 = float(np.percentile(profits_arr, 5))  # 5% 最坏

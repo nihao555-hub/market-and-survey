@@ -2246,6 +2246,232 @@ def tool_file_to_markdown(file_path: str) -> dict:
     return {"file": file_path, "length": len(md), "markdown": md[:5000]}
 
 
+# =====================  TikHub：实时社媒趋势 + TikTok Shop 电商  =====================
+def tool_tiktok_shop_search(keyword: str, region: str = "US", limit: int = 20) -> dict:
+    """实时搜 TikTok Shop 商品（真实价格/评分/评论数/销量/店铺）。未配 key 时如实返回 error。"""
+    logger.info(f"🔧 tiktok_shop_search({keyword}, region={region}, limit={limit})")
+    from modules import tikhub
+    if not tikhub.is_configured():
+        return {"ok": False, "error": "TIKHUB_API_KEY 未配置，TikTok Shop 实时通道不可用", "products": []}
+    try:
+        prods = tikhub.shop_search(keyword, region=region, limit=limit)
+        return {"ok": True, "keyword": keyword, "region": region, "count": len(prods),
+                "summary": tikhub.shop_summary(keyword, prods),
+                "stats": tikhub.product_stats(prods), "products": prods}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:300], "products": []}
+
+
+def tool_tiktok_shop_reviews(product_id: str, region: str = "US", limit: int = 20) -> dict:
+    """抓 TikTok Shop 某商品的真实评论（product_id 来自 tiktok_shop_search）。区域不匹配返回空。"""
+    logger.info(f"🔧 tiktok_shop_reviews({product_id}, region={region})")
+    from modules import tikhub
+    if not tikhub.is_configured():
+        return {"ok": False, "error": "TIKHUB_API_KEY 未配置", "reviews": []}
+    try:
+        rv = tikhub.shop_reviews(product_id, region=region, limit=limit)
+        return {"ok": True, "product_id": product_id, "count": len(rv), "reviews": rv}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:300], "reviews": []}
+
+
+def tool_social_trends(platforms: list = None, limit: int = 20) -> dict:
+    """跨平台实时社媒热搜/热词。看「今天大家在搜什么、什么在火」。
+
+    可选平台（不传则全抓）：tiktok / douyin / weibo / xiaohongshu / kuaishou /
+    bilibili / twitter（X，海外）/ lemon8（字节海外种草）。
+    """
+    logger.info(f"🔧 social_trends(platforms={platforms}, limit={limit})")
+    from modules import tikhub
+    if not tikhub.is_configured():
+        return {"ok": False, "error": "TIKHUB_API_KEY 未配置，社媒趋势通道不可用", "platforms": {}}
+    try:
+        return {"ok": True, "platforms": tikhub.social_trends(platforms=platforms, limit=limit)}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:300], "platforms": {}}
+
+
+def tool_tiktok_category_list(region: str = "US") -> dict:
+    """TikTok Shop 一级品类树（带二级子类），用于「按品类」选品导航。"""
+    logger.info(f"🔧 tiktok_category_list(region={region})")
+    from modules import tikhub
+    if not tikhub.is_configured():
+        return {"ok": False, "error": "TIKHUB_API_KEY 未配置", "categories": []}
+    try:
+        cats = tikhub.fetch_products_category_list(region=region)
+        return {"ok": True, "region": region, "count": len(cats), "categories": cats}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:300], "categories": []}
+
+
+def tool_tiktok_products_by_category(category_id: str, region: str = "US",
+                                     limit: int = 20, offset: int = 0) -> dict:
+    """某品类下的实时在售商品榜（按品类 Top N）。category_id 来自 tiktok_category_list。"""
+    logger.info(f"🔧 tiktok_products_by_category({category_id}, region={region}, limit={limit})")
+    from modules import tikhub
+    if not tikhub.is_configured():
+        return {"ok": False, "error": "TIKHUB_API_KEY 未配置", "products": []}
+    try:
+        prods = tikhub.fetch_products_by_category(category_id, region=region, limit=limit, offset=offset)
+        return {"ok": True, "category_id": category_id, "region": region, "count": len(prods),
+                "stats": tikhub.product_stats(prods), "products": prods}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:300], "products": []}
+
+
+def tool_tiktok_hot_selling(region: str = "US", limit: int = 20) -> dict:
+    """TikTok Shop 实时热销榜（爆品雷达）。返回当前热卖商品（价格/评分/销量/店铺）。"""
+    logger.info(f"🔧 tiktok_hot_selling(region={region}, limit={limit})")
+    from modules import tikhub
+    if not tikhub.is_configured():
+        return {"ok": False, "error": "TIKHUB_API_KEY 未配置", "products": []}
+    try:
+        prods = tikhub.fetch_hot_selling_products(region=region, limit=limit)
+        return {"ok": True, "region": region, "count": len(prods),
+                "stats": tikhub.product_stats(prods), "products": prods}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:300], "products": []}
+
+
+def tool_tiktok_trending_hashtags(time_range: int = 7, country: str = "US", limit: int = 10) -> dict:
+    """TikTok 热门话题榜：含浏览量、发布数、排名、popularity_curve（声量曲线）+ top_creators（达人侦察）。"""
+    logger.info(f"🔧 tiktok_trending_hashtags(time_range={time_range}, country={country}, limit={limit})")
+    from modules import tikhub
+    if not tikhub.is_configured():
+        return {"ok": False, "error": "TIKHUB_API_KEY 未配置", "hashtags": []}
+    try:
+        tags = tikhub.trending_hashtags(time_range=time_range, country=country, limit=limit)
+        return {"ok": True, "time_range": time_range, "country": country,
+                "count": len(tags), "hashtags": tags}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:300], "hashtags": []}
+
+
+def tool_reddit_search(query: str, time_range: str = "year", sort: str = "relevance",
+                       limit: int = 10) -> dict:
+    """Reddit 帖子搜索（需求验证层）：真实用户讨论里的需求/吐槽/比较。用于受众洞察/机会挖掘。"""
+    logger.info(f"🔧 reddit_search({query}, time_range={time_range}, sort={sort})")
+    from modules import tikhub
+    if not tikhub.is_configured():
+        return {"ok": False, "error": "TIKHUB_API_KEY 未配置", "posts": []}
+    try:
+        posts = tikhub.reddit_search(query, time_range=time_range, sort=sort, limit=limit)
+        return {"ok": True, "query": query, "count": len(posts), "posts": posts}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:300], "posts": []}
+
+
+def tool_youtube_search(query: str, country: str = "US", language: str = "en",
+                        limit: int = 12) -> dict:
+    """YouTube 视频搜索（需求验证层）：测评/开箱视频，看内容偏好与触达渠道。用于受众洞察/竞品分析。"""
+    logger.info(f"🔧 youtube_search({query}, country={country})")
+    from modules import tikhub
+    if not tikhub.is_configured():
+        return {"ok": False, "error": "TIKHUB_API_KEY 未配置", "videos": []}
+    try:
+        vids = tikhub.youtube_search(query, country=country, language=language, limit=limit)
+        return {"ok": True, "query": query, "count": len(vids), "videos": vids}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:300], "videos": []}
+
+
+def _ddv_match(text: str, q: str) -> bool:
+    return (not q) or (q.lower() in (text or "").lower())
+
+
+def tool_browse_daily_dataset(query: str = "", kinds: list = None,
+                              tenant_id: str = "dev_tenant", limit: int = 30) -> dict:
+    """读取「每日刷新」已落库的大盘数据——**零额外 API 成本**（不重复消耗 TikHub 额度）。
+
+    覆盖每批刷新攒下的真实底盘：
+      - categories     28 个一级品类的实时商品榜（每类 Top 商品 + 价格/评分/销量统计）
+      - hot_selling    TikTok Shop 实时热销榜（爆品雷达）
+      - social_trends  8 平台社媒热词（tiktok/douyin/weibo/xiaohongshu/kuaishou/bilibili/twitter/lemon8）
+      - hashtags       TikTok 热门话题声量曲线 + 达人
+
+    用法：任何模式开局**先调本工具**用大盘底子定位方向（省额度）；需要更细/更新的实时数据再去调
+    tiktok_shop_search / social_trends 等付费工具补齐。query 非空时按关键词过滤（匹配商品标题/品类名/
+    热词/话题）。kinds 可限定只取某几类（如 ["social_trends","hashtags"]）。
+    """
+    logger.info(f"🔧 browse_daily_dataset(query={query!r}, kinds={kinds}, limit={limit})")
+    want = set(kinds) if kinds else {"categories", "hot_selling", "social_trends", "hashtags"}
+    q = (query or "").strip()
+    try:
+        from backend import storage as st
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": f"数据快照存储不可用：{str(e)[:160]}"}
+
+    snaps = st.list_latest_snapshots(tenant_id, limit=400)
+    if not snaps:
+        return {"ok": False, "error": "还没有任何每日刷新快照，请先在「监控与订阅」页点『立即刷新』或等待定时刷新。",
+                "categories": [], "hot_selling": [], "social_trends": {}, "hashtags": []}
+
+    captured_at = None
+    for s in snaps:
+        ca = getattr(s, "captured_at", None)
+        if ca:
+            captured_at = ca.isoformat() if hasattr(ca, "isoformat") else str(ca)
+            break
+
+    def _slim(p: dict) -> dict:
+        return {k: p.get(k) for k in ("title", "price", "currency_symbol", "rating",
+                                      "sold_count", "shop_name", "url") if p.get(k) is not None}
+
+    categories: list[dict] = []
+    hot_selling: list[dict] = []
+    social: dict[str, list] = {}
+    hashtags: list[dict] = []
+
+    for s in snaps:
+        src = s.source
+        pl = s.payload or {}
+        if not getattr(s, "real_data", False):
+            continue
+        if src == "category_rank" and "categories" in want:
+            cname = pl.get("category_name") or ""
+            prods = [p for p in (pl.get("products") or []) if isinstance(p, dict)]
+            if q:
+                prods = [p for p in prods if _ddv_match(p.get("title", ""), q)]
+                if not prods and not _ddv_match(cname, q):
+                    continue
+            if prods or _ddv_match(cname, q):
+                categories.append({"category": cname, "stats": pl.get("stats"),
+                                   "top_products": [_slim(p) for p in prods[:8]]})
+        elif src == "hot_selling" and "hot_selling" in want:
+            prods = [p for p in (pl.get("products") or []) if isinstance(p, dict)]
+            if q:
+                prods = [p for p in prods if _ddv_match(p.get("title", ""), q)]
+            hot_selling = [_slim(p) for p in prods[:limit]]
+        elif src.startswith("trend_") and "social_trends" in want:
+            items = [it for it in (pl.get("items") or []) if isinstance(it, dict)]
+            kws = [it for it in items if _ddv_match(it.get("keyword", ""), q)]
+            if kws:
+                social[pl.get("label") or src] = [
+                    {"keyword": it.get("keyword"), "heat": it.get("heat"), "views": it.get("views")}
+                    for it in kws[:limit]]
+        elif src == "hashtag_trends" and "hashtags" in want:
+            tags = [t for t in (pl.get("hashtags") or []) if isinstance(t, dict)]
+            if q:
+                tags = [t for t in tags if _ddv_match(t.get("hashtag", ""), q)]
+            hashtags = [{"hashtag": t.get("hashtag"), "views": t.get("vv") or t.get("views"),
+                         "rank": t.get("rank"), "publish_count": t.get("publish_cnt") or t.get("publish_count")}
+                        for t in tags[:limit]]
+
+    categories.sort(key=lambda c: len(c["top_products"]), reverse=True)
+    return {
+        "ok": True,
+        "captured_at": captured_at,
+        "query": q or None,
+        "note": "零成本：来自每日刷新已落库快照；如需更新/更细数据再调实时工具。",
+        "counts": {"categories": len(categories), "hot_selling": len(hot_selling),
+                   "social_platforms": len(social), "hashtags": len(hashtags)},
+        "categories": categories[:limit],
+        "hot_selling": hot_selling,
+        "social_trends": social,
+        "hashtags": hashtags,
+    }
+
+
 # =====================  工具 schema（DeepSeek function calling）=====================
 TOOLS_SCHEMA = [
     {"type": "function", "function": {
@@ -2279,6 +2505,78 @@ TOOLS_SCHEMA = [
         "parameters": {"type": "object", "properties": {
             "keyword": {"type": "string"}, "geo": {"type": "string"}
         }, "required": ["keyword"]}}},
+    {"type": "function", "function": {
+        "name": "tiktok_shop_search",
+        "description": "**实时电商首选**。搜 TikTok Shop 当前在售商品，返回真实价格/评分/评论数/销量/店铺/图片/链接。TikTok Shop 是全球主流电商平台之一，数据每日更新——亚马逊机房 IP 被封时这是最稳的实时商品来源。region 用目标市场（US/UK/GB/MY/TH/VN/ID/SG 等）。",
+        "parameters": {"type": "object", "properties": {
+            "keyword": {"type": "string"},
+            "region": {"type": "string", "description": "市场国家码，默认 US"},
+            "limit": {"type": "integer", "default": 20}
+        }, "required": ["keyword"]}}},
+    {"type": "function", "function": {
+        "name": "tiktok_shop_reviews",
+        "description": "抓 TikTok Shop 某商品的真实买家评论（product_id 来自 tiktok_shop_search）。用于提炼痛点/卖点。region 必须与搜索时一致，否则评论不可用。",
+        "parameters": {"type": "object", "properties": {
+            "product_id": {"type": "string"},
+            "region": {"type": "string", "description": "需与搜索时一致，默认 US"},
+            "limit": {"type": "integer", "default": 20}
+        }, "required": ["product_id"]}}},
+    {"type": "function", "function": {
+        "name": "social_trends",
+        "description": "**社媒实时趋势（8 平台）**。一次拿 TikTok 趋势搜索词 / 抖音热榜 / 微博热搜 / 小红书热词 / 快手热榜 / B站热搜 / X(Twitter) 趋势 / Lemon8 热词，看『今天大家在搜什么、什么在火』。用于发现新兴选品方向、把社媒热度与电商销量做交叉验证。platforms 不传则全拿。",
+        "parameters": {"type": "object", "properties": {
+            "platforms": {"type": "array", "items": {"type": "string"},
+                          "description": "tiktok/douyin/weibo/xiaohongshu/kuaishou/bilibili/twitter/lemon8，不传则全部"},
+            "limit": {"type": "integer", "default": 20}
+        }}}},
+    {"type": "function", "function": {
+        "name": "tiktok_category_list",
+        "description": "**按品类选品导航**。拿 TikTok Shop 一级品类树（带二级子类，含 category_id）。用于『按品类』浏览，再用 tiktok_products_by_category 抓某类的实时 Top 商品。region 用目标市场。",
+        "parameters": {"type": "object", "properties": {
+            "region": {"type": "string", "description": "市场国家码，默认 US"}
+        }}}},
+    {"type": "function", "function": {
+        "name": "tiktok_products_by_category",
+        "description": "**按品类实时榜**。某品类下当前在售商品（真实价格/评分/评论数/销量/店铺/图），同 tiktok_shop_search 字段。category_id 来自 tiktok_category_list。用于『按品类 Top5/Top N』选品。",
+        "parameters": {"type": "object", "properties": {
+            "category_id": {"type": "string"},
+            "region": {"type": "string", "description": "市场国家码，默认 US"},
+            "limit": {"type": "integer", "default": 20},
+            "offset": {"type": "integer", "default": 0}
+        }, "required": ["category_id"]}}},
+    {"type": "function", "function": {
+        "name": "tiktok_hot_selling",
+        "description": "**实时爆品雷达**。TikTok Shop 当前热销榜，返回正在热卖的真实商品（价格/评分/销量/店铺）。用于快速摸清一个市场当下什么在爆卖。region 用目标市场。",
+        "parameters": {"type": "object", "properties": {
+            "region": {"type": "string", "description": "市场国家码，默认 US"},
+            "limit": {"type": "integer", "default": 20}
+        }}}},
+    {"type": "function", "function": {
+        "name": "tiktok_trending_hashtags",
+        "description": "**话题声量曲线 + 达人侦察**。TikTok 热门话题榜：每个话题的浏览量(views)、发布数、排名、popularity_curve（time_range 天时间序列，判声量拐点）、top_creators（带货达人）。趋势探索/机会挖掘用来看『什么话题在涨、谁在带』。time_range 取 7/30/120。",
+        "parameters": {"type": "object", "properties": {
+            "time_range": {"type": "integer", "description": "天数 7/30/120，默认 7"},
+            "country": {"type": "string", "description": "国家码，默认 US"},
+            "limit": {"type": "integer", "default": 10}
+        }}}},
+    {"type": "function", "function": {
+        "name": "reddit_search",
+        "description": "**需求验证层（Reddit）**。搜真实用户讨论帖（标题/子版块/分数/评论数/正文摘要/链接），是『用户自己的声音』。受众洞察看动机与顾虑、机会挖掘看『我希望有个能…的产品』式未满足需求。time_range: hour/day/week/month/year/all；sort: relevance/hot/top/new。",
+        "parameters": {"type": "object", "properties": {
+            "query": {"type": "string"},
+            "time_range": {"type": "string", "description": "hour/day/week/month/year/all，默认 year"},
+            "sort": {"type": "string", "description": "relevance/hot/top/new，默认 relevance"},
+            "limit": {"type": "integer", "default": 10}
+        }, "required": ["query"]}}},
+    {"type": "function", "function": {
+        "name": "youtube_search",
+        "description": "**需求验证层（YouTube）**。搜测评/开箱视频（标题/频道/观看量/发布时间/时长/描述摘要/链接），反映内容偏好与触达渠道。受众洞察看『在哪触达、偏好什么内容』，竞品分析看对手如何被评测。",
+        "parameters": {"type": "object", "properties": {
+            "query": {"type": "string"},
+            "country": {"type": "string", "description": "国家码，默认 US"},
+            "language": {"type": "string", "description": "语言码，默认 en"},
+            "limit": {"type": "integer", "default": 12}
+        }, "required": ["query"]}}},
     {"type": "function", "function": {
         "name": "discover_bsr_url",
         "description": "LLM 给类目关键词（如 'wireless earbuds' / 'smart watch'），工具自动从【目标市场对应的 Amazon 站点】搜索发现真实子类目 BSR URL。**必须传 geo=目标市场**（US/UK/DE/FR/JP/SG/IN/...），否则默认美国站。若该市场无 Amazon 业务（如 RU/东南亚），返回 amazon_available=false，此时应改用 search_multi_platform 抓本地平台。",
@@ -2649,6 +2947,15 @@ TOOLS_SCHEMA = [
         "parameters": {"type": "object", "properties": {
             "png_path": {"type": "string", "description": "Keepa PNG 文件路径"}
         }, "required": ["png_path"]}}},
+    {"type": "function", "function": {
+        "name": "browse_daily_dataset",
+        "description": "**零成本大盘底子（首选开局工具）**。读取『每日刷新』已落库的真实快照——28 个一级品类实时商品榜 + TikTok Shop 热销榜 + 8 平台社媒热词 + 热门话题声量曲线，**不消耗任何 TikHub 额度**。任何模式都应先调它定位方向（哪些品类/热词/话题与本次调研相关），再用 tiktok_shop_search / social_trends 等实时工具补更新更细的数据。query 非空时按关键词过滤（匹配商品标题/品类名/热词/话题）；kinds 可只取某几类。",
+        "parameters": {"type": "object", "properties": {
+            "query": {"type": "string", "description": "关键词过滤，匹配商品标题/品类名/热词/话题；不传则取全部大盘"},
+            "kinds": {"type": "array", "items": {"type": "string"},
+                      "description": "限定取哪几类：categories/hot_selling/social_trends/hashtags，不传则全取"},
+            "limit": {"type": "integer", "default": 30}
+        }}}},
 ]
 
 TOOL_IMPL = {
@@ -2672,11 +2979,20 @@ TOOL_IMPL = {
     "list_platforms": tool_list_platforms,
     "search_multi_platform": tool_search_multi_platform,
     "get_trend": tool_get_trend,
+    "tiktok_shop_search": tool_tiktok_shop_search,
+    "tiktok_shop_reviews": tool_tiktok_shop_reviews,
+    "social_trends": tool_social_trends,
+    "tiktok_category_list": tool_tiktok_category_list,
+    "tiktok_products_by_category": tool_tiktok_products_by_category,
+    "tiktok_hot_selling": tool_tiktok_hot_selling,
+    "tiktok_trending_hashtags": tool_tiktok_trending_hashtags,
+    "reddit_search": tool_reddit_search,
+    "youtube_search": tool_youtube_search,
+    "browse_daily_dataset": tool_browse_daily_dataset,
     "discover_bsr_url": tool_discover_bsr_url,
     "get_bestsellers_by_url": tool_get_bestsellers_by_url,
     "get_movers_shakers_by_url": tool_get_movers_shakers_by_url,
     "get_bestsellers": tool_get_bestsellers,
-    "get_movers_shakers": tool_get_movers_shakers,
     "search_products": tool_search_products,
     "search_multi_platform": tool_search_multi_platform,
     "analyze_market_structure": tool_analyze_market_structure,

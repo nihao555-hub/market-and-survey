@@ -29,7 +29,8 @@ dramatiq.set_broker(redis_broker)
 
 
 @dramatiq.actor(max_retries=2, time_limit=1800 * 1000, queue_name="selection")
-def run_selection_actor(thread_id: str, stream_id: str, user_text: str, model_choice: str = "flash"):
+def run_selection_actor(thread_id: str, stream_id: str, user_text: str,
+                        model_choice: str = "flash", kind: str = "general"):
     """
     选品 Agent 后台 actor —— 在 worker 进程跑（控制面/数据面分离，steering §2.1 / §8.8）。
     调用 run_selection_job（异步，会 publish 到 Redis pub/sub），SSE /events 端点消费事件流。
@@ -37,7 +38,7 @@ def run_selection_actor(thread_id: str, stream_id: str, user_text: str, model_ch
     import asyncio
     from backend.selection_job import run_selection_job
     try:
-        asyncio.run(run_selection_job(thread_id, stream_id, user_text, model_choice))
+        asyncio.run(run_selection_job(thread_id, stream_id, user_text, model_choice, kind))
         return {"thread_id": thread_id, "stream_id": stream_id, "ok": True}
     except Exception as e:
         return {"thread_id": thread_id, "stream_id": stream_id, "fatal_error": str(e)[:300]}

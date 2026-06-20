@@ -65,6 +65,15 @@ export interface UIMessage {
   createdAt?: string;
 }
 
+// ── 调研类型（5 个功能页 + 工作台通用入口）：后端 Thread.kind ──
+export type ResearchKind =
+  | "market"        // 市场调研
+  | "trend"         // 趋势探索
+  | "competitor"    // 竞品分析
+  | "audience"      // 受众洞察
+  | "opportunity"   // 机会挖掘
+  | "general";      // 工作台通用
+
 // ── 选品任务参数（输入框「参数设置」→ 后端字段） ──
 export interface SelectionParams {
   category: string;       // 品类关键词，如 "瑜伽垫"
@@ -73,6 +82,7 @@ export interface SelectionParams {
   monthlyBudget: string;  // 月度预算
   exclude: string;        // 排除大牌
   modelChoice: "flash" | "pro";  // → 后端 model_choice
+  kind?: ResearchKind;    // 调研类型 → 后端打标签，供各功能页分类
 }
 
 // ── A2UI 澄清表单（Agent 在流程中向用户索取结构化输入） ──
@@ -92,4 +102,6 @@ export interface ThreadSummary {
   title: string;
   updatedAt?: string;
   activeStreamId?: string | null;
+  isFavorite?: boolean;
+  kind?: ResearchKind;
 }

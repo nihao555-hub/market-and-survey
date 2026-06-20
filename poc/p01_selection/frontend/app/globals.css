@@ -2,65 +2,91 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Linear 设计系统 token（亮色适配版，见 vendor/.../linear.app/DESIGN.md）──
-   原则：四级 surface 阶梯 + hairline 细线承载层级（几乎不用阴影），
-   单一 accent（Linear 用薰衣草紫，本项目按规范用青绿避开"AI 紫"辉光），
-   display 负字距收紧，8px 按钮圆角 / 12px 卡片圆角。*/
-:root {
-  --accent: #0d9488;
-  --accent-hover: #0b8076;
-  --accent-ring: rgba(13, 148, 136, 0.35);
+/* ── 设计系统 token（设计稿② Design Tokens v1.0）──
+   主色 orange #F97316、slate 中性阶、语义色、8pt 间距、5 档阴影。
+   shadcn / ai-elements 用 HSL CSS 变量驱动；品牌/旧 token 用 hex 兼容现有组件。*/
+@layer base {
+  :root {
+    --background: 210 40% 98%;        /* #F8FAFC 页面底 */
+    --foreground: 222.2 47.4% 11.2%;  /* #0F172A slate-900 */
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 47.4% 11.2%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 47.4% 11.2%;
+    --primary: 24.6 95% 53.1%;        /* #F97316 orange-500 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96.1%;       /* #F1F5F9 slate-100 */
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;  /* #64748B slate-500 */
+    --accent: 210 40% 96.1%;          /* shadcn 弱化底色（非品牌色） */
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;     /* #EF4444 */
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;      /* #E2E8F0 slate-200 */
+    --input: 214.3 31.8% 91.4%;
+    --ring: 24.6 95% 53.1%;           /* orange 聚焦环 */
+    --radius: 0.75rem;                /* 12px 卡片圆角基准 */
 
-  /* 四级 surface 阶梯（canvas → 1 → 2 → 3 → 4），亮色下逐级加深一点点 */
-  --canvas: #ffffff;
-  --surface-1: #fafbfc;
-  --surface-2: #f4f5f7;
-  --surface-3: #eef0f3;
-  --surface-4: #e8eaee;
+    --chart-1: 25 95% 53%;    /* orange #F97316 */
+    --chart-2: 189 94% 43%;   /* cyan #06B6D4 */
+    --chart-3: 330 81% 60%;   /* pink #EC4899 */
+    --chart-4: 38 92% 50%;    /* amber #F59E0B */
+    --chart-5: 160 84% 39%;   /* emerald #10B981 */
 
-  /* hairline 三级（Linear 用细线代替阴影做层级） */
-  --hairline: #e8eaed;
-  --hairline-strong: #d8dbe0;
-  --hairline-tertiary: #c8ccd2;
+    /* ── 品牌主色（shimmer / markdown 链接等用） ── */
+    --brand: #F97316;
+    --brand-hover: #EA580C;
+    --brand-ring: rgba(249, 115, 22, 0.35);
 
-  /* ink 四级文本 */
-  --ink: #1a1d21;
-  --ink-muted: #4b5563;
-  --ink-subtle: #8a8f98;
-  --ink-tertiary: #a8adb5;
+    /* ── 兼容旧组件的中性/语义 token（重映射到设计稿② slate） ── */
+    --canvas: #ffffff;
+    --surface-1: #f8fafc;
+    --surface-2: #f1f5f9;
+    --surface-3: #e2e8f0;
+    --surface-4: #cbd5e1;
+    --hairline: #e2e8f0;
+    --hairline-strong: #cbd5e1;
+    --hairline-tertiary: #94a3b8;
+    --ink: #0f172a;
+    --ink-muted: #475569;
+    --ink-subtle: #64748b;
+    --ink-tertiary: #94a3b8;
+    --success: #10b981;
+    --danger: #ef4444;
+    --warning: #f59e0b;
 
-  --success: #27a644;
-  --danger: #dc2626;
-  --warning: #d4a017;
-
-  /* shimmer 用 */
-  --font-color-light: #cbd5d1;
-  --font-color-primary: #0d9488;
+    /* shimmer 渐变（orange） */
+    --font-color-light: #fed7aa;
+    --font-color-primary: #f97316;
+  }
 }
 
-* {
-  border-color: var(--hairline);
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body {
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: Inter, -apple-system, "PingFang SC", "Segoe UI", "Microsoft YaHei",
+      system-ui, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
 }
 
-html,
-body {
-  height: 100%;
-  background: var(--canvas);
-  color: var(--ink);
-  font-family: Inter, -apple-system, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11", "ss01";
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-  letter-spacing: -0.011em;
-}
-
-/* Linear 标题：单一字族，越大字距越负（display 收紧到 -0.03em） */
-h1, .display-xl { letter-spacing: -0.03em; font-weight: 600; }
-h2, .display-lg { letter-spacing: -0.022em; font-weight: 600; }
-h3, .display-md { letter-spacing: -0.014em; font-weight: 600; }
+/* 标题字距（设计稿② Typography：H1-H4 行高 140%） */
+h1, .display-xl { letter-spacing: -0.02em; font-weight: 600; }
+h2, .display-lg { letter-spacing: -0.018em; font-weight: 600; }
+h3, .display-md { letter-spacing: -0.012em; font-weight: 600; }
 .eyebrow { letter-spacing: 0.04em; font-weight: 500; text-transform: uppercase; font-size: 12px; color: var(--ink-subtle); }
 
-/* ShimmeringText —— 进行中文案水波光效（lavender） */
+/* ShimmeringText —— 进行中文案水波光效（orange） */
 .shimmering-text {
   background: linear-gradient(
     90deg,
@@ -78,9 +104,8 @@ h3, .display-md { letter-spacing: -0.014em; font-weight: 600; }
   0% { background-position: 200% top; }
   100% { background-position: -200% top; }
 }
-
 @media (prefers-reduced-motion: reduce) {
-  .shimmering-text { animation: none; -webkit-text-fill-color: var(--accent); }
+  .shimmering-text { animation: none; -webkit-text-fill-color: var(--brand); }
 }
 
 /* 滚动条 */
@@ -89,7 +114,7 @@ textarea::-webkit-scrollbar-track, .scroll-area::-webkit-scrollbar-track { backg
 textarea::-webkit-scrollbar-thumb, .scroll-area::-webkit-scrollbar-thumb { background-color: var(--hairline-strong); border-radius: 4px; }
 textarea::-webkit-scrollbar-thumb:hover, .scroll-area::-webkit-scrollbar-thumb:hover { background-color: var(--ink-subtle); }
 
-/* ── markdown 报告样式（亮色，对齐 DESIGN.md） ── */
+/* ── markdown 报告样式 ── */
 .markdown-body { font-size: 15px; line-height: 1.65; color: var(--ink-muted); }
 .markdown-body h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); margin: 1.2rem 0 0.6rem; }
 .markdown-body h2 { font-size: 1.2rem; font-weight: 600; letter-spacing: -0.01em; color: var(--ink); margin: 1.1rem 0 0.4rem; padding-bottom: 5px; border-bottom: 1px solid var(--hairline); }
@@ -102,14 +127,14 @@ textarea::-webkit-scrollbar-thumb:hover, .scroll-area::-webkit-scrollbar-thumb:h
 .markdown-body th { background: var(--surface-2); font-weight: 600; color: var(--ink); }
 .markdown-body tr:nth-child(even) { background: var(--surface-1); }
 .markdown-body blockquote { border-left: 3px solid var(--hairline-strong); padding: 2px 14px; color: var(--ink-subtle); margin: 0.6rem 0; }
-.markdown-body code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.82rem; color: #b3471d; }
+.markdown-body code { background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.82rem; color: #be123c; }
 .markdown-body pre { background: var(--surface-2); padding: 12px; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; border: 1px solid var(--hairline); }
 .markdown-body pre code { background: transparent; color: var(--ink); padding: 0; }
 .markdown-body img { max-width: 100%; border-radius: 8px; margin: 10px 0; border: 1px solid var(--hairline); }
-.markdown-body a { color: var(--accent); text-decoration: none; }
+.markdown-body a { color: var(--brand); text-decoration: none; }
 .markdown-body a:hover { text-decoration: underline; }
 .markdown-body details { border: 1px solid var(--hairline); border-radius: 8px; padding: 10px 14px; margin: 10px 0; background: var(--surface-1); }
-.markdown-body summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.markdown-body summary { cursor: pointer; color: var(--brand); font-weight: 600; }
 .markdown-body ul { list-style: disc; padding-left: 1.4rem; margin: 0.4rem 0; }
 .markdown-body ol { list-style: decimal; padding-left: 1.4rem; margin: 0.4rem 0; }
 .markdown-body hr { border: none; border-top: 1px solid var(--hairline); margin: 1.2rem 0; }

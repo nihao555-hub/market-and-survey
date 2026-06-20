@@ -1,14 +1,6 @@
 "use client";
-import { Sidebar } from "@/components/Sidebar";
-import { ChatView } from "@/components/ChatView";
+import { AppShell } from "@/components/AppShell";
 
 export default function Home() {
-  return (
-    <div className="flex h-screen w-screen overflow-hidden bg-white">
-      <Sidebar />
-      <main className="flex-1 overflow-hidden">
-        <ChatView />
-      </main>
-    </div>
-  );
+  return <AppShell />;
 }

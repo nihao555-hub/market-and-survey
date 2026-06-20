@@ -8,7 +8,6 @@
 from __future__ import annotations
 from typing import List
 from pydantic import BaseModel
-from scrapling.parser import Adaptor
 from loguru import logger
 
 
@@ -33,6 +32,7 @@ def _parse_rating(rating_class: str) -> float | None:
 
 def parse_book_list(html: str, base_url: str = "https://books.toscrape.com/") -> List[Product]:
     """解析 books.toscrape 列表页"""
+    from scrapling.parser import Adaptor  # 延迟导入可选爬虫依赖  # noqa: PLC0415
     adp = Adaptor(html, url=base_url, auto_match=True)
     products: List[Product] = []
 

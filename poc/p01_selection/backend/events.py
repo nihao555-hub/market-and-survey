@@ -5,11 +5,11 @@
 - cancel channel 单订阅连接 + 内部 Map 路由
 """
 from __future__ import annotations
-import json, uuid, asyncio
+import os, json, uuid, asyncio
 from typing import Optional, Callable
 import redis.asyncio as aioredis
 
-REDIS_URL = "redis://127.0.0.1:6379/0"
+REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
 CHUNK_TTL = 3600
 CHUNKS_KEY = "agent-chat-stream-chunks:{thread_id}"
 EVENT_CHANNEL = "agent-chat-events:{thread_id}"

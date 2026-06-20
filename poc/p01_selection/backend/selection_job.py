@@ -10,7 +10,7 @@
 - drain 后发 message-persisted
 """
 from __future__ import annotations
-import asyncio, json, time, uuid
+import asyncio, json, re, time, uuid
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -23,6 +23,7 @@ load_dotenv(Path(__file__).resolve().parents[3] / ".env")
 
 from modules.agent_tools import TOOLS_SCHEMA, TOOL_IMPL
 from modules.browser_cleanup import start_watchdog, kill_orphan_browsers
+from modules.llm import MODEL_FLASH, MODEL_PRO
 from backend.events import publish, CANCEL_SUB, CANCEL_CHANNEL
 from backend.storage import (add_message, set_active_stream, update_token_usage,
                               list_messages)
@@ -30,12 +31,12 @@ from backend.storage import (add_message, set_active_stream, update_token_usage,
 # 防僵尸进程：进程级看门狗（每 120s 清理 >240s 的孤儿爬虫浏览器，不误杀用户日常浏览器）
 start_watchdog(interval_sec=120, max_age_sec=240)
 
-MODEL_FLASH = os.getenv("DEEPSEEK_MODEL_FLASH", "deepseek-v4-flash")
-MODEL_PRO = os.getenv("DEEPSEEK_MODEL_PRO", "deepseek-v4-pro")
+# 模型名统一从 modules.llm 取（单一来源），避免与 llm.py / agent.py 漂移。
 
 # 同步客户端（Agent 工具循环内部用，外层 await 走 to_thread）
+# api_key 缺失时用占位符，保证 import 不报错（真正调用才会 401，提示更清晰）
 _client = OpenAI(
-    api_key=os.getenv("DEEPSEEK_API_KEY"),
+    api_key=os.getenv("DEEPSEEK_API_KEY") or "MISSING_DEEPSEEK_API_KEY",
     base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"),
 )
 
@@ -362,6 +363,27 @@ def _sanitize_messages_for_completion(messages: list) -> list:
     return out
 
 
+# 模型偶尔会把工具调用以 DSML / DeepSeek 控制标记直接写进正文（尤其在生成最终报告
+# 这种「无工具」补全里），这些控制标记不是给用户看的，渲染出来就是一段乱码尾巴。
+# 这里把首个控制标记及其后的全部残留剔除，并去掉紧贴其前的「我先补跑工具…」过渡孤句。
+_CTRL_TAG_RE = re.compile(r"<[^>\n]{0,40}(?:DSML|tool[\u2581_\s]?calls)[^>]*>", re.IGNORECASE)
+_TRAILING_INTENT_RE = re.compile(
+    r"(?:\n\s*)+[^\n]*?(?:补跑|继续(?:输出|调用)|调用(?:以下)?工具|工具调用|我(?:先|现在)[^\n]*工具)[^\n]*$"
+)
+
+
+def _strip_control_markup(text: str) -> str:
+    """剔除正文里误混入的工具调用控制标记（DSML / DeepSeek tool-calls）及其尾随残留。"""
+    if not text:
+        return text
+    m = _CTRL_TAG_RE.search(text)
+    if not m:
+        return text
+    head = text[: m.start()].rstrip()
+    head = _TRAILING_INTENT_RE.sub("", head).rstrip()
+    return head
+
+
 SYSTEM_TEMPLATE = """你是资深跨境选品专家。严格按 procurement-research 8 阶段方法论。
 
 ## 🚨 第一优先级：客观性与零幻觉铁律（违反即报告作废）
@@ -493,14 +515,18 @@ SYSTEM_TEMPLATE = """你是资深跨境选品专家。严格按 procurement-rese
 
 
 async def run_selection_job(thread_id: str, stream_id: str, user_text: str,
-                             model_choice: str = "flash"):
+                             model_choice: str = "flash", kind: str = "general"):
     """
     选品 Agent 后台执行。
     - thread_id: 会话 id（持久化用）
     - stream_id: 本次执行 id
     - user_text: 用户输入（"我想做 X 选品调研..."）
     - model_choice: 'flash' 或 'pro'（决定工具循环模型；最终报告固定用 PRO）
+    - kind: 研究模式（market/trend/competitor/audience/opportunity/general）——
+      决定系统方法论侧重、阶段闸口与最终报告骨架（5 个模式做精）。
     """
+    from backend.research_modes import get_mode_spec
+    mode = get_mode_spec(kind)
     aborted = {"flag": False}
 
     def _on_cancel():
@@ -516,8 +542,15 @@ async def run_selection_job(thread_id: str, stream_id: str, user_text: str,
 
     await publish(thread_id, {"type": "start", "messageId": user_msg_id})
 
+    dataset_first = (
+        "\n## 📦 开局先用零成本大盘（省 TikHub 额度）：\n"
+        "正式调用任何付费实时工具前，**先调一次 browse_daily_dataset(query=本次品类/关键词)**，"
+        "用每日刷新已落库的真实快照（28 品类商品榜 + 热销榜 + 8 平台社媒热词 + 话题声量曲线）快速定位方向。"
+        "若它返回该方向已有数据，就以此为底子，只在需要更新/更细颗粒时再去调实时付费工具补齐；"
+        "若返回为空（还没刷新过），再正常走实时工具。这样既不浪费已花钱攒下的大盘，也减少重复调用。\n"
+    )
     messages = [
-        {"role": "system", "content": SYSTEM_TEMPLATE},
+        {"role": "system", "content": SYSTEM_TEMPLATE + mode.system_addendum + dataset_first},
         {"role": "user", "content": user_text},
     ]
     asst_parts = []
@@ -584,16 +617,13 @@ async def run_selection_job(thread_id: str, stream_id: str, user_text: str,
                                     if r.get("status") not in (None, "not_run")}
                 except Exception:
                     _done_stages = set()
-                _core_ok = _stage_progress_ok(_done_stages)
+                _core_ok = len(mode.core_stages & set(_done_stages)) >= mode.min_core
                 if (not _core_ok) and _premature_nudge["n"] < _MAX_NUDGE:
                     _premature_nudge["n"] += 1
                     messages.append({"role": "assistant", "content": msg.content or ""})
-                    messages.append({"role": "user", "content": (
-                        f"⚠️ 核心阶段还没做完就想收尾（已登记阶段：{sorted(_done_stages) or '几乎没有'}）。"
-                        "请**继续调用工具**完成：阶段1趋势+真实在售商品、阶段2竞争格局、"
-                        "阶段3评论痛点、阶段4候选品筛选。每完成一个阶段调 record_stage_status 登记。"
-                        "数据采集失败的市场如实标注失败即可，但不要跳过还能做的阶段直接写报告。"
-                    )})
+                    messages.append({"role": "user", "content":
+                        mode.nudge.format(done=sorted(_done_stages) or "几乎没有")
+                    })
                     await publish(thread_id, {"type": "stream-chunk",
                                                 "chunk": {"type": "reflection",
                                                           "tool": "stage_gate",
@@ -680,40 +710,8 @@ async def run_selection_job(thread_id: str, stream_id: str, user_text: str,
                     "- ❌ 禁止虚构 ASIN/品牌/价格/评分；禁止 DSML 标签\n"
                     "- ✅ 数据缺失明确写'待用户提供 XXX'\n"
                 )
-                # 分两段生成，避免单次 8000 token 截断阶段 7/8
-                part1_prompt = (
-                    "基于以上全部真实工具返回结果，输出选品决策报告【前半部分】（给商家看）。\n"
-                    "## 本次只写（不要写阶段5及以后）：\n"
-                    "1. 报告头部（标题+数据采集时间+市场/定位/预算）\n"
-                    f"2. 执行汇总表：\n{summary['markdown']}\n"
-                    "3. 阶段1 趋势洞察（季节性+关键词+BSR Top10真实月销）；有 Keepa/价格图嵌本章对应文字旁\n"
-                    "4. 阶段2 竞争格局（市场规模+价格带+CR4+评分门槛）；价格分布图嵌价格带旁\n"
-                    "5. 阶段3 痛点挖掘（频次统计 + <details>折叠真实评论原文，每痛点3-5条）\n"
-                    "6. 阶段4 候选品（5候选真实数据表）。**每个候选品正下方按序嵌它自己的图**（不要堆到末尾画廊）：\n"
-                    "   - 主图：用工具返回的 main_image.markdown_local（形如 `![](evidence/ASIN_main.jpg)`），没有 local 才退回 markdown_remote\n"
-                    "   - 详情页截图：用 detail_page.markdown（形如 `![](evidence/ASIN_dp.png)`）\n"
-                    "   - Keepa 历史图：用 get_keepa_charts_batch 返回的 markdown（形如 `![](keepa_charts/keepa_ASIN_US.png)`）\n"
-                    "   **务必原样粘贴工具返回的 markdown 字段，不要自己拼绝对路径或改写文件名**。每图配一句说明。\n"
-                    "每章顶部注明数据来源工具。结尾不要总结，后半部分会接着写。\n\n"
-                    + common_rules
-                )
-                part2_prompt = (
-                    "接着上面的报告，继续输出【后半部分】（阶段5-8）。\n"
-                    "## 本次只写：\n"
-                    "1. 阶段5 利润可行性（14项成本 new_product+stable 双场景 + 盈亏点 + 蒙特卡洛亏率；"
-                    "采购成本用真实值，拿不到就整章'待用户提供1688链接'）\n"
-                    "2. 阶段6 供应链（MOQ阶梯价+比价+头程时间线，无真实数据则待用户提供）\n"
-                    "3. 阶段7 IP风险（deep_ip_risk_assessment真实结果；未跑写'待品牌名确认后执行'）\n"
-                    "4. 阶段8 决策表（候选品决策矩阵+主推建议+风险清单+90天行动计划）\n"
-                    "   **主推选择必须综合打分，不能只看单一指标**：按 ①真实月销/需求 ②竞争可进入性（避开大牌垄断/红海）"
-                    "③利润空间 ④IP风险 ⑤差异化机会 五维给每个候选品打分排序。\n"
-                    "   **必须显式说明为什么没选销量最高的那个**：若销量第一是 Amazon Basics / 平台自营 / 头部大牌等"
-                    "新卖家无法竞争的对象，明确写出'销量虽高但不可进入'的理由；主推应是『综合最优且新卖家可切入』的标的，"
-                    "而非单纯销量冠军。决策矩阵要让商家一眼看懂排序逻辑。\n"
-                    "5. 证据索引（只放 dp链接/BSR URL/1688链接 纯文字，禁止再嵌图做画廊，图都已在阶段1/3/4对应位置）+ 待用户提供清单（完整汇总）\n"
-                    "这是收尾部分，要完整写到阶段8决策表。\n\n"
-                    + common_rules
-                )
+                # 分段生成（按模式定制报告骨架），避免单次 8000 token 截断
+                report_prompts = mode.build_report_prompts(summary["markdown"], common_rules)
 
                 def _gen_part(prompt: str) -> str:
                     # 清洗历史，避免末尾未配对的 tool_calls 触发 400
@@ -731,12 +729,14 @@ async def run_selection_job(thread_id: str, stream_id: str, user_text: str,
                                 {"role": "user", "content": "❌ 输出有问题（DSML/太短），用纯 markdown 重写本部分。"},
                             ]
                             continue
-                        return ft
-                    return ft
+                        return _strip_control_markup(ft)
+                    return _strip_control_markup(ft)
 
-                part1 = await asyncio.to_thread(_gen_part, part1_prompt)
-                part2 = await asyncio.to_thread(_gen_part, part2_prompt)
-                final_content = (part1.rstrip() + "\n\n" + part2.lstrip()) if part1 else part2
+                parts: list[str] = []
+                for _p in report_prompts:
+                    parts.append(await asyncio.to_thread(_gen_part, _p))
+                final_content = "\n\n".join(p.strip() for p in parts if p and p.strip())
+                final_content = _strip_control_markup(final_content)
                 await publish(thread_id, {"type": "stream-chunk",
                                             "chunk": {"type": "final-report",
                                                       "content": final_content[:200] + "..."}})

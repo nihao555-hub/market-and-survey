@@ -27,6 +27,35 @@ AMAZON_TLD = {
 NO_AMAZON_MARKETS = {"RU", "ID", "TH", "MY", "PH", "VN", "EG", "KR", "CN"}
 
 
+# ━━━━━━━━━━ BSR → 月销估算的可校准曲线（无真实销量时的经验回退）━━━━━━━━━━
+# 抽成模块级配置，便于按真实数据（如抓到的『bought in past month』样本）回归校准，
+# 而不必改函数体。值越接近真实越好；这是「估算」非「真值」，故 real_data=False。
+#
+# 每档 (bsr 上限, 月销下限, 月销上限)，按 BSR 升序；最后一档用 None 表示无上限。
+BSR_SALES_BRACKETS: list[tuple[int | None, int, int]] = [
+    (100,     8000, 30000),
+    (1000,    2000, 10000),
+    (10000,   500,  3000),
+    (100000,  100,  800),
+    (None,    20,   200),
+]
+# 类目销量系数（相对 electronics=1.0）；未列出的类目用 DEFAULT。
+BSR_CATEGORY_FACTORS: dict[str, float] = {
+    "electronics": 1.0, "home-kitchen": 0.9, "beauty": 0.8,
+    "toys": 0.6, "sports": 0.5,
+}
+BSR_CATEGORY_FACTOR_DEFAULT = 0.7
+
+
+def bsr_sales_bracket(bsr: int) -> tuple[int, int]:
+    """按 BSR 返回 (月销下限, 月销上限)，取自可校准的 BSR_SALES_BRACKETS。"""
+    for upper, low, high in BSR_SALES_BRACKETS:
+        if upper is None or bsr <= upper:
+            return low, high
+    last = BSR_SALES_BRACKETS[-1]
+    return last[1], last[2]
+
+
 def amazon_domain_for(geo: str | None) -> str:
     """返回该市场对应的 amazon 域名（含协议），无 Amazon 业务则回退 .com。"""
     tld = AMAZON_TLD.get((geo or "US").upper(), "com")
@@ -229,13 +258,8 @@ def estimate_monthly_sales_from_bsr(bsr: int, category: str = "electronics",
         }
     if not bsr or bsr <= 0:
         return {"bsr": bsr, "real_data": False, "error": "no bsr & no bought-data"}
-    factor = {"electronics": 1.0, "home-kitchen": 0.9, "beauty": 0.8,
-              "toys": 0.6, "sports": 0.5}.get(category, 0.7)
-    if bsr <= 100:        base_low, base_high = 8000, 30000
-    elif bsr <= 1000:     base_low, base_high = 2000, 10000
-    elif bsr <= 10000:    base_low, base_high = 500, 3000
-    elif bsr <= 100000:   base_low, base_high = 100, 800
-    else:                 base_low, base_high = 20, 200
+    factor = BSR_CATEGORY_FACTORS.get(category, BSR_CATEGORY_FACTOR_DEFAULT)
+    base_low, base_high = bsr_sales_bracket(bsr)
     return {
         "bsr": bsr, "category": category, "real_data": False,
         "estimated_monthly_sales_low": int(base_low * factor),

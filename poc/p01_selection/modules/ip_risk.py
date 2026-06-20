@@ -12,9 +12,15 @@ IP 风险扫描 — 深度版（替代浅层 quick_ip_check）
 from __future__ import annotations
 import re, urllib.parse, json
 from loguru import logger
-from scrapling.parser import Adaptor
 
 from modules.scraper import fetch
+
+
+def _adaptor(*args, **kwargs):
+    """延迟导入 scrapling（可选爬虫依赖；仅在真正抓取/解析时才需要）。
+    未安装时给出清晰提示，而不是在 import 阶段就让整个后端起不来。"""
+    from scrapling.parser import Adaptor  # noqa: PLC0415
+    return Adaptor(*args, **kwargs)
 
 
 # ════════════════════════════════════════════════════════════════════
@@ -29,7 +35,7 @@ def search_patents(keyword: str, limit: int = 10, use_proxy: bool = False) -> li
         html = fetch(url, use_proxy=use_proxy, force_browser=True)
     except Exception as e:
         return [{"error": f"fetch failed: {e}"}]
-    adp = Adaptor(html, url=url, auto_match=False)
+    adp = _adaptor(html, url=url, auto_match=False)
     items = []
     # 找带 patent 号的 h3（"US123456789B2: Title..."）
     for h in adp.css("h3, h4, search-result-item, article")[: limit * 3]:
@@ -63,7 +69,7 @@ def patent_detail_with_citations(patent_num: str, use_proxy: bool = False) -> di
     except Exception as e:
         return {"patent_num": patent_num, "error": str(e)[:120]}
     
-    adp = Adaptor(html, url=url, auto_match=False)
+    adp = _adaptor(html, url=url, auto_match=False)
     out = {"patent_num": patent_num, "url": url}
     
     # 标题
