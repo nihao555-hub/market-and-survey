@@ -61,6 +61,101 @@ function TrendArrow({ current, previous }: { current: number | null; previous: n
   return <TrendingDown className="h-3 w-3 text-rose-500" />;
 }
 
+/* ─── SVG 迷你折线图 ─── */
+interface SparklineProps {
+  data: (number | null)[];
+  labels?: string[];
+  width?: number;
+  height?: number;
+  color?: string;
+  fillColor?: string;
+  unit?: string;
+  title?: string;
+}
+
+function Sparkline({ data, labels, width = 280, height = 100, color = "#f97316", fillColor, unit = "", title }: SparklineProps) {
+  const valid = data.map((v, i) => v !== null && isFinite(v!) ? { v: v!, i } : null).filter(Boolean) as { v: number; i: number }[];
+  if (valid.length < 1) return <div className="flex h-20 items-center justify-center text-[11px] text-ink-subtle">暂无数据</div>;
+
+  const minV = Math.min(...valid.map((p) => p.v));
+  const maxV = Math.max(...valid.map((p) => p.v));
+  const range = maxV - minV || 1;
+  const padX = 8;
+  const padTop = 20;
+  const padBot = 24;
+  const chartW = width - padX * 2;
+  const chartH = height - padTop - padBot;
+  const stepX = valid.length > 1 ? chartW / (valid.length - 1) : 0;
+
+  const points = valid.map((p, idx) => ({
+    x: padX + idx * stepX,
+    y: padTop + chartH - ((p.v - minV) / range) * chartH,
+    v: p.v,
+    i: p.i,
+  }));
+
+  const pathD = points.map((p, idx) => `${idx === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const areaD = pathD + ` L${points[points.length - 1].x.toFixed(1)},${padTop + chartH} L${points[0].x.toFixed(1)},${padTop + chartH} Z`;
+
+  const fill = fillColor || color;
+
+  return (
+    <div className="rounded-lg border border-hairline bg-white p-2">
+      {title && (
+        <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-ink">
+          {title}
+          {valid.length >= 2 && (() => {
+            const first = valid[0].v;
+            const last = valid[valid.length - 1].v;
+            const pct = first !== 0 ? ((last - first) / Math.abs(first)) * 100 : 0;
+            if (Math.abs(pct) < 0.5) return null;
+            return (
+              <span className={cn("ml-auto rounded px-1 py-0.5 text-[9px] font-semibold",
+                pct > 0 ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600")}>
+                {pct > 0 ? "+" : ""}{pct.toFixed(1)}%
+              </span>
+            );
+          })()}
+        </div>
+      )}
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="w-full">
+        {/* Grid lines */}
+        {[0, 0.5, 1].map((f) => {
+          const y = padTop + chartH * (1 - f);
+          const val = minV + range * f;
+          return (
+            <g key={f}>
+              <line x1={padX} y1={y} x2={width - padX} y2={y} stroke="#e5e7eb" strokeWidth={0.5} strokeDasharray="3,3" />
+              <text x={padX - 2} y={y - 3} fontSize={8} fill="#9ca3af" textAnchor="start">
+                {unit === "$" ? `$${val.toFixed(0)}` : val >= 1e4 ? `${(val / 1e4).toFixed(0)}万` : val.toFixed(val < 10 ? 1 : 0)}
+              </text>
+            </g>
+          );
+        })}
+        {/* Area fill */}
+        <path d={areaD} fill={fill} opacity={0.08} />
+        {/* Line */}
+        <path d={pathD} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        {/* Points */}
+        {points.map((p, idx) => (
+          <g key={idx}>
+            <circle cx={p.x} cy={p.y} r={3} fill="white" stroke={color} strokeWidth={1.5} />
+            <text x={p.x} y={p.y - 7} fontSize={8} fill={color} textAnchor="middle" fontWeight="600">
+              {unit === "$" ? `$${p.v.toFixed(0)}` : p.v >= 1e4 ? `${(p.v / 1e4).toFixed(1)}万` : p.v >= 1e3 ? `${(p.v / 1e3).toFixed(1)}k` : p.v.toFixed(p.v < 10 ? 1 : 0)}
+            </text>
+          </g>
+        ))}
+        {/* X-axis labels */}
+        {labels && points.map((p, idx) => (
+          <text key={idx} x={p.x} y={height - 4} fontSize={8} fill="#9ca3af" textAnchor="middle">
+            {labels[p.i] || ""}
+          </text>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 function DeltaBadge({ current, previous, suffix = "" }: { current: number | null; previous: number | null; suffix?: string }) {
   if (current === null || previous === null || !isFinite(current) || !isFinite(previous) || previous === 0) {
     return null;
@@ -310,6 +405,35 @@ export function CategoryTrendTable() {
               </tbody>
             </table>
           </div>
+
+          {/* Trend Charts */}
+          {selectedTrend.days.length >= 1 && (() => {
+            const reversedDays = [...selectedTrend.days].reverse();
+            const dateLabels = reversedDays.map((d) => fmtDate(d.date));
+            return (
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <Sparkline
+                  data={reversedDays.map((d) => d.avgPrice)}
+                  labels={dateLabels}
+                  color="#f97316"
+                  unit="$"
+                  title={"\ud83d\udcb0 \u5747\u4ef7\u8d8b\u52bf"}
+                />
+                <Sparkline
+                  data={reversedDays.map((d) => d.totalSold > 0 ? d.totalSold : null)}
+                  labels={dateLabels}
+                  color="#3b82f6"
+                  title={"\ud83d\udcc8 \u9500\u91cf\u8d8b\u52bf"}
+                />
+                <Sparkline
+                  data={reversedDays.map((d) => d.avgRating)}
+                  labels={dateLabels}
+                  color="#f59e0b"
+                  title={"\u2b50 \u8bc4\u5206\u8d8b\u52bf"}
+                />
+              </div>
+            );
+          })()}
 
           {/* Summary row */}
           {selectedTrend.days.length >= 2 && (() => {
