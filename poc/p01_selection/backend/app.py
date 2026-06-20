@@ -198,19 +198,27 @@ async def selection_start(body: SelectionBody, tenant_id: str = Depends(require_
     set_active_stream(thread_id, stream_id)
     record_job_start()
     
-    # 真任务队列：dramatiq 入队（Redis 持久化），worker 进程消费
-    # 备选：如果 worker 没起，回退到 asyncio.create_task（仅 dev 用）
-    try:
-        from backend.queue import run_selection_actor
-        run_selection_actor.send(thread_id, stream_id, body.user_text, body.model_choice)
-        queued_via = "dramatiq"
-    except Exception as e:
-        # dev fallback
+    # 与 GraphQL sendSelectionMessage 保持一致：
+    # USE_DRAMATIQ_WORKER=1 时走 dramatiq 入队（Redis 持久化），worker 进程消费；
+    # 否则（lean 单进程模式）回退到 asyncio.create_task 原地跑。
+    import os as _os_sel
+    if _os_sel.getenv("USE_DRAMATIQ_WORKER", "0") == "1":
+        try:
+            from backend.queue import run_selection_actor
+            run_selection_actor.send(thread_id, stream_id, body.user_text, body.model_choice)
+            queued_via = "dramatiq"
+        except Exception as e:
+            from backend.selection_job import run_selection_job
+            asyncio.create_task(run_selection_job(
+                thread_id, stream_id, body.user_text, body.model_choice
+            ))
+            queued_via = f"asyncio_fallback ({str(e)[:60]})"
+    else:
         from backend.selection_job import run_selection_job
         asyncio.create_task(run_selection_job(
             thread_id, stream_id, body.user_text, body.model_choice
         ))
-        queued_via = f"asyncio_fallback ({str(e)[:60]})"
+        queued_via = "asyncio_inprocess"
     
     return {
         "thread_id": thread_id, "stream_id": stream_id, "status": "queued",

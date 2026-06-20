@@ -21,6 +21,7 @@ import {
   Skeleton,
   type Column,
 } from "./primitives";
+import { LiveDataPanel } from "./LiveDataPanel";
 
 export interface ResearchConfig {
   key: ResearchKind;
@@ -103,6 +104,9 @@ export function ResearchLauncher({ config }: { config: ResearchConfig }) {
           </Panel>
         ))}
       </div>
+
+      {/* 今日实时数据（按模式展示不同维度的最新数据表格） */}
+      <LiveDataPanel kind={config.key} />
 
       {/* 本类型历史调研 */}
       <ResearchHistory
