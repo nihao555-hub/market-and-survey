@@ -138,3 +138,62 @@ textarea::-webkit-scrollbar-thumb:hover, .scroll-area::-webkit-scrollbar-thumb:h
 .markdown-body ul { list-style: disc; padding-left: 1.4rem; margin: 0.4rem 0; }
 .markdown-body ol { list-style: decimal; padding-left: 1.4rem; margin: 0.4rem 0; }
 .markdown-body hr { border: none; border-top: 1px solid var(--hairline); margin: 1.2rem 0; }
+
+/* ── Sign-in / Landing page animations ── */
+@keyframes fadeSlideIn {
+  from { opacity: 0; filter: blur(4px); transform: translateY(12px); }
+  to { opacity: 1; filter: blur(0px); transform: translateY(0px); }
+}
+@keyframes slideRightIn {
+  from { opacity: 0; filter: blur(8px); transform: translateX(40px); }
+  to { opacity: 1; filter: blur(0px); transform: translateX(0px); }
+}
+@keyframes testimonialIn {
+  from { opacity: 0; filter: blur(4px); transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; filter: blur(0px); transform: translateY(0px) scale(1); }
+}
+
+.animate-element {
+  opacity: 0; filter: blur(4px); transform: translateY(12px);
+  animation: fadeSlideIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.animate-slide-right {
+  opacity: 0; filter: blur(8px); transform: translateX(40px);
+  animation: slideRightIn 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.animate-testimonial {
+  opacity: 0; filter: blur(4px); transform: translateY(20px) scale(0.95);
+  animation: testimonialIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-delay-100 { animation-delay: 100ms; }
+.animate-delay-200 { animation-delay: 200ms; }
+.animate-delay-300 { animation-delay: 300ms; }
+.animate-delay-400 { animation-delay: 400ms; }
+.animate-delay-500 { animation-delay: 500ms; }
+.animate-delay-600 { animation-delay: 600ms; }
+.animate-delay-700 { animation-delay: 700ms; }
+.animate-delay-800 { animation-delay: 800ms; }
+.animate-delay-900 { animation-delay: 900ms; }
+.animate-delay-1000 { animation-delay: 1000ms; }
+.animate-delay-1200 { animation-delay: 1200ms; }
+.animate-delay-1400 { animation-delay: 1400ms; }
+
+/* Custom checkbox for sign-in */
+.custom-checkbox {
+  appearance: none;
+  width: 18px; height: 18px;
+  border: 2px solid hsl(var(--border));
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.custom-checkbox:checked {
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2.5-2.5a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3E%3C/svg%3E");
+  background-size: 12px; background-position: center; background-repeat: no-repeat;
+}
+
+/* Geist font family alias */
+.font-geist { font-family: Inter, -apple-system, "PingFang SC", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; }

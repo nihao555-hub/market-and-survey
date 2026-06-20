@@ -17,8 +17,8 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "蓝海罗盘 — 跨境选品调研 Agent",
-  description: "8 阶段选品调研 · 实时流式 · 真实数据决策报告",
+  title: "SelectPilot — AI 跨境选品决策引擎",
+  description: "对话式 AI 选品助手，8 阶段自动化市场调研，真实数据驱动选品决策",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
