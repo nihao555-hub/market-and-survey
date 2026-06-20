@@ -13,6 +13,64 @@ import {
 } from "./primitives";
 import { cn } from "@/lib/utils";
 import { CategoryTrendTable } from "./CategoryTrendTable";
+import { ProductDetailModal, type ProductForModal } from "./ProductDetailModal";
+
+/** 品类总览表：聚合所有品类的关键指标 */
+function CategoryOverviewTable({ cats, onSelectCat }: { cats: DataSnapshot[]; onSelectCat: (id: string) => void }) {
+  if (cats.length === 0) return null;
+  const rows = cats.map((c) => {
+    const prods: ShopProduct[] = c.payload?.products ?? [];
+    const prices = prods.map((p) => p.price).filter((v): v is number => typeof v === "number" && v > 0);
+    const ratings = prods.map((p) => p.rating).filter((v): v is number => typeof v === "number" && v > 0);
+    return {
+      id: c.payload?.category_id as string,
+      name: (c.payload?.category_name ?? c.payload?.category_name_en ?? "—") as string,
+      count: prods.length,
+      priceMin: prices.length ? Math.min(...prices) : null,
+      priceMax: prices.length ? Math.max(...prices) : null,
+      avgPrice: prices.length ? +(prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2) : null,
+      avgRating: ratings.length ? +(ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : null,
+      topProduct: prods[0] ?? null,
+    };
+  });
+  return (
+    <div className="mb-5 overflow-hidden rounded-xl border border-hairline">
+      <div className="bg-surface-1 px-4 py-2.5 text-xs font-semibold text-ink-muted">品类总览（{rows.length} 个品类）</div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead>
+            <tr className="border-b border-hairline bg-surface-1/50 text-[11px] text-ink-subtle">
+              <th className="px-3 py-2 font-medium">品类</th>
+              <th className="px-3 py-2 font-medium text-right">商品数</th>
+              <th className="px-3 py-2 font-medium text-right">价格区间</th>
+              <th className="px-3 py-2 font-medium text-right">均价</th>
+              <th className="px-3 py-2 font-medium text-right">均评分</th>
+              <th className="px-3 py-2 font-medium">TOP 商品</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr
+                key={r.id}
+                className="border-b border-hairline last:border-0 hover:bg-surface-1/30 cursor-pointer transition-colors"
+                onClick={() => onSelectCat(r.id)}
+              >
+                <td className="px-3 py-2 font-medium text-ink">{r.name}</td>
+                <td className="px-3 py-2 text-right text-ink-subtle">{r.count}</td>
+                <td className="px-3 py-2 text-right text-ink-subtle">
+                  {r.priceMin !== null ? `$${r.priceMin}–$${r.priceMax}` : "—"}
+                </td>
+                <td className="px-3 py-2 text-right text-ink-subtle">{r.avgPrice !== null ? `$${r.avgPrice}` : "—"}</td>
+                <td className="px-3 py-2 text-right text-ink-subtle">{r.avgRating ?? "—"}</td>
+                <td className="px-3 py-2 max-w-[180px] truncate text-ink-subtle">{r.topProduct?.title ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 // 后端 daily_refresh 落库时的固定 term 标签
 const HOT_SELLING_TERM = "🛒 实时热销榜";
@@ -77,14 +135,13 @@ function matchProduct(p: ShopProduct, q: string): boolean {
 }
 
 /** 商品卡（品类榜 / 热销榜共用，紧凑版） */
-function ProductCard({ p, rank, catTag }: { p: ShopProduct; rank: number; catTag?: string }) {
+function ProductCard({ p, rank, catTag, onClick }: { p: ShopProduct; rank: number; catTag?: string; onClick?: () => void }) {
   const sym = p.currency_symbol || "$";
   return (
-    <a
-      href={p.url || undefined}
-      target="_blank"
-      rel="noreferrer"
-      className="group flex flex-col overflow-hidden rounded-2xl border border-hairline bg-white transition-all hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md"
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex flex-col overflow-hidden rounded-2xl border border-hairline bg-white text-left transition-all hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md"
     >
       <div className="relative aspect-square w-full overflow-hidden bg-surface-2">
         {p.image ? (
@@ -142,7 +199,7 @@ function ProductCard({ p, rank, catTag }: { p: ShopProduct; rank: number; catTag
           <span className="truncate">{p.shop_name || "—"}</span>
         </div>
       </div>
-    </a>
+    </button>
   );
 }
 
@@ -178,7 +235,12 @@ export function CategoryRankPage() {
   const [tab, setTab] = React.useState<Tab>("category");
   const [activeCat, setActiveCat] = React.useState<string | null>(null);
   const [query, setQuery] = React.useState("");
+  const [selectedProduct, setSelectedProduct] = React.useState<ProductForModal | null>(null);
   const q = query.trim().toLowerCase();
+
+  const openProduct = (p: ShopProduct, opts?: { category?: string; source?: string }) => {
+    setSelectedProduct({ ...p, _category: opts?.category, _source: opts?.source });
+  };
 
   const reload = React.useCallback(async () => {
     setReloading(true);
@@ -200,7 +262,17 @@ export function CategoryRankPage() {
   }, []);
   React.useEffect(() => { reload(); }, [reload]);
 
-  const hotProducts: ShopProduct[] = Array.isArray(hot?.payload?.products) ? hot!.payload.products : [];
+  // 热销榜：优先使用专用快照，无数据时从全品类中按已售量排序 fallback
+  const hotProducts: ShopProduct[] = React.useMemo(() => {
+    const dedicated: ShopProduct[] = Array.isArray(hot?.payload?.products) ? hot!.payload.products : [];
+    if (dedicated.length > 0) return dedicated;
+    // fallback: aggregate top sellers from all categories
+    const all = cats.flatMap((c) => (Array.isArray(c.payload?.products) ? c.payload.products : []) as ShopProduct[]);
+    return all
+      .filter((p) => typeof p.sold_count === "number" && p.sold_count > 0)
+      .sort((a, b) => (b.sold_count ?? 0) - (a.sold_count ?? 0))
+      .slice(0, 30);
+  }, [hot, cats]);
   const hashtags: Hashtag[] = Array.isArray(hashtagSnap?.payload?.hashtags) ? hashtagSnap!.payload.hashtags : [];
   const activeCatSnap = cats.find((c) => c.payload?.category_id === activeCat) ?? cats[0];
   const activeCatProducts: ShopProduct[] = Array.isArray(activeCatSnap?.payload?.products)
@@ -273,6 +345,11 @@ export function CategoryRankPage() {
             />
           ) : (
             <>
+              {/* 品类总览表 */}
+              {tab === "category" && !searching && (
+                <CategoryOverviewTable cats={cats} onSelectCat={(id) => { setActiveCat(id); setTab("category"); }} />
+              )}
+
               {/* 品类趋势分析表格（跨日期对比） */}
               <div className="mb-5">
                 <CategoryTrendTable />
@@ -316,7 +393,7 @@ export function CategoryRankPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
                         {crossCatHits.map(({ p, cat }, i) => (
-                          <ProductCard key={`${p.product_id ?? "x"}-${i}`} p={p} rank={i} catTag={cat} />
+                          <ProductCard key={`${p.product_id ?? "x"}-${i}`} p={p} rank={i} catTag={cat} onClick={() => openProduct(p, { category: cat })} />
                         ))}
                       </div>
                     </>
@@ -356,7 +433,7 @@ export function CategoryRankPage() {
                       </div>
                     )}
                     <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-                      {activeCatProducts.map((p, i) => <ProductCard key={p.product_id ?? i} p={p} rank={i} />)}
+                      {activeCatProducts.map((p, i) => <ProductCard key={p.product_id ?? i} p={p} rank={i} onClick={() => openProduct(p, { category: activeCatSnap?.payload?.category_name as string })} />)}
                     </div>
                   </>
                 )
@@ -377,7 +454,7 @@ export function CategoryRankPage() {
                       </div>
                     )}
                     <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-                      {hotFiltered.map((p, i) => <ProductCard key={p.product_id ?? i} p={p} rank={i} />)}
+                      {hotFiltered.map((p, i) => <ProductCard key={p.product_id ?? i} p={p} rank={i} onClick={() => openProduct(p, { source: "实时热销榜" })} />)}
                     </div>
                   </>
                 )
@@ -438,6 +515,7 @@ export function CategoryRankPage() {
           )}
         </>
       )}
+      <ProductDetailModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
     </PageContainer>
   );
 }
