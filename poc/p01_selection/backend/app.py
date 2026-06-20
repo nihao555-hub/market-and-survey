@@ -440,20 +440,26 @@ async def auth_usage(token: str):
 
 @app.get("/auth/smtp-test")
 async def auth_smtp_test():
-    """Diagnostic endpoint to test SMTP connectivity (no email sent)."""
-    import smtplib
-    try:
-        if int(os.getenv("SMTP_PORT", "465")) == 465:
-            server = smtplib.SMTP_SSL(os.getenv("SMTP_HOST", "smtp.163.com"), 465, timeout=10)
-        else:
-            server = smtplib.SMTP(os.getenv("SMTP_HOST", "smtp.163.com"), 587, timeout=10)
-            server.starttls()
-        server.login(os.getenv("SMTP_USER", "15571870062@163.com"),
-                     os.getenv("SMTP_PASS", "WSdQhddWrar9TGny"))
-        server.quit()
-        return {"ok": True, "message": "SMTP connection and login successful"}
-    except Exception as e:
-        return {"ok": False, "detail": f"SMTP failed: {type(e).__name__}: {str(e)}"}
+    """Diagnostic: test all SMTP connection methods."""
+    import smtplib, os as _os
+    host = _os.getenv("SMTP_HOST", "smtp.163.com")
+    user = _os.getenv("SMTP_USER", "15571870062@163.com")
+    pwd = _os.getenv("SMTP_PASS", "WSdQhddWrar9TGny")
+    results = {}
+    for label, port, use_ssl in [("SSL:465", 465, True), ("STARTTLS:587", 587, False), ("STARTTLS:25", 25, False)]:
+        try:
+            if use_ssl:
+                srv = smtplib.SMTP_SSL(host, port, timeout=10)
+            else:
+                srv = smtplib.SMTP(host, port, timeout=10)
+                srv.starttls()
+            srv.login(user, pwd)
+            srv.quit()
+            results[label] = "OK"
+        except Exception as e:
+            results[label] = f"{type(e).__name__}: {e}"
+    any_ok = any(v == "OK" for v in results.values())
+    return {"ok": any_ok, "results": results}
 
 
 @app.get("/")

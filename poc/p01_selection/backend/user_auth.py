@@ -104,26 +104,38 @@ def _generate_token() -> str:
 
 
 def _send_email(to: str, subject: str, html_body: str) -> bool:
-    try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = f"SelectPilot <{SMTP_FROM}>"
-        msg["To"] = to
-        msg.attach(MIMEText(html_body, "html", "utf-8"))
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = f"SelectPilot <{SMTP_FROM}>"
+    msg["To"] = to
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
 
-        if SMTP_PORT == 465:
-            server = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15)
-        else:
-            server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15)
-            server.starttls()
-        server.login(SMTP_USER, SMTP_PASS)
-        server.sendmail(SMTP_FROM, [to], msg.as_string())
-        server.quit()
-        logger.info(f"Email sent to {to}: {subject}")
-        return True
-    except Exception as e:
-        logger.error(f"Email send failed to {to}: {type(e).__name__}: {e}")
-        return False
+    # Try multiple connection methods (163.com supports all three)
+    attempts = [
+        ("SSL", SMTP_HOST, 465),
+        ("STARTTLS", SMTP_HOST, 587),
+        ("STARTTLS", "smtp.163.com", 25),
+    ]
+    last_error = None
+    for method, host, port in attempts:
+        try:
+            if method == "SSL":
+                server = smtplib.SMTP_SSL(host, port, timeout=15)
+            else:
+                server = smtplib.SMTP(host, port, timeout=15)
+                server.starttls()
+            server.login(SMTP_USER, SMTP_PASS)
+            server.sendmail(SMTP_FROM, [to], msg.as_string())
+            server.quit()
+            logger.info(f"Email sent to {to} via {method}:{port}: {subject}")
+            return True
+        except Exception as e:
+            last_error = e
+            logger.warning(f"SMTP {method}:{port} failed for {to}: {type(e).__name__}: {e}")
+            continue
+
+    logger.error(f"All SMTP methods failed for {to}: {last_error}")
+    return False
 
 
 def _verification_email_html(code: str, purpose: str) -> str:
