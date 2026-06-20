@@ -419,31 +419,41 @@ def fetch(url: str, proxy: Optional[str] = None,
     - wait_for_selector: SPA 站点传入商品卡 selector，浏览器引擎会等它真正渲染出来
       （解决"等待太短拿到空壳"的问题）
 
-    若需要代理但代理挂了 → 自动重启代理；重启失败 → 抛 FetchFailed（避免静默走本地直连拿到反爬页）
+    代理不可用时自动降级到直连（curl_cffi TLS 指纹伪装足以通过大多数反爬）。
     """
     eff = proxy if proxy else (DEFAULT_PROXY if use_proxy else None)
     
-    # 用代理时自检 + 失败自动重启（绝不静默走本地直连）
+    # 代理自检：可用则走代理，不可用则降级直连（不再强制失败）
     if eff:
         import socket, re as _re
-        # 从代理 URL 解析端口（支持 US 默认 10808 + 多国端口 10820+）
         _m = _re.search(r":(\d+)", eff)
         _port = int(_m.group(1)) if _m else 10808
         s = socket.socket(); s.settimeout(2)
         try:
             s.connect(("127.0.0.1", _port)); s.close()
         except Exception:
-            # 仅默认 US 代理(10808)可自动重启；多国代理由 multi_country 管理
+            # 代理不可用 → 降级直连（curl_cffi TLS 指纹伪装足以通过 Amazon 等反爬）
+            # 云部署环境（Render 等）无 xray 代理，直接降级不浪费 30s 重启超时
             if _port == 10808:
-                logger.warning("[fetch] 代理端口 10808 未监听，尝试自动重启...")
-                try:
-                    from proxy.ensure_proxy import ensure_proxy_alive
-                    if not ensure_proxy_alive(verbose=False):
-                        raise FetchFailed(f"代理重启失败，禁止本地直连抓取（避免拿反爬页）: {url}")
-                except ImportError:
-                    raise FetchFailed(f"代理不可用且无 ensure_proxy 模块: {url}")
+                # 仅在有 xray 二进制时尝试重启（避免云环境白等 30 秒）
+                xray_bin = os.path.join(os.path.dirname(__file__), "..", "proxy", "xray")
+                if os.path.isfile(xray_bin):
+                    logger.warning("[fetch] 代理端口 10808 未监听，尝试重启...")
+                    restarted = False
+                    try:
+                        from proxy.ensure_proxy import ensure_proxy_alive
+                        restarted = ensure_proxy_alive(verbose=False)
+                    except ImportError:
+                        pass
+                    if not restarted:
+                        logger.warning(f"[fetch] 代理重启失败，降级直连: {url}")
+                        eff = None
+                else:
+                    logger.info(f"[fetch] 无代理环境（云部署），直连抓取: {url}")
+                    eff = None
             else:
-                raise FetchFailed(f"国家代理端口 {_port} 未监听，禁止本地直连: {url}")
+                logger.warning(f"[fetch] 国家代理端口 {_port} 不可用，降级直连: {url}")
+                eff = None
     
     chain = []
     if not force_browser:
