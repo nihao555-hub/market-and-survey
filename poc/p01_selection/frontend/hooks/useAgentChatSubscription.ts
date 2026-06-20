@@ -123,10 +123,17 @@ export function useAgentChatSubscription(threadId: string | null) {
       } catch {}
     });
 
+    let errorCount = 0;
     es.onerror = () => {
-      // 网络抖动时 EventSource 自动重连；持续失败才提示
-      // 不立即报错，避免误伤短暂断连
+      errorCount++;
+      // EventSource 自动重连；连续失败 20 次（约 60 秒）才报错
+      if (errorCount >= 20) {
+        setError("后端连接失败，可能正在启动中，请稍后刷新重试");
+        setStreaming(false);
+        es.close();
+      }
     };
+    es.onopen = () => { errorCount = 0; };
 
     return () => {
       es.close();

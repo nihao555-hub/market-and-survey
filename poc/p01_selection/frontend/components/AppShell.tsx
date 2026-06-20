@@ -9,6 +9,15 @@ import { RightRail } from "@/components/RightRail";
 import { ChatView } from "@/components/ChatView";
 import { renderPage } from "@/components/pages/registry";
 import { fetchThreads } from "@/lib/api";
+import { BACKEND_BASE } from "@/lib/graphql-client";
+
+/** 页面加载时预热后端（Render 免费版冷启动需要 15-30 秒） */
+let _warmedUp = false;
+function warmUpBackend() {
+  if (_warmedUp) return;
+  _warmedUp = true;
+  fetch(`${BACKEND_BASE}/healthz`, { mode: "cors" }).catch(() => {});
+}
 
 export function AppShell() {
   const activeId = useAtomValue(activeThreadIdAtom);
@@ -17,6 +26,9 @@ export function AppShell() {
   const setThreads = useSetAtom(threadsAtom);
   const isChat = !!activeId || !!draft;
   const isHome = page === "home";
+
+  // 预热后端（首次渲染时触发，避免用户操作时才发现冷启动延迟）
+  React.useEffect(() => { warmUpBackend(); }, []);
 
   // 真实历史任务：从后端拉取，回到非会话态时刷新（侧边栏/首页/右栏共用此数据源）
   React.useEffect(() => {

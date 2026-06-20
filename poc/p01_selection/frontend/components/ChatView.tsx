@@ -8,6 +8,7 @@ import {
   draftKindAtom,
   isStreamingAtomFamily,
   messagesAtomFamily,
+  errorAtomFamily,
 } from "@/lib/atoms";
 import { useAgentChatSubscription } from "@/hooks/useAgentChatSubscription";
 import { dispatchBrowserEvent, AGENT_SEND_EVENT, AGENT_STOP_EVENT } from "@/lib/browser-events";
@@ -80,6 +81,7 @@ function ClarifyState({
 function ActiveThread({ threadId }: { threadId: string }) {
   useAgentChatSubscription(threadId);
   const isStreaming = useAtomValue(isStreamingAtomFamily(threadId));
+  const error = useAtomValue(errorAtomFamily(threadId));
   const store = useStore();
   const setMessages = useSetAtom(messagesAtomFamily(threadId));
 
@@ -113,6 +115,17 @@ function ActiveThread({ threadId }: { threadId: string }) {
     <div className="flex h-full flex-col bg-white">
       <div className="min-h-0 flex-1">
         <MessageList threadId={threadId} />
+        {error && (
+          <div className="mx-auto max-w-3xl px-4 py-3">
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+              <button
+                onClick={() => window.location.reload()}
+                className="ml-2 underline hover:text-red-900"
+              >刷新重试</button>
+            </div>
+          </div>
+        )}
       </div>
       <div className="border-t border-hairline bg-white px-4 py-3">
         <div className="mx-auto w-full max-w-3xl">
