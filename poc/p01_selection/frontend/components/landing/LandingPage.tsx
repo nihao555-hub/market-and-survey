@@ -2,193 +2,230 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import {
-  Search, BarChart3, Globe2, Calculator, Shield, FileText,
-  ArrowRight, Check, ChevronDown, Zap, TrendingUp, Star,
-  Menu, X,
+  Search, BarChart3, Globe2, Calculator, Shield, TrendingUp,
+  ArrowRight, Check, ChevronDown, Menu, X, Zap, Bot, LineChart, ShoppingCart,
 } from "lucide-react";
 
-/* ────────────────────────── NAVBAR ────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   SELECTPILOT — Premium Landing Page (taito.ai inspired)
+   Clean, minimal, black+white with violet accent
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── NAVBAR ─── */
 function Navbar() {
   const [open, setOpen] = useState(false);
   return (
-    <nav className="fixed top-0 inset-x-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+    <header className="fixed top-0 inset-x-0 z-50 bg-white/80 backdrop-blur-xl border-b border-neutral-100">
+      <nav className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-2.5">
           <img src="/images/logo-icon.png" alt="SelectPilot" className="h-8 w-8 rounded-lg" />
-          <span className="text-lg font-semibold tracking-tight">SelectPilot</span>
+          <span className="text-[17px] font-semibold tracking-tight text-neutral-900">SelectPilot</span>
         </Link>
-        <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
-          <a href="#features" className="hover:text-foreground transition-colors">功能</a>
-          <a href="#pricing" className="hover:text-foreground transition-colors">定价</a>
-          <a href="#faq" className="hover:text-foreground transition-colors">FAQ</a>
-        </div>
+        <ul className="hidden md:flex items-center gap-8 text-[14px] text-neutral-500">
+          <li><a href="#features" className="hover:text-neutral-900 transition-colors">功能</a></li>
+          <li><a href="#how" className="hover:text-neutral-900 transition-colors">工作流</a></li>
+          <li><a href="#pricing" className="hover:text-neutral-900 transition-colors">定价</a></li>
+          <li><a href="#faq" className="hover:text-neutral-900 transition-colors">FAQ</a></li>
+        </ul>
         <div className="hidden md:flex items-center gap-3">
-          <Link href="/login" className="rounded-xl px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">登录</Link>
-          <Link href="/register" className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-violet-700 transition-colors">免费开始</Link>
+          <Link href="/login" className="px-4 py-2 text-[14px] text-neutral-600 hover:text-neutral-900 transition-colors">登录</Link>
+          <Link href="/register" className="rounded-full bg-neutral-900 px-5 py-2.5 text-[14px] font-medium text-white hover:bg-neutral-800 transition-colors">免费开始</Link>
         </div>
         <button className="md:hidden" onClick={() => setOpen(!open)}>
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
-      </div>
+      </nav>
       {open && (
-        <div className="md:hidden border-t border-border bg-background px-6 py-4 space-y-3">
-          <a href="#features" onClick={() => setOpen(false)} className="block text-sm text-muted-foreground">功能</a>
-          <a href="#pricing" onClick={() => setOpen(false)} className="block text-sm text-muted-foreground">定价</a>
-          <a href="#faq" onClick={() => setOpen(false)} className="block text-sm text-muted-foreground">FAQ</a>
+        <div className="md:hidden border-t border-neutral-100 bg-white px-6 py-4 space-y-3">
+          <a href="#features" onClick={() => setOpen(false)} className="block text-sm text-neutral-600">功能</a>
+          <a href="#how" onClick={() => setOpen(false)} className="block text-sm text-neutral-600">工作流</a>
+          <a href="#pricing" onClick={() => setOpen(false)} className="block text-sm text-neutral-600">定价</a>
+          <a href="#faq" onClick={() => setOpen(false)} className="block text-sm text-neutral-600">FAQ</a>
           <div className="flex gap-3 pt-2">
-            <Link href="/login" className="flex-1 text-center rounded-xl border border-border px-4 py-2.5 text-sm font-medium">登录</Link>
-            <Link href="/register" className="flex-1 text-center rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-medium text-white">注册</Link>
+            <Link href="/login" className="flex-1 text-center rounded-full border border-neutral-200 px-4 py-2.5 text-sm font-medium">登录</Link>
+            <Link href="/register" className="flex-1 text-center rounded-full bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white">注册</Link>
           </div>
         </div>
       )}
-    </nav>
+    </header>
   );
 }
 
-/* ────────────────────────── HERO ────────────────────────── */
+/* ─── HERO ─── */
 function Hero() {
   return (
-    <section className="relative pt-32 pb-20 overflow-hidden">
-      {/* Gradient bg */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-to-b from-violet-500/20 via-violet-400/5 to-transparent rounded-full blur-3xl" />
-        <div className="absolute top-20 left-1/4 w-[400px] h-[400px] bg-gradient-to-br from-cyan-400/10 to-transparent rounded-full blur-3xl" />
-      </div>
-
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="text-center max-w-3xl mx-auto">
-          {/* Badge */}
-          <div className="animate-element animate-delay-100 inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-4 py-1.5 text-sm text-violet-700 mb-8">
-            <Zap className="h-3.5 w-3.5" />
-            <span>AI 驱动的跨境电商选品决策引擎</span>
-          </div>
-
-          {/* Headline */}
-          <h1 className="animate-element animate-delay-200 text-5xl md:text-7xl font-semibold tracking-tight leading-[1.1] mb-6">
-            用 AI 发现
-            <br />
-            <span className="bg-gradient-to-r from-violet-600 via-purple-600 to-cyan-500 bg-clip-text text-transparent">
-              下一个爆品
-            </span>
-          </h1>
-
-          {/* Subheadline */}
-          <p className="animate-element animate-delay-300 text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-            对话式 AI 选品助手，8 阶段自动化市场调研，从 Amazon BSR 到 1688 采购成本，真实数据驱动的选品决策报告。
-          </p>
-
-          {/* CTA */}
-          <div className="animate-element animate-delay-400 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/register" className="group flex items-center gap-2 rounded-2xl bg-violet-600 px-8 py-4 text-base font-medium text-white hover:bg-violet-700 transition-all hover:shadow-lg hover:shadow-violet-500/25">
-              免费开始使用
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+    <section className="pt-28 pb-16 md:pt-36 md:pb-24">
+      <div className="mx-auto max-w-[1200px] px-6">
+        <div className="grid md:grid-cols-2 items-center gap-12 md:gap-16">
+          {/* Left */}
+          <div>
+            <Link href="/register" className="inline-flex items-center gap-2 rounded-full bg-violet-50 border border-violet-100 px-4 py-1.5 text-[13px] text-violet-700 mb-6 hover:bg-violet-100 transition-colors">
+              AI 选品引擎正式上线 <ArrowRight className="h-3.5 w-3.5" />
             </Link>
-            <a href="#features" className="flex items-center gap-2 rounded-2xl border border-border px-8 py-4 text-base font-medium text-foreground hover:bg-muted transition-colors">
-              了解更多
-            </a>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="animate-element animate-delay-500 mt-20 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
-          {[
-            { value: "56+", label: "AI 工具链", icon: Zap },
-            { value: "26", label: "目标国家", icon: Globe2 },
-            { value: "9 级", label: "反爬引擎", icon: Shield },
-            { value: "实时", label: "数据更新", icon: TrendingUp },
-          ].map((s, i) => (
-            <div key={i} className="text-center p-4 rounded-2xl border border-border/50 bg-card/50 backdrop-blur-sm">
-              <s.icon className="h-5 w-5 text-violet-500 mx-auto mb-2" />
-              <div className="text-2xl font-bold tracking-tight">{s.value}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">{s.label}</div>
+            <h1 className="text-[42px] md:text-[56px] font-semibold leading-[1.1] tracking-tight text-neutral-900 mb-6">
+              用 AI 发现<br/>蓝海爆品机会
+            </h1>
+            <p className="text-lg text-neutral-500 leading-relaxed mb-8 max-w-[480px]">
+              实时采集 TikTok Shop + 社媒趋势 + Amazon BSR 数据，AI Agent 自动完成市场调研、竞品分析、利润测算。对话即研究，数据即决策。
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Link href="/register" className="inline-flex items-center justify-center gap-2 rounded-full bg-neutral-900 px-7 py-3.5 text-[15px] font-medium text-white hover:bg-neutral-800 transition-all hover:shadow-lg">
+                免费开始使用
+              </Link>
+              <a href="#features" className="inline-flex items-center justify-center gap-2 rounded-full border border-neutral-200 px-7 py-3.5 text-[15px] font-medium text-neutral-700 hover:bg-neutral-50 transition-colors">
+                了解更多
+              </a>
             </div>
-          ))}
+          </div>
+          {/* Right — App screenshot */}
+          <div className="relative">
+            <div className="rounded-2xl border border-neutral-200 shadow-2xl shadow-neutral-200/50 overflow-hidden bg-white">
+              <img src="/images/screenshot-workspace.png" alt="SelectPilot 工作台" className="w-full" />
+            </div>
+            <div className="absolute -inset-4 bg-gradient-to-tr from-violet-100/40 via-transparent to-violet-100/20 rounded-3xl -z-10 blur-2xl" />
+          </div>
         </div>
 
-        {/* Hero Image */}
-        <div className="animate-element animate-delay-600 mt-16 relative">
-          <div className="rounded-2xl border border-border/50 shadow-2xl shadow-violet-500/5 overflow-hidden bg-gradient-to-b from-card to-muted/50 p-1">
-            <img
-              src="/images/hero-dashboard.png"
-              alt="SelectPilot Dashboard"
-              className="w-full rounded-xl"
-            />
+        {/* Logo bar */}
+        <div className="mt-20 border-t border-neutral-100 pt-10">
+          <p className="text-center text-[12px] uppercase tracking-widest text-neutral-400 mb-6">数据覆盖平台</p>
+          <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12 text-neutral-400">
+            {["TikTok Shop", "Amazon", "Douyin", "Xiaohongshu", "1688", "Weibo", "Bilibili", "Lemon8"].map((name) => (
+              <span key={name} className="text-[14px] font-medium text-neutral-400 hover:text-neutral-600 transition-colors">{name}</span>
+            ))}
           </div>
-          {/* Glow effect */}
-          <div className="absolute -inset-4 bg-gradient-to-r from-violet-500/10 via-purple-500/5 to-cyan-500/10 rounded-3xl blur-2xl -z-10" />
         </div>
       </div>
     </section>
   );
 }
 
-/* ────────────────────────── FEATURES ────────────────────────── */
-const features = [
-  {
-    icon: Search,
-    title: "智能市场调研",
-    desc: "AI Agent 自动完成 8 阶段选品调研，从品类扫描到竞品深挖，真实数据驱动决策。",
-    color: "text-violet-500",
-    bg: "bg-violet-50",
-  },
-  {
-    icon: BarChart3,
-    title: "实时数据仪表盘",
-    desc: "Amazon BSR 热销榜、TikTok 社媒趋势、品类价格走势，ECharts 交互式图表一目了然。",
-    color: "text-cyan-500",
-    bg: "bg-cyan-50",
-  },
-  {
-    icon: Globe2,
-    title: "26 国多市场覆盖",
-    desc: "支持美国、英国、德国、日本等 26 个国家/地区，一键切换目标市场。",
-    color: "text-emerald-500",
-    bg: "bg-emerald-50",
-  },
-  {
-    icon: Calculator,
-    title: "利润测算引擎",
-    desc: "14 项成本拆解 + 蒙特卡洛压力测试，精确计算利润率和亏损风险。",
-    color: "text-amber-500",
-    bg: "bg-amber-50",
-  },
-  {
-    icon: Shield,
-    title: "9 级反爬引擎",
-    desc: "curl_cffi → Scrapling → patchright → botasaurus 等 9 级降级链，确保数据采集稳定。",
-    color: "text-rose-500",
-    bg: "bg-rose-50",
-  },
-  {
-    icon: FileText,
-    title: "自动报告生成",
-    desc: "AI 自动产出带图表的选品决策报告，含 ECharts 交互式可视化，可导出 PDF。",
-    color: "text-indigo-500",
-    bg: "bg-indigo-50",
-  },
-];
-
-function Features() {
+/* ─── FEATURE SHOWCASE 1: AI Chat ─── */
+function FeatureShowcase1() {
   return (
-    <section id="features" className="py-24 bg-muted/30">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-4 py-1.5 text-sm text-violet-700 mb-4">
-            <Star className="h-3.5 w-3.5" />
-            核心功能
+    <section className="py-20 md:py-28 bg-neutral-50/70">
+      <div className="mx-auto max-w-[1200px] px-6">
+        <div className="grid md:grid-cols-2 items-center gap-12 md:gap-16">
+          <div>
+            <p className="text-[13px] font-medium uppercase tracking-widest text-violet-600 mb-3">AI Agent 调研</p>
+            <h2 className="text-[28px] md:text-[36px] font-semibold leading-[1.15] tracking-tight text-neutral-900 mb-4">
+              对话即调研，<br/>一句话启动 8 阶段分析
+            </h2>
+            <p className="text-[15px] text-neutral-500 leading-relaxed mb-6">
+              输入品类或产品名称，AI Agent 自动完成品类扫描、热销分析、竞品深挖、利润测算。结果以 ECharts 交互图表呈现，可导出 PDF 报告。
+            </p>
+            <ul className="space-y-3">
+              {["DeepSeek 大模型驱动", "8 阶段结构化调研流程", "实时数据工具链调用", "ECharts 图表自动渲染"].map((item) => (
+                <li key={item} className="flex items-center gap-2.5 text-[14px] text-neutral-600">
+                  <Check className="h-4 w-4 text-violet-600 flex-shrink-0" />
+                  {item}
+                </li>
+              ))}
+            </ul>
           </div>
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mb-4">一站式选品决策平台</h2>
-          <p className="text-muted-foreground">从市场调研到采购成本，从竞品分析到利润测算，全流程 AI 自动化</p>
+          <div className="relative">
+            <div className="rounded-2xl border border-neutral-200 shadow-xl overflow-hidden bg-white">
+              <img src="/images/screenshot-research.png" alt="AI Agent 调研界面" className="w-full" />
+            </div>
+          </div>
         </div>
+      </div>
+    </section>
+  );
+}
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((f, i) => (
-            <div key={i} className="group rounded-2xl border border-border/50 bg-card p-6 hover:shadow-lg hover:border-violet-200/50 transition-all duration-300">
-              <div className={`w-11 h-11 rounded-xl ${f.bg} flex items-center justify-center mb-4`}>
-                <f.icon className={`h-5 w-5 ${f.color}`} />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">{f.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
+/* ─── FEATURE SHOWCASE 2: Categories ─── */
+function FeatureShowcase2() {
+  return (
+    <section className="py-20 md:py-28">
+      <div className="mx-auto max-w-[1200px] px-6">
+        <div className="grid md:grid-cols-2 items-center gap-12 md:gap-16">
+          {/* Image on left this time */}
+          <div className="relative md:order-1">
+            <div className="rounded-2xl border border-neutral-200 shadow-xl overflow-hidden bg-white">
+              <img src="/images/screenshot-categories.png" alt="品类排名榜单" className="w-full" />
+            </div>
+          </div>
+          <div className="md:order-2">
+            <p className="text-[13px] font-medium uppercase tracking-widest text-violet-600 mb-3">品类榜单</p>
+            <h2 className="text-[28px] md:text-[36px] font-semibold leading-[1.15] tracking-tight text-neutral-900 mb-4">
+              28 个品类实时排名，<br/>一眼看清市场格局
+            </h2>
+            <p className="text-[15px] text-neutral-500 leading-relaxed mb-6">
+              TikTok Shop 全部 28 个品类的实时排名数据，包含商品数量、均价、增长率、竞争指数。支持按国家切换，每日 0 点自动更新。
+            </p>
+            <ul className="space-y-3">
+              {["28 品类 × 26 国覆盖", "每日自动采集更新", "趋势迷你图一目了然", "竞争指数量化评估"].map((item) => (
+                <li key={item} className="flex items-center gap-2.5 text-[14px] text-neutral-600">
+                  <Check className="h-4 w-4 text-violet-600 flex-shrink-0" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── FEATURE SHOWCASE 3: Profit Engine ─── */
+function FeatureShowcase3() {
+  return (
+    <section className="py-20 md:py-28 bg-neutral-50/70">
+      <div className="mx-auto max-w-[1200px] px-6">
+        <div className="grid md:grid-cols-2 items-center gap-12 md:gap-16">
+          <div>
+            <p className="text-[13px] font-medium uppercase tracking-widest text-violet-600 mb-3">利润测算</p>
+            <h2 className="text-[28px] md:text-[36px] font-semibold leading-[1.15] tracking-tight text-neutral-900 mb-4">
+              14 项成本拆解，<br/>蒙特卡洛风险模拟
+            </h2>
+            <p className="text-[15px] text-neutral-500 leading-relaxed mb-6">
+              从采购成本到物流、平台佣金、营销费用，14 项费用精确拆解。蒙特卡洛压力测试模拟 10,000 种场景，给出利润分布和亏损概率。
+            </p>
+            <ul className="space-y-3">
+              {["1688/Made-in-China 实时采购价", "14 项成本自动计算", "蒙特卡洛 10,000 次模拟", "亏损风险概率预警"].map((item) => (
+                <li key={item} className="flex items-center gap-2.5 text-[14px] text-neutral-600">
+                  <Check className="h-4 w-4 text-violet-600 flex-shrink-0" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="relative">
+            <div className="rounded-2xl border border-neutral-200 shadow-xl overflow-hidden bg-white">
+              <img src="/images/screenshot-hotselling.png" alt="热销数据分析" className="w-full" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── HOW IT WORKS (workflow visualization) ─── */
+function HowSection() {
+  const steps = [
+    { num: "01", title: "输入选品方向", desc: "告诉 AI 你想探索的品类、目标市场、预算范围。" },
+    { num: "02", title: "AI 自动调研", desc: "Agent 并行采集 TikTok 热销、Amazon 排名、社媒趋势、1688 成本。" },
+    { num: "03", title: "数据可视化", desc: "ECharts 交互图表呈现价格分布、销量趋势、竞品对比。" },
+    { num: "04", title: "决策报告", desc: "综合利润测算 + 风险评估 + 推荐 SKU，一键导出。" },
+  ];
+  return (
+    <section id="how" className="py-20 md:py-28">
+      <div className="mx-auto max-w-[1200px] px-6">
+        <div className="text-center mb-16">
+          <p className="text-[13px] font-medium uppercase tracking-widest text-violet-600 mb-3">工作流程</p>
+          <h2 className="text-[32px] md:text-[40px] font-semibold tracking-tight text-neutral-900">
+            从灵感到决策，四步完成
+          </h2>
+        </div>
+        <div className="grid md:grid-cols-4 gap-6">
+          {steps.map((s) => (
+            <div key={s.num} className="relative rounded-2xl border border-neutral-100 bg-white p-6 hover:shadow-md transition-shadow">
+              <span className="text-[40px] font-bold text-neutral-100 leading-none">{s.num}</span>
+              <h3 className="mt-3 text-[15px] font-semibold text-neutral-900">{s.title}</h3>
+              <p className="mt-2 text-[13px] text-neutral-500 leading-relaxed">{s.desc}</p>
             </div>
           ))}
         </div>
@@ -197,87 +234,146 @@ function Features() {
   );
 }
 
-/* ────────────────────────── PRICING ────────────────────────── */
+/* ─── FEATURES GRID (6 items) ─── */
+function FeaturesGrid() {
+  const items = [
+    { icon: Search, title: "智能市场调研", desc: "AI Agent 8 阶段自动化调研，从品类扫描到竞品深挖。" },
+    { icon: LineChart, title: "ECharts 图表报告", desc: "柱状图、折线图、饼图、雷达图，AI 产出自动渲染为交互式图表。" },
+    { icon: ShoppingCart, title: "TikTok Shop 实时数据", desc: "28 个品类、95 款热销商品实时追踪，每日 0 点自动更新。" },
+    { icon: Calculator, title: "利润测算引擎", desc: "14 项成本拆解 + 蒙特卡洛压力测试，精确计算利润率和亏损风险。" },
+    { icon: Shield, title: "9 级反爬引擎", desc: "curl_cffi → Scrapling → patchright 等 9 级降级链，数据采集零中断。" },
+    { icon: TrendingUp, title: "社媒趋势 × 8 平台", desc: "TikTok、抖音、微博、小红书、快手、B站、X、Lemon8 热榜聚合。" },
+  ];
+  return (
+    <section id="features" className="py-20 md:py-28 bg-neutral-50/70">
+      <div className="mx-auto max-w-[1200px] px-6">
+        <div className="text-center mb-14">
+          <p className="text-[13px] font-medium uppercase tracking-widest text-violet-600 mb-3">核心能力</p>
+          <h2 className="text-[32px] md:text-[40px] font-semibold tracking-tight text-neutral-900">
+            完整的选品数据基础设施
+          </h2>
+          <p className="mt-4 text-[16px] text-neutral-500 max-w-2xl mx-auto">
+            从数据采集到 AI 分析到可视化报告，每一步都为跨境电商卖家优化。
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {items.map((f, i) => (
+            <div key={i} className="rounded-2xl border border-neutral-100 bg-white p-6 hover:border-neutral-200 hover:shadow-md transition-all">
+              <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50">
+                <f.icon className="h-[18px] w-[18px] text-violet-600" />
+              </div>
+              <h3 className="text-[15px] font-semibold text-neutral-900 mb-1.5">{f.title}</h3>
+              <p className="text-[13px] text-neutral-500 leading-relaxed">{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── STATS ─── */
+function Stats() {
+  const stats = [
+    { value: "128,540+", label: "商品数据库规模" },
+    { value: "26", label: "覆盖国家/地区" },
+    { value: "8", label: "社媒平台趋势" },
+    { value: "2000%+", label: "用户利润率目标" },
+  ];
+  return (
+    <section className="py-16 bg-neutral-900 text-white">
+      <div className="mx-auto max-w-[1200px] px-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          {stats.map((s, i) => (
+            <div key={i} className="text-center">
+              <div className="text-[32px] md:text-[40px] font-bold tracking-tight">{s.value}</div>
+              <div className="mt-1 text-[13px] text-neutral-400">{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── PRICING ─── */
 const plans = [
   {
     name: "免费版",
-    desc: "适合个人卖家试用",
-    price: "0",
-    features: ["5 次 AI 调研/月", "1 个品类追踪", "基础数据仪表盘", "社区支持"],
+    price: "¥0",
+    period: "/月",
+    desc: "适合初步体验 AI 选品能力",
+    features: ["5 次 AI 调研/月", "品类浏览 & 热销榜", "1 个目标市场", "基础数据快照"],
     cta: "免费开始",
-    popular: false,
+    highlighted: false,
   },
   {
     name: "专业版",
-    desc: "适合成长期卖家",
-    price: "99",
-    features: [
-      "100 次 AI 调研/月", "10 个品类追踪", "ECharts 交互式报告",
-      "26 国市场数据", "利润测算引擎", "实时数据刷新", "邮件提醒", "优先技术支持",
-    ],
-    cta: "立即升级",
-    popular: true,
+    price: "¥99",
+    period: "/月",
+    desc: "适合全职跨境电商卖家",
+    features: ["100 次 AI 调研/月", "ECharts 交互式图表", "26 国全市场覆盖", "品类趋势追踪", "利润测算引擎", "每日定时刷新", "优先数据更新"],
+    cta: "立即订阅",
+    highlighted: true,
   },
   {
     name: "企业版",
-    desc: "适合团队和大卖",
-    price: "299",
-    features: [
-      "无限 AI 调研", "无限品类追踪", "API 接口访问", "多人协作",
-      "自定义报告模板", "专属客户经理", "SLA 服务保障", "数据导出 Excel/PDF",
-    ],
+    price: "¥299",
+    period: "/月",
+    desc: "适合团队和多店铺运营",
+    features: ["无限 AI 调研", "所有专业版功能", "API 接口访问", "多人协作空间", "专属客户经理", "自定义报告模板", "SLA 保障"],
     cta: "联系我们",
-    popular: false,
+    highlighted: false,
   },
 ];
 
 function Pricing() {
   return (
-    <section id="pricing" className="py-24">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-4 py-1.5 text-sm text-violet-700 mb-4">
-            灵活定价
-          </div>
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mb-4">选择适合你的方案</h2>
-          <p className="text-muted-foreground">从免费试用到企业定制，满足不同阶段需求</p>
+    <section id="pricing" className="py-20 md:py-28">
+      <div className="mx-auto max-w-[1200px] px-6">
+        <div className="text-center mb-14">
+          <p className="text-[13px] font-medium uppercase tracking-widest text-violet-600 mb-3">定价方案</p>
+          <h2 className="text-[32px] md:text-[40px] font-semibold tracking-tight text-neutral-900">
+            简单透明的定价
+          </h2>
+          <p className="mt-4 text-[16px] text-neutral-500">选择最适合你的方案，随时升级或降级。</p>
         </div>
-
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {plans.map((plan, i) => (
-            <div key={i} className={`relative rounded-2xl border p-8 flex flex-col ${
-              plan.popular
-                ? "border-violet-300 bg-gradient-to-b from-violet-50 to-card shadow-lg shadow-violet-500/10 scale-[1.02]"
-                : "border-border/50 bg-card"
-            }`}>
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-violet-600 px-4 py-1 text-xs font-medium text-white">
-                  最受欢迎
-                </div>
+        <div className="grid md:grid-cols-3 gap-5 max-w-4xl mx-auto">
+          {plans.map((p) => (
+            <div
+              key={p.name}
+              className={`rounded-2xl border p-7 flex flex-col ${
+                p.highlighted
+                  ? "border-neutral-900 bg-white shadow-xl shadow-neutral-200/50 ring-1 ring-neutral-900"
+                  : "border-neutral-200 bg-white"
+              }`}
+            >
+              {p.highlighted && (
+                <span className="self-start rounded-full bg-neutral-900 px-3 py-1 text-[11px] font-medium text-white mb-4">推荐</span>
               )}
-              <div className="mb-6">
-                <h3 className={`text-xl font-semibold ${plan.popular ? "text-violet-700" : ""}`}>{plan.name}</h3>
-                <p className="text-sm text-muted-foreground mt-1">{plan.desc}</p>
+              <h3 className="text-[15px] font-semibold text-neutral-900">{p.name}</h3>
+              <div className="mt-3 flex items-baseline gap-0.5">
+                <span className="text-[36px] font-bold text-neutral-900">{p.price}</span>
+                <span className="text-[14px] text-neutral-400">{p.period}</span>
               </div>
-              <div className="mb-6">
-                <span className="text-4xl font-bold tracking-tight">¥{plan.price}</span>
-                {plan.price !== "0" && <span className="text-muted-foreground ml-1">/月</span>}
-                {plan.price === "0" && <span className="text-muted-foreground ml-2">永久免费</span>}
-              </div>
-              <ul className="space-y-3 mb-8 flex-1">
-                {plan.features.map((f, j) => (
-                  <li key={j} className="flex items-start gap-2.5 text-sm">
-                    <Check className={`h-4 w-4 mt-0.5 flex-shrink-0 ${plan.popular ? "text-violet-500" : "text-emerald-500"}`} />
-                    <span>{f}</span>
+              <p className="mt-2 text-[13px] text-neutral-500">{p.desc}</p>
+              <ul className="mt-6 space-y-2.5 flex-1">
+                {p.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-[13px] text-neutral-600">
+                    <Check className="h-4 w-4 mt-0.5 flex-shrink-0 text-violet-600" />
+                    {f}
                   </li>
                 ))}
               </ul>
-              <Link href="/register" className={`rounded-xl py-3 text-center text-sm font-medium transition-colors ${
-                plan.popular
-                  ? "bg-violet-600 text-white hover:bg-violet-700"
-                  : "border border-border text-foreground hover:bg-muted"
-              }`}>
-                {plan.cta}
+              <Link
+                href="/register"
+                className={`mt-6 flex items-center justify-center rounded-full py-3 text-[14px] font-medium transition-colors ${
+                  p.highlighted
+                    ? "bg-neutral-900 text-white hover:bg-neutral-800"
+                    : "border border-neutral-200 text-neutral-700 hover:bg-neutral-50"
+                }`}
+              >
+                {p.cta}
               </Link>
             </div>
           ))}
@@ -287,49 +383,93 @@ function Pricing() {
   );
 }
 
-/* ────────────────────────── FAQ ────────────────────────── */
+/* ─── TESTIMONIALS ─── */
+function Testimonials() {
+  const items = [
+    {
+      text: "以前选品靠刷 TikTok + 翻 Amazon 评论，一个品类要花两三天。用了 SelectPilot 之后，AI 调研 10 分钟就出报告，图表一目了然。",
+      name: "李明",
+      role: "TikTok Shop 卖家，月 GMV $50K+",
+    },
+    {
+      text: "利润测算功能帮我避开了好几个看似热销但实际毛利只有 8% 的品类。蒙特卡洛模拟直接告诉我亏损概率。",
+      name: "Sarah Chen",
+      role: "跨境电商运营经理",
+    },
+    {
+      text: "26 个国家的品类数据一键切换，不用再一个个站点去扒数据了。每天自动更新省了我们团队大量时间。",
+      name: "Kevin Liu",
+      role: "多店铺运营，年 GMV $2M",
+    },
+  ];
+  return (
+    <section className="py-20 md:py-28 bg-neutral-50/70">
+      <div className="mx-auto max-w-[1200px] px-6">
+        <div className="text-center mb-12">
+          <p className="text-[13px] font-medium uppercase tracking-widest text-violet-600 mb-3">用户反馈</p>
+          <h2 className="text-[32px] md:text-[40px] font-semibold tracking-tight text-neutral-900">卖家们怎么说</h2>
+        </div>
+        <div className="grid md:grid-cols-3 gap-5">
+          {items.map((t, i) => (
+            <div key={i} className="rounded-2xl border border-neutral-100 bg-white p-6">
+              <p className="text-[14px] text-neutral-600 leading-relaxed mb-5">&ldquo;{t.text}&rdquo;</p>
+              <div>
+                <div className="text-[14px] font-medium text-neutral-900">{t.name}</div>
+                <div className="text-[12px] text-neutral-400">{t.role}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── FAQ ─── */
 const faqs = [
   {
-    q: "SelectPilot 和其他选品工具有什么区别？",
-    a: "SelectPilot 是唯一一个结合了对话式 AI Agent + 56 种工具链 + 9 级反爬引擎的全自动选品平台。不只是看数据，而是像雇了一位资深选品专家帮你分析。",
-  },
-  {
-    q: "数据来源是真实的吗？",
-    a: "所有数据都来自实时抓取——Amazon BSR 排名、商品详情、评论数据、1688 供应商报价、TikTok 社媒趋势等。每个数据点都有来源追溯，绝不虚构。",
+    q: "SelectPilot 的数据来源是什么？",
+    a: "我们通过 TikHub API 获取 TikTok Shop 实时数据（品类排名、热销商品），同时采集 Amazon BSR、8 个社媒平台趋势数据、1688/Made-in-China 采购成本。所有数据均为真实实时数据，不编造。",
   },
   {
     q: "免费版有什么限制？",
-    a: "免费版每月可进行 5 次 AI 调研和追踪 1 个品类。升级到专业版可获得 100 次调研额度、ECharts 交互式图表、26 国市场数据等完整功能。",
+    a: "免费版每月可进行 5 次 AI 调研对话，可浏览品类榜单和热销榜，限 1 个目标市场。升级专业版后解锁 100 次调研、26 国覆盖和 ECharts 图表。",
   },
   {
-    q: "支持哪些电商平台？",
-    a: "目前支持 Amazon（26 个站点）、1688、Made-in-China、DHgate 的数据采集，以及 TikTok、Reddit 等社媒趋势分析。我们在持续接入更多平台。",
+    q: "AI Agent 的调研质量如何保证？",
+    a: "AI Agent 基于 DeepSeek 大模型，配合 8 阶段结构化调研流程和实时数据工具链。每次调研都基于真实数据产出结论，如 TikTok Shop 无数据时会明确标注「通道未就绪」而非编造。",
+  },
+  {
+    q: "支持哪些国家/地区？",
+    a: "目前支持 26 个国家/地区：美国、英国、德国、法国、日本、韩国、新加坡、马来西亚、泰国、越南、印尼、菲律宾、巴西等。每个国家的 TikTok Shop 品类和热销数据独立采集。",
+  },
+  {
+    q: "定价是否包含 API 调用费用？",
+    a: "是的。月费已包含所有数据采集和 AI 调研费用，无隐藏消耗。企业版额外提供 REST API 接口，方便与内部系统对接。",
   },
 ];
 
 function FAQ() {
   const [openIdx, setOpenIdx] = useState<number | null>(null);
   return (
-    <section id="faq" className="py-24 bg-muted/30">
-      <div className="mx-auto max-w-3xl px-6">
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-4 py-1.5 text-sm text-violet-700 mb-4">
-            常见问题
-          </div>
-          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">有疑问？看这里</h2>
+    <section id="faq" className="py-20 md:py-28">
+      <div className="mx-auto max-w-[720px] px-6">
+        <div className="text-center mb-12">
+          <p className="text-[13px] font-medium uppercase tracking-widest text-violet-600 mb-3">常见问题</p>
+          <h2 className="text-[32px] md:text-[40px] font-semibold tracking-tight text-neutral-900">FAQ</h2>
         </div>
         <div className="space-y-3">
-          {faqs.map((faq, i) => (
-            <div key={i} className="rounded-2xl border border-border/50 bg-card overflow-hidden">
+          {faqs.map((f, i) => (
+            <div key={i} className="rounded-xl border border-neutral-200 bg-white overflow-hidden">
               <button
                 onClick={() => setOpenIdx(openIdx === i ? null : i)}
-                className="w-full flex items-center justify-between p-5 text-left text-sm font-medium hover:bg-muted/50 transition-colors"
+                className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left"
               >
-                {faq.q}
-                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${openIdx === i ? "rotate-180" : ""}`} />
+                <span className="text-[14px] font-medium text-neutral-900">{f.q}</span>
+                <ChevronDown className={`h-4 w-4 flex-shrink-0 text-neutral-400 transition-transform ${openIdx === i ? "rotate-180" : ""}`} />
               </button>
               {openIdx === i && (
-                <div className="px-5 pb-5 text-sm text-muted-foreground leading-relaxed">{faq.a}</div>
+                <div className="px-6 pb-4 text-[13px] text-neutral-500 leading-relaxed">{f.a}</div>
               )}
             </div>
           ))}
@@ -339,65 +479,82 @@ function FAQ() {
   );
 }
 
-/* ────────────────────────── CTA ────────────────────────── */
-function CTA() {
+/* ─── BOTTOM CTA ─── */
+function BottomCTA() {
   return (
-    <section className="py-24">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="relative rounded-3xl bg-gradient-to-br from-violet-600 to-purple-700 p-12 md:p-16 text-center overflow-hidden">
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImEiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMSIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA4KSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNhKSIvPjwvc3ZnPg==')] opacity-50" />
-          <div className="relative">
-            <h2 className="text-3xl md:text-4xl font-semibold text-white tracking-tight mb-4">
-              准备好发现下一个爆品了吗？
-            </h2>
-            <p className="text-violet-200 text-lg mb-8 max-w-xl mx-auto">
-              加入数千名跨境卖家，用 AI 驱动你的选品决策
-            </p>
-            <Link href="/register" className="inline-flex items-center gap-2 rounded-2xl bg-white px-8 py-4 text-base font-medium text-violet-700 hover:bg-violet-50 transition-colors">
-              免费开始使用 <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
+    <section className="py-20 md:py-28 bg-neutral-50/70">
+      <div className="mx-auto max-w-[1200px] px-6 text-center">
+        <h2 className="text-[32px] md:text-[44px] font-semibold tracking-tight text-neutral-900 mb-4">
+          开始用 AI 发现下一个爆品
+        </h2>
+        <p className="text-[16px] text-neutral-500 max-w-xl mx-auto mb-8">
+          真实数据、智能分析、一键报告。加入已经在使用 SelectPilot 的跨境电商卖家。
+        </p>
+        <Link href="/register" className="inline-flex items-center gap-2 rounded-full bg-neutral-900 px-8 py-4 text-[15px] font-medium text-white hover:bg-neutral-800 transition-all hover:shadow-lg">
+          免费注册 <ArrowRight className="h-4 w-4" />
+        </Link>
       </div>
     </section>
   );
 }
 
-/* ────────────────────────── FOOTER ────────────────────────── */
+/* ─── FOOTER ─── */
 function Footer() {
   return (
-    <footer className="border-t border-border py-12">
-      <div className="mx-auto max-w-6xl px-6">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2.5">
-            <img src="/images/logo-icon.png" alt="SelectPilot" className="h-7 w-7 rounded-lg" />
-            <span className="text-sm font-semibold">SelectPilot</span>
+    <footer className="border-t border-neutral-100 bg-white py-12">
+      <div className="mx-auto max-w-[1200px] px-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-10">
+          {/* Brand */}
+          <div className="col-span-2 md:col-span-1">
+            <Link href="/" className="flex items-center gap-2 mb-3">
+              <img src="/images/logo-icon.png" alt="SelectPilot" className="h-7 w-7 rounded-md" />
+              <span className="text-[15px] font-semibold text-neutral-900">SelectPilot</span>
+            </Link>
+            <p className="text-[12px] text-neutral-400 leading-relaxed">AI 驱动的跨境电商选品决策引擎</p>
           </div>
-          <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <a href="#features" className="hover:text-foreground transition-colors">功能介绍</a>
-            <a href="#pricing" className="hover:text-foreground transition-colors">定价</a>
-            <a href="#faq" className="hover:text-foreground transition-colors">常见问题</a>
-            <span>support@selectpilot.ai</span>
-          </div>
+          {/* Links */}
+          {[
+            { title: "产品", links: [["功能", "#features"], ["工作流", "#how"], ["定价", "#pricing"]] },
+            { title: "资源", links: [["FAQ", "#faq"], ["博客", "#"], ["API 文档", "#"]] },
+            { title: "公司", links: [["关于我们", "#"], ["联系方式", "#"]] },
+            { title: "法律", links: [["隐私政策", "#"], ["服务条款", "#"]] },
+          ].map((col) => (
+            <div key={col.title}>
+              <h4 className="text-[12px] font-semibold uppercase tracking-wider text-neutral-900 mb-3">{col.title}</h4>
+              <ul className="space-y-2">
+                {col.links.map(([label, href]) => (
+                  <li key={label}><a href={href} className="text-[13px] text-neutral-500 hover:text-neutral-900 transition-colors">{label}</a></li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
-        <div className="mt-8 pt-6 border-t border-border text-center text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} SelectPilot. All rights reserved.
+        <div className="border-t border-neutral-100 pt-6 text-center text-[12px] text-neutral-400">
+          &copy; 2026 SelectPilot. All rights reserved.
         </div>
       </div>
     </footer>
   );
 }
 
-/* ────────────────────────── MAIN ────────────────────────── */
+/* ═══ EXPORT ═══ */
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-white text-neutral-900 antialiased">
       <Navbar />
-      <Hero />
-      <Features />
-      <Pricing />
-      <FAQ />
-      <CTA />
+      <main>
+        <Hero />
+        <FeatureShowcase1 />
+        <FeatureShowcase2 />
+        <FeatureShowcase3 />
+        <HowSection />
+        <FeaturesGrid />
+        <Stats />
+        <Pricing />
+        <Testimonials />
+        <FAQ />
+        <BottomCTA />
+      </main>
       <Footer />
     </div>
   );

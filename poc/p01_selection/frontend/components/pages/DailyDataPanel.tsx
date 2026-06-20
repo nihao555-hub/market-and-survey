@@ -6,6 +6,7 @@ import {
   type DataSnapshot, type RefreshStatus,
 } from "@/lib/api";
 import { Button, StatusBadge, StatTile, Skeleton, EmptyState, type StatusKind } from "./primitives";
+import { ProductDetailModal, type ProductForModal } from "./ProductDetailModal";
 
 // 数据源中文名 + 图标
 const SOURCE_META: Record<string, { label: string; icon: React.ReactNode }> = {
@@ -47,6 +48,7 @@ export function DailyDataPanel() {
   const [snapshots, setSnapshots] = React.useState<DataSnapshot[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
+  const [selectedProduct, setSelectedProduct] = React.useState<ProductForModal | null>(null);
 
   const reload = React.useCallback(async () => {
     try {
@@ -187,12 +189,11 @@ export function DailyDataPanel() {
                           {s.source === "tiktok_shop" && s.realData && Array.isArray(s.payload?.products) && (
                             <div className="mt-2 space-y-1.5">
                               {s.payload.products.slice(0, 6).map((p: any, i: number) => (
-                                <a
+                                <button
+                                  type="button"
                                   key={i}
-                                  href={p.url || undefined}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="flex items-center gap-2 rounded-lg border border-hairline bg-white p-1.5 transition hover:border-brand/40"
+                                  onClick={() => setSelectedProduct({ ...p, _source: s.term })}
+                                  className="flex w-full items-center gap-2 rounded-lg border border-hairline bg-white p-1.5 text-left transition hover:border-brand/40"
                                 >
                                   {p.image ? (
                                     // eslint-disable-next-line @next/next/no-img-element
@@ -216,7 +217,7 @@ export function DailyDataPanel() {
                                       {p.sold_count ? <span>已售 {p.sold_count}</span> : null}
                                     </div>
                                   </div>
-                                </a>
+                                </button>
                               ))}
                             </div>
                           )}
@@ -231,6 +232,7 @@ export function DailyDataPanel() {
         </>
       )}
       </div>
+      <ProductDetailModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
     </section>
   );
 }

@@ -107,7 +107,7 @@ def _send_email(to: str, subject: str, html_body: str) -> bool:
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"蓝海罗盘 <{SMTP_FROM}>"
+        msg["From"] = f"SelectPilot <{SMTP_FROM}>"
         msg["To"] = to
         msg.attach(MIMEText(html_body, "html", "utf-8"))
 
@@ -132,10 +132,10 @@ def _verification_email_html(code: str, purpose: str) -> str:
     <div style="font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
       <div style="text-align: center; margin-bottom: 32px;">
         <div style="display: inline-block; width: 48px; height: 48px; background: linear-gradient(135deg, #F97316, #F59E0B); border-radius: 12px; line-height: 48px; color: white; font-size: 24px;">&#x1F9ED;</div>
-        <h2 style="margin: 12px 0 0; color: #0F172A; font-size: 20px;">蓝海罗盘</h2>
+        <h2 style="margin: 12px 0 0; color: #0F172A; font-size: 20px;">SelectPilot</h2>
       </div>
       <div style="background: #fff; border: 1px solid #E2E8F0; border-radius: 16px; padding: 32px; text-align: center;">
-        <p style="color: #64748B; font-size: 14px; margin: 0 0 24px;">你正在{action}蓝海罗盘账号，请使用以下验证码：</p>
+        <p style="color: #64748B; font-size: 14px; margin: 0 0 24px;">你正在{action} SelectPilot 账号，请使用以下验证码：</p>
         <div style="background: #FFF7ED; border: 2px solid #FDBA74; border-radius: 12px; padding: 20px; margin: 0 auto; display: inline-block;">
           <span style="font-family: 'JetBrains Mono', monospace; font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #EA580C;">{code}</span>
         </div>
@@ -163,7 +163,7 @@ def register(email: str, name: str, password: str) -> dict:
         conn.execute("INSERT INTO verification_codes (email, code, purpose) VALUES (?, ?, 'verify')",
                      (email, code))
 
-    _send_email(email, f"【蓝海罗盘】验证码：{code}", _verification_email_html(code, "verify"))
+    _send_email(email, f"【SelectPilot】验证码：{code}", _verification_email_html(code, "verify"))
     return {"ok": True, "message": "验证码已发送到邮箱"}
 
 
@@ -179,7 +179,7 @@ def send_code(email: str, purpose: str = "login") -> dict:
         conn.execute("INSERT INTO verification_codes (email, code, purpose) VALUES (?, ?, ?)",
                      (email, code, purpose))
 
-    _send_email(email, f"【蓝海罗盘】验证码：{code}", _verification_email_html(code, purpose))
+    _send_email(email, f"【SelectPilot】验证码：{code}", _verification_email_html(code, purpose))
     return {"ok": True, "message": "验证码已发送"}
 
 

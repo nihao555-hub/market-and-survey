@@ -3,6 +3,7 @@ import React from "react";
 import { Flame, Star, ShoppingCart, TrendingUp, Store, Tag } from "lucide-react";
 import { fetchDataSnapshots } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { ProductDetailModal, type ProductForModal } from "./pages/ProductDetailModal";
 
 // TikTok Shop 实时商品（与 modules/tikhub.shop_search 归一化字段一致）
 interface ShopProduct {
@@ -66,6 +67,7 @@ function rankBadge(i: number): string {
 export function HotProductsSection() {
   const [products, setProducts] = React.useState<RankedProduct[] | null>(null);
   const [scanned, setScanned] = React.useState(0);
+  const [selectedProduct, setSelectedProduct] = React.useState<ProductForModal | null>(null);
 
   React.useEffect(() => {
     let alive = true;
@@ -136,12 +138,11 @@ export function HotProductsSection() {
               const labels = tidyLabels(p.marketing_labels);
               const sym = p.currency_symbol || "$";
               return (
-                <a
+                <button
+                  type="button"
                   key={p.product_id}
-                  href={p.url || undefined}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-hairline bg-white transition-all hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md"
+                  onClick={() => setSelectedProduct({ ...p, _source: p._term })}
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-hairline bg-white text-left transition-all hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md"
                 >
                   {/* 商品图 */}
                   <div className="relative aspect-square w-full overflow-hidden bg-surface-2">
@@ -245,10 +246,11 @@ export function HotProductsSection() {
                       </span>
                     </div>
                   </div>
-                </a>
+                </button>
               );
             })}
       </div>
+      <ProductDetailModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
     </section>
   );
 }
