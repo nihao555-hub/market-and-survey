@@ -2,11 +2,13 @@
 User authentication system: email/password registration, email verification,
 login via password or verification code.
 
-Uses 163 SMTP for sending verification emails.
+Uses Vercel API route for email sending (Render blocks SMTP).
+Falls back to direct SMTP if Vercel endpoint unavailable.
 Token-based sessions stored in SQLite.
 """
 from __future__ import annotations
 import os, time, random, string, hashlib, secrets, sqlite3, smtplib, json
+import urllib.request
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from pathlib import Path
@@ -21,6 +23,10 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
 SMTP_USER = os.getenv("SMTP_USER", "15571870062@163.com")
 SMTP_PASS = os.getenv("SMTP_PASS", "WSdQhddWrar9TGny")
 SMTP_FROM = os.getenv("SMTP_FROM", SMTP_USER)
+
+# Vercel email API endpoint (used when direct SMTP is blocked, e.g. on Render)
+VERCEL_EMAIL_URL = os.getenv("VERCEL_EMAIL_URL", "https://market-survey-nu.vercel.app/api/send-email")
+EMAIL_API_SECRET = os.getenv("EMAIL_API_SECRET", "selectpilot_email_2024")
 
 DB_PATH = Path(__file__).parent.parent / "data" / "users.sqlite"
 
@@ -103,20 +109,45 @@ def _generate_token() -> str:
     return secrets.token_urlsafe(32)
 
 
-def _send_email(to: str, subject: str, html_body: str) -> bool:
+def _send_email_via_vercel(to: str, subject: str, html_body: str) -> bool:
+    """Send email via Vercel API route (bypasses Render's SMTP block)."""
+    try:
+        payload = json.dumps({
+            "to": to,
+            "subject": subject,
+            "html": html_body,
+            "secret": EMAIL_API_SECRET,
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            VERCEL_EMAIL_URL,
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            result = json.loads(resp.read())
+            if result.get("ok"):
+                logger.info(f"Email sent via Vercel API to {to}: {subject}")
+                return True
+            logger.error(f"Vercel email API error: {result}")
+            return False
+    except Exception as e:
+        logger.error(f"Vercel email API failed for {to}: {type(e).__name__}: {e}")
+        return False
+
+
+def _send_email_via_smtp(to: str, subject: str, html_body: str) -> bool:
+    """Direct SMTP sending (works when not blocked by network)."""
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = f"SelectPilot <{SMTP_FROM}>"
     msg["To"] = to
     msg.attach(MIMEText(html_body, "html", "utf-8"))
 
-    # Try multiple connection methods (163.com supports all three)
     attempts = [
         ("SSL", SMTP_HOST, 465),
         ("STARTTLS", SMTP_HOST, 587),
-        ("STARTTLS", "smtp.163.com", 25),
     ]
-    last_error = None
     for method, host, port in attempts:
         try:
             if method == "SSL":
@@ -127,15 +158,20 @@ def _send_email(to: str, subject: str, html_body: str) -> bool:
             server.login(SMTP_USER, SMTP_PASS)
             server.sendmail(SMTP_FROM, [to], msg.as_string())
             server.quit()
-            logger.info(f"Email sent to {to} via {method}:{port}: {subject}")
+            logger.info(f"Email sent via SMTP {method}:{port} to {to}: {subject}")
             return True
         except Exception as e:
-            last_error = e
             logger.warning(f"SMTP {method}:{port} failed for {to}: {type(e).__name__}: {e}")
             continue
-
-    logger.error(f"All SMTP methods failed for {to}: {last_error}")
     return False
+
+
+def _send_email(to: str, subject: str, html_body: str) -> bool:
+    """Send email: try Vercel API first, fall back to direct SMTP."""
+    if _send_email_via_vercel(to, subject, html_body):
+        return True
+    logger.warning("Vercel API failed, trying direct SMTP...")
+    return _send_email_via_smtp(to, subject, html_body)
 
 
 def _verification_email_html(code: str, purpose: str) -> str:
