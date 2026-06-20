@@ -1,6 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { BACKEND_BASE } from "@/lib/graphql-client";
+import { saveAuth } from "@/lib/auth";
 import { SignInPage, type Testimonial } from "@/components/ui/sign-in";
 
 const testimonials: Testimonial[] = [
@@ -35,9 +36,7 @@ export default function LoginPage() {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.detail || "登录失败");
-    localStorage.setItem("auth_token", json.token);
-    localStorage.setItem("user_email", json.email || data.email);
-    localStorage.setItem("user_plan", json.plan || "free");
+    saveAuth(json.token, json.email || data.email, json.plan || "free");
     router.push("/");
   };
 
@@ -59,9 +58,7 @@ export default function LoginPage() {
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.detail || "验证失败");
-    localStorage.setItem("auth_token", json.token);
-    localStorage.setItem("user_email", json.email || email);
-    localStorage.setItem("user_plan", json.plan || "free");
+    saveAuth(json.token, json.email || email, json.plan || "free");
     router.push("/");
   };
 

@@ -54,9 +54,18 @@ export function WorkspaceHome() {
 
   React.useEffect(() => setMounted(true), []);
 
-  const start = (category: string) => {
+  const start = async (category: string) => {
     const c = category.trim();
     if (!c) return;
+    // Check usage limit before starting
+    try {
+      const { checkUsage: check } = await import("@/lib/auth");
+      const info = await check();
+      if (info && !info.can_use) {
+        alert(`本月 AI 调研次数已用完（${info.reports_used}/${info.reports_limit}）。请升级套餐获取更多次数。`);
+        return;
+      }
+    } catch { /* allow if check fails */ }
     setDraftKind("general");
     setDraft(c);
   };

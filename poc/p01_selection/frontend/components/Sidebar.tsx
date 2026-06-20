@@ -19,9 +19,11 @@ import {
   LayoutList,
   Settings,
   Crown,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { activeThreadIdAtom, draftCategoryAtom, activePageAtom, threadsAtom, type PageKey } from "@/lib/atoms";
+import { getStoredPlan, clearAuth, PLAN_NAMES, type UserPlan } from "@/lib/auth";
 
 type NavItem = { key: PageKey; label: string; icon: React.ReactNode };
 type NavGroup = { title?: string; items: NavItem[] };
@@ -127,7 +129,7 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Pro 计划卡 */}
+      {/* 当前计划卡 */}
       <div className="px-3 pb-2">
         <div className="rounded-xl border border-hairline bg-gradient-to-br from-brand/5 to-brand2/10 p-3">
           <div className="flex items-center gap-2">
@@ -135,8 +137,8 @@ export function Sidebar() {
               <Crown className="h-3.5 w-3.5" />
             </span>
             <div className="leading-tight">
-              <div className="text-sm font-semibold text-ink">Pro 计划</div>
-              <div className="text-[10px] text-ink-subtle">专业版</div>
+              <div className="text-sm font-semibold text-ink">{PLAN_NAMES[getStoredPlan()]}</div>
+              <div className="text-[10px] text-ink-subtle">{getStoredPlan() === "free" ? "基础版" : getStoredPlan() === "pro" ? "专业版" : "企业版"}</div>
             </div>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
@@ -149,14 +151,16 @@ export function Sidebar() {
               <div className="mt-1 text-[10px] text-ink-subtle">进行中</div>
             </div>
           </div>
-          <button className="mt-2.5 w-full rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-brand-hover">
-            升级计划
-          </button>
+          {getStoredPlan() === "free" && (
+            <button className="mt-2.5 w-full rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-brand-hover">
+              升级计划
+            </button>
+          )}
         </div>
       </div>
 
-      {/* 设置 */}
-      <div className="border-t border-hairline px-3 py-2">
+      {/* 设置 + 退出 */}
+      <div className="border-t border-hairline px-3 py-2 space-y-0.5">
         <button
           onClick={() => onNav("settings")}
           className={cn(
@@ -168,6 +172,13 @@ export function Sidebar() {
         >
           <Settings className={cn("h-4 w-4", active === "settings" ? "text-brand" : "text-ink-subtle")} />
           设置
+        </button>
+        <button
+          onClick={() => { clearAuth(); window.location.href = "/"; }}
+          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-ink-muted hover:bg-red-50 hover:text-red-600 transition-colors"
+        >
+          <LogOut className="h-4 w-4 text-ink-subtle" />
+          退出登录
         </button>
       </div>
     </aside>
