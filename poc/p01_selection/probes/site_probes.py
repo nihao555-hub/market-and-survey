@@ -199,7 +199,8 @@ def try_parse(html: str, card_sel: str, title_sel: str) -> tuple[int, str]:
         n = len(cards)
         sample = ""
         if n:
-            t = cards[0].css_first(title_sel)
+            _r = cards[0].css(title_sel)
+            t = _r[0] if _r else None
             if t is not None:
                 sample = (t.text or t.attrib.get("title", "") or "")[:80].strip()
         return n, sample

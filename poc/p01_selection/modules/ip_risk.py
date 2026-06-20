@@ -23,6 +23,12 @@ def _adaptor(*args, **kwargs):
     return Adaptor(*args, **kwargs)
 
 
+def _css1(node, sel: str):
+    """scrapling css_first 兼容：css() 返回列表，取第一个或 None。"""
+    results = node.css(sel)
+    return results[0] if results else None
+
+
 # ════════════════════════════════════════════════════════════════════
 # 1. Google Patents — 关键词 + 引用链
 # ════════════════════════════════════════════════════════════════════
@@ -74,14 +80,14 @@ def patent_detail_with_citations(patent_num: str, use_proxy: bool = False) -> di
     
     # 标题
     for sel in ["h1#title", "[itemprop='title']", "h1"]:
-        n = adp.css_first(sel)
+        n = _css1(adp, sel)
         if n and n.text:
             out["title"] = n.text.strip()[:300]
             break
     
     # 受让人 / 发明人
     for sel in ["dd[itemprop='assigneeOriginal']", "[itemprop='assignee']"]:
-        n = adp.css_first(sel)
+        n = _css1(adp, sel)
         if n and n.text:
             out["assignee"] = n.text.strip()[:120]
             break
