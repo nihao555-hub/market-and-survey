@@ -12,13 +12,20 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # 自带 redis-server，使容器自包含（免费单容器平台无外部 Redis 时设 EMBEDDED_REDIS=1）。
+# 加装 curl + SSL 库（curl_cffi TLS 指纹伪装需要）。
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends redis-server \
+    && apt-get install -y --no-install-recommends \
+       redis-server \
+       libcurl4-openssl-dev libssl-dev \
+       ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # 依赖层（先拷 requirements 命中缓存）
 COPY requirements/ requirements/
-RUN pip install --no-cache-dir -r requirements/backend.txt
+RUN pip install --no-cache-dir -r requirements/backend.txt \
+    && pip install --no-cache-dir curl-cffi scrapling crawl4ai ddgs httpx \
+    && pip install --no-cache-dir patchright \
+    && python -m patchright install --with-deps chromium 2>/dev/null || true
 
 # 应用代码
 COPY poc/p01_selection/ poc/p01_selection/

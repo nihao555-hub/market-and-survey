@@ -456,8 +456,10 @@ def fetch(url: str, proxy: Optional[str] = None,
                 eff = None
     
     chain = []
-    if not force_browser:
-        chain.extend(ENGINES_FAST)
+    # 即使 force_browser=True 也先试 HTTP 引擎（curl_cffi TLS 指纹已够强，
+    # 很多 SPA 站其实只是服务端渲染+JSON 嵌入，HTTP 层能直接拿到完整 HTML）。
+    # 只有 HTTP 引擎全部失败才回退到浏览器引擎。
+    chain.extend(ENGINES_FAST)
     chain.extend(ENGINES_BROWSER)
 
     for name, fn in chain:
