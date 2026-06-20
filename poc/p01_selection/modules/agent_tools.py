@@ -805,7 +805,7 @@ _FLAKY_PLATFORMS = {"temu", "shein", "alibaba", "aliexpress", "cdiscount",
 # selector 解析失败时用 LLM 文本兜底提取的平台（SPA / 动态 class）
 _LLM_FALLBACK_PLATFORMS = {"temu", "shein", "alibaba", "aliexpress", "cdiscount",
                            "shopee_sg", "wildberries", "lazada_sg", "tokopedia",
-                           "trendyol", "tiktok_shop",
+                           "trendyol", "tiktok_shop", "bestbuy", "newegg", "target",
                            "yandex_market", "mercadolibre_mx", "mercadolibre_br"}
 
 # 平台名别名归一化：LLM 经常用本地化拼写或简写，统一映射到注册表 key。
@@ -839,9 +839,10 @@ def _resolve_platform(name: str) -> str:
 _JUNK_TITLE_PATTERNS = (
     "собрали с помощью",   # Yandex「用 Market AI 整理」UI 文案
     "маркет ai", "market ai",
-    "see more", "view all", "показать", "смотреть все",
+    "see more", "view all", "view details", "показать", "смотреть все",
     "patrocinado", "sponsored", "anúncio", "реклама",
     "add to cart", "купить", "в корзину",
+    "quick view", "compare", "best seller",
 )
 
 
@@ -857,8 +858,8 @@ def _is_junk_title(title: str) -> bool:
     return any(pat in t for pat in _JUNK_TITLE_PATTERNS)
 
 
-def _products_look_valid(products: list[dict], min_count: int = 3,
-                          min_price_ratio: float = 0.5) -> bool:
+def _products_look_valid(products: list[dict], min_count: int = 1,
+                          min_price_ratio: float = 0.4) -> bool:
     """
     校验解析结果是否"看起来是真实有效的商品列表"，而不是提取逻辑出错的垃圾。
     判据（任一不满足 → 视为低质量，触发兜底重试）：
@@ -880,6 +881,22 @@ def _products_look_valid(products: list[dict], min_count: int = 3,
     return True
 
 
+def _css1(node, sel: str):
+    """scrapling css_first 兼容：css() 返回列表，取第一个或 None。"""
+    results = node.css(sel)
+    return results[0] if results else None
+
+
+def _node_text(node) -> str:
+    """scrapling 节点取全文：.text 只取直接文本，get_all_text() 取含子节点的完整文本。"""
+    if node is None:
+        return ""
+    t = node.text or ""
+    if not t.strip() and hasattr(node, "get_all_text"):
+        t = node.get_all_text() or ""
+    return t.strip()
+
+
 def _parse_products_from_html(html: str, url: str, platform: str, p: dict,
                               limit: int) -> list[dict]:
     """从 HTML 用平台 selector 解析商品列表（纯解析，无网络）。"""
@@ -892,47 +909,55 @@ def _parse_products_from_html(html: str, url: str, platform: str, p: dict,
     price_sel_default = p.get("price_sel", "")
     for c in cards[:limit]:
         try:
-            title_node = c.css_first(title_sel_default) if title_sel_default else None
+            title_node = _css1(c, title_sel_default) if title_sel_default else None
             if title_node is None:
-                title_node = (c.css_first("h2 span") or c.css_first("h3")
-                              or c.css_first("[class*='title']") or c.css_first("img[alt]"))
+                title_node = (_css1(c, "h2 span") or _css1(c, "h3")
+                              or _css1(c, "[class*='title']") or _css1(c, "img[alt]"))
             title = ""
             if title_node:
-                title = (title_node.text or title_node.attrib.get("title", "")
+                title = (_node_text(title_node)
+                         or title_node.attrib.get("title", "")
                          or title_node.attrib.get("alt", "")).strip()
 
             # ── 脏数据过滤：剔除空标题 / UI 噪声文案（非真实商品）──
             if _is_junk_title(title):
                 continue
-            price_node = c.css_first(price_sel_default) if price_sel_default else None
+            price_node = _css1(c, price_sel_default) if price_sel_default else None
             if price_node is None:
-                price_node = (c.css_first("span.a-price span.a-offscreen")
-                              or c.css_first("[class*='Price']")
-                              or c.css_first("[class*='price']"))
+                price_node = (_css1(c, "span.a-price span.a-offscreen")
+                              or _css1(c, "[class*='Price']")
+                              or _css1(c, "[class*='price']"))
             price = None
-            if price_node and price_node.text:
-                txt = price_node.text.replace("$", "").replace(",", "").replace("US", "").strip()
-                try:
-                    price = float(txt.split()[0])
-                except Exception:
-                    pass
+            price_txt = _node_text(price_node) if price_node else ""
+            if price_txt:
+                # 合并拆分的价格（如 Newegg: "$\n59\n.99\n–"）
+                import re as _re
+                joined = "".join(price_txt.split())  # 去除所有空白
+                joined = joined.replace("$", "").replace(",", "").replace("US", "")
+                m = _re.search(r'(\d+\.?\d*)', joined)
+                if m:
+                    try:
+                        price = float(m.group(1))
+                    except Exception:
+                        pass
             rating = None
-            r_node = c.css_first("span.a-icon-alt")
-            if r_node and r_node.text:
+            r_node = _css1(c, "span.a-icon-alt")
+            r_text = _node_text(r_node) if r_node else ""
+            if r_text:
                 try:
-                    rating = float(r_node.text.split()[0])
+                    rating = float(r_text.split()[0])
                 except Exception:
                     pass
             asin = ""
             img_url = ""
             sponsored = False
             if "amazon" in platform:
-                a = c.css_first("a.a-link-normal[href*='/dp/']") or c.css_first("a[href*='/dp/']")
+                a = _css1(c, "a.a-link-normal[href*='/dp/']") or _css1(c, "a[href*='/dp/']")
                 if a:
                     href = a.attrib.get("href", "")
                     if "/dp/" in href:
                         asin = href.split("/dp/")[1].split("/")[0].split("?")[0]
-                img_node = c.css_first("img.s-image") or c.css_first("img[srcset]")
+                img_node = _css1(c, "img.s-image") or _css1(c, "img[srcset]")
                 if img_node:
                     img_url = (img_node.attrib.get("src", "")
                                 or img_node.attrib.get("data-src", ""))
@@ -940,7 +965,7 @@ def _parse_products_from_html(html: str, url: str, platform: str, p: dict,
                 if sp_nodes:
                     sponsored = True
                 else:
-                    full_card_text = (c.text or "").lower() if hasattr(c, 'text') else ""
+                    full_card_text = _node_text(c).lower()
                     if "sponsored" in full_card_text[:50]:
                         sponsored = True
             # 真实月销信号：Amazon 搜索卡片上的 "X+ bought in past month"（第一方数据，非估算）
@@ -949,13 +974,13 @@ def _parse_products_from_html(html: str, url: str, platform: str, p: dict,
                 # 优先用 selector 精确定位（a-color-secondary span 含该文案），再兜底全卡文本
                 bm = None
                 for node in c.css("span.a-color-secondary, span.a-size-base"):
-                    ntext = node.text or ""
+                    ntext = _node_text(node)
                     if "bought in past month" in ntext.lower():
                         bm = _BOUGHT_RE.search(ntext)
                         if bm:
                             break
                 if not bm:
-                    card_text = c.text or "" if hasattr(c, "text") else ""
+                    card_text = _node_text(c) if c else ""
                     bm = _BOUGHT_RE.search(card_text)
                 if bm:
                     bought_past_month = _parse_bought_count(bm.group(1))

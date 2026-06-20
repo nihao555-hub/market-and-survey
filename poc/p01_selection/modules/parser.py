@@ -30,6 +30,12 @@ def _parse_rating(rating_class: str) -> float | None:
     return None
 
 
+def _css1(node, sel: str):
+    """scrapling css_first 兼容：css() 返回列表，取第一个或 None。"""
+    results = node.css(sel)
+    return results[0] if results else None
+
+
 def parse_book_list(html: str, base_url: str = "https://books.toscrape.com/") -> List[Product]:
     """解析 books.toscrape 列表页"""
     from scrapling.parser import Adaptor  # 延迟导入可选爬虫依赖  # noqa: PLC0415
@@ -38,21 +44,21 @@ def parse_book_list(html: str, base_url: str = "https://books.toscrape.com/") ->
 
     for item in adp.css("article.product_pod"):
         try:
-            a = item.css_first("h3 a")
+            a = _css1(item, "h3 a")
             title = a.attrib.get("title", "").strip()
             href = a.attrib.get("href", "")
             full_url = base_url.rstrip("/") + "/" + href.lstrip("./")
 
-            price_text = item.css_first("p.price_color").text
+            price_text = _css1(item, "p.price_color").text
             # "£51.77" 或 "Â£51.77"（编码差异） 取数字
             price = float("".join(c for c in price_text if c.isdigit() or c == "."))
 
-            stock_node = item.css_first("p.availability")
+            stock_node = _css1(item, "p.availability")
             # books.toscrape 把状态放在 class 里：'instock availability' 表示有货
             stock_class = (stock_node.attrib.get("class", "") if stock_node else "")
             in_stock = "instock" in stock_class.lower() if stock_node else True
 
-            rating_node = item.css_first("p.star-rating")
+            rating_node = _css1(item, "p.star-rating")
             rating = _parse_rating(rating_node.attrib.get("class", "")) if rating_node else None
 
             products.append(Product(
