@@ -80,7 +80,7 @@ function Hero() {
           {/* Right — App screenshot */}
           <div className="relative">
             <div className="rounded-2xl border border-neutral-200 shadow-2xl shadow-neutral-200/50 overflow-hidden bg-white">
-              <img src="/images/screenshot-dashboard.png" alt="SelectPilot 工作台" className="w-full" />
+              <img src="/images/screenshot-workspace.png" alt="SelectPilot 工作台" className="w-full" />
             </div>
             <div className="absolute -inset-4 bg-gradient-to-tr from-violet-100/40 via-transparent to-violet-100/20 rounded-3xl -z-10 blur-2xl" />
           </div>
@@ -125,7 +125,7 @@ function FeatureShowcase1() {
           </div>
           <div className="relative">
             <div className="rounded-2xl border border-neutral-200 shadow-xl overflow-hidden bg-white">
-              <img src="/images/feature-ai-chat.png" alt="AI Agent 调研界面" className="w-full" />
+              <img src="/images/screenshot-research.png" alt="AI Agent 调研界面" className="w-full" />
             </div>
           </div>
         </div>
@@ -143,7 +143,7 @@ function FeatureShowcase2() {
           {/* Image on left this time */}
           <div className="relative md:order-1">
             <div className="rounded-2xl border border-neutral-200 shadow-xl overflow-hidden bg-white">
-              <img src="/images/feature-categories.png" alt="品类排名榜单" className="w-full" />
+              <img src="/images/screenshot-categories.png" alt="品类排名榜单" className="w-full" />
             </div>
           </div>
           <div className="md:order-2">
@@ -194,7 +194,7 @@ function FeatureShowcase3() {
           </div>
           <div className="relative">
             <div className="rounded-2xl border border-neutral-200 shadow-xl overflow-hidden bg-white">
-              <img src="/images/feature-profit.png" alt="利润测算引擎" className="w-full" />
+              <img src="/images/screenshot-hotselling.png" alt="热销数据分析" className="w-full" />
             </div>
           </div>
         </div>
