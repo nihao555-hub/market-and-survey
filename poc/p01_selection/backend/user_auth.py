@@ -170,9 +170,9 @@ def register(email: str, name: str, password: str) -> dict:
 def send_code(email: str, purpose: str = "login") -> dict:
     if purpose == "login":
         with _db() as conn:
-            user = conn.execute("SELECT id FROM users WHERE email = ? AND email_verified = 1", (email,)).fetchone()
+            user = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
             if not user:
-                return {"ok": False, "detail": "该邮箱未注册或未验证"}
+                return {"ok": False, "detail": "该邮箱未注册"}
 
     code = _generate_code()
     with _db() as conn:
@@ -211,10 +211,12 @@ def login_password(email: str, password: str) -> dict:
                             (email,)).fetchone()
         if not user:
             return {"ok": False, "detail": "邮箱或密码错误"}
-        if not user["email_verified"]:
-            return {"ok": False, "detail": "请先验证邮箱"}
         if not _check_password(password, user["password_hash"]):
             return {"ok": False, "detail": "邮箱或密码错误"}
+        if not user["email_verified"]:
+            # Auto-send verification code and tell user to verify
+            send_code(email, "verify")
+            return {"ok": False, "detail": "请先验证邮箱，验证码已重新发送"}
 
         token = _generate_token()
         conn.execute("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)",
@@ -234,10 +236,13 @@ def login_code(email: str, code: str) -> dict:
             return {"ok": False, "detail": "验证码无效或已过期"}
 
         conn.execute("UPDATE verification_codes SET used = 1 WHERE id = ?", (row["id"],))
-        user = conn.execute("SELECT id, email, name, plan FROM users WHERE email = ? AND email_verified = 1",
+        user = conn.execute("SELECT id, email, name, plan, email_verified FROM users WHERE email = ?",
                             (email,)).fetchone()
         if not user:
             return {"ok": False, "detail": "该邮箱未注册"}
+        # Auto-verify email if user successfully uses a login code
+        if not user["email_verified"]:
+            conn.execute("UPDATE users SET email_verified = 1 WHERE id = ?", (user["id"],))
 
         token = _generate_token()
         conn.execute("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)",
