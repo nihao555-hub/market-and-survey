@@ -56,8 +56,8 @@ export default function RegisterPage() {
     const json = await res.json();
     if (!res.ok) throw new Error(json.detail || "验证失败");
     localStorage.setItem("auth_token", json.token);
-    localStorage.setItem("user_email", json.user?.email || email);
-    localStorage.setItem("user_plan", json.user?.plan || "free");
+    localStorage.setItem("user_email", json.email || email);
+    localStorage.setItem("user_plan", json.plan || "free");
     router.push("/");
   };
 
