@@ -466,11 +466,15 @@ def _collect_hashtag_trends(country: str = "US", time_range: int = 7, limit: int
 
 # ─────────── 批次刷新 ───────────
 def run_daily_refresh(tenant_id: str = "dev_tenant", terms: Optional[list[str]] = None,
-                      geo: str = "US", trigger: str = "schedule") -> dict:
+                      geo: str = "US", geos: Optional[list[str]] = None,
+                      trigger: str = "schedule") -> dict:
     """跑一次刷新：遍历追踪词 → 采集 → 落库快照 → 写状态摘要。返回摘要 dict。
 
     用非阻塞锁保证同一时刻只跑一个批次（定时与手动触发不会并发踩踏）。
     """
+    # 支持多国家刷新：如果传入 geos 列表，对每个国家分别跑一次采集
+    geo_list = geos or [geo]
+
     if not _RUN_LOCK.acquire(blocking=False):
         logger.warning("daily_refresh 已在运行，跳过本次触发")
         return {"skipped": True, "reason": "already_running"}
@@ -484,17 +488,17 @@ def run_daily_refresh(tenant_id: str = "dev_tenant", terms: Optional[list[str]] 
         ds_products = open_dataset_products(tenant_id, terms)
         st.set_config(_state_key(tenant_id), {
             "run_id": run_id, "status": "running", "trigger": trigger,
-            "started_at": started, "finished_at": None, "geo": geo,
+            "started_at": started, "finished_at": None, "geo": ",".join(geo_list),
             "terms": terms, "tier2_channel_ok": channel_ok, "counts": {},
         })
-        logger.info(f"daily_refresh start run={run_id} terms={terms} tier2_ok={channel_ok}")
+        logger.info(f"daily_refresh start run={run_id} geos={geo_list} terms={terms} tier2_ok={channel_ok}")
 
         counts = {"total": 0, "ok": 0, "empty": 0, "error": 0, "unavailable": 0,
                   "real": 0, "terms": len(terms)}
 
-        def _persist(term_label: str, rows: list[dict]) -> None:
+        def _persist(term_label: str, rows: list[dict], g: str = "US") -> None:
             for row in rows:
-                st.save_snapshot(tenant_id=tenant_id, run_id=run_id, term=term_label, geo=geo, **row)
+                st.save_snapshot(tenant_id=tenant_id, run_id=run_id, term=term_label, geo=g, **row)
                 counts["total"] += 1
                 counts[row["status"]] = counts.get(row["status"], 0) + 1
                 if row["real_data"]:
@@ -503,21 +507,23 @@ def run_daily_refresh(tenant_id: str = "dev_tenant", terms: Optional[list[str]] 
         # 跨平台实时社媒趋势：每批采集一次（与具体追踪词无关）
         _persist(SOCIAL_TREND_TERM, _collect_social_trends())
 
-        # 按品类榜单 / 实时热销榜 / 热门话题曲线：每批各采集一次（喂「品类榜单」页 + ④话题雷达）
-        _persist("📦 品类榜单", _collect_category_rankings(geo))
-        _persist(HOT_SELLING_TERM, [_collect_hot_selling(geo)])
-        _persist(HASHTAG_TREND_TERM, [_collect_hashtag_trends(geo)])
+        for current_geo in geo_list:
+            logger.info(f"daily_refresh geo={current_geo} collecting...")
+            # 按品类榜单 / 实时热销榜 / 热门话题曲线
+            _persist("📦 品类榜单", _collect_category_rankings(current_geo), current_geo)
+            _persist(HOT_SELLING_TERM, [_collect_hot_selling(current_geo)], current_geo)
+            _persist(HASHTAG_TREND_TERM, [_collect_hashtag_trends(current_geo)], current_geo)
 
-        for term in terms:
-            rows = (_collect_tier1(term, geo)
-                    + [_dataset_row(term, ds_products.get(term, []))]
-                    + _collect_tier2(term, geo, channel_ok))
-            _persist(term, rows)
+            for term in terms:
+                rows = (_collect_tier1(term, current_geo)
+                        + [_dataset_row(term, ds_products.get(term, []))]
+                        + _collect_tier2(term, current_geo, channel_ok))
+                _persist(term, rows, current_geo)
 
         summary = {
             "run_id": run_id, "status": "done", "trigger": trigger,
             "started_at": started, "finished_at": _now_iso(),
-            "elapsed_sec": round(time.time() - t0, 1), "geo": geo,
+            "elapsed_sec": round(time.time() - t0, 1), "geo": ",".join(geo_list),
             "terms": terms, "tier2_channel_ok": channel_ok, "counts": counts,
         }
         st.set_config(_state_key(tenant_id), summary)
@@ -537,13 +543,14 @@ def run_daily_refresh(tenant_id: str = "dev_tenant", terms: Optional[list[str]] 
 
 
 def run_in_background(tenant_id: str = "dev_tenant", terms: Optional[list[str]] = None,
-                      geo: str = "US", trigger: str = "manual") -> bool:
+                      geo: str = "US", geos: Optional[list[str]] = None,
+                      trigger: str = "manual") -> bool:
     """后台线程跑一次刷新（手动触发用，立即返回）。已在跑则返回 False。"""
     if _RUN_LOCK.locked():
         return False
     threading.Thread(
         target=run_daily_refresh,
-        kwargs=dict(tenant_id=tenant_id, terms=terms, geo=geo, trigger=trigger),
+        kwargs=dict(tenant_id=tenant_id, terms=terms, geo=geo, geos=geos, trigger=trigger),
         daemon=True,
     ).start()
     return True

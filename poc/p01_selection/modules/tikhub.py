@@ -210,9 +210,28 @@ def fetch_products_by_category(category_id: str, region: str = "US",
 
 
 def fetch_hot_selling_products(region: str = "US", limit: int = 20) -> list[dict]:
-    """TikTok Shop 实时热销榜（同 shop_search 的归一化 schema）。用于「实时爆品雷达」。"""
-    d = _get("/api/v1/tiktok/shop/web/fetch_hot_selling_products_list", {"region": region})
-    return [_normalize_product(p) for p in _product_list_node(d)[:limit]]
+    """TikTok Shop 实时热销榜（同 shop_search 的归一化 schema）。用于「实时爆品雷达」。
+
+    先尝试 web 端点；若返回 400 则退回 app 端点（传 count 参数）。
+    两者都失败时上抛让调用方标 error。
+    """
+    endpoints = [
+        ("/api/v1/tiktok/shop/web/fetch_hot_selling_products_list", {"region": region}),
+        ("/api/v1/tiktok/shop/app/fetch_hot_selling_products_list",
+         {"region": region, "count": str(limit)}),
+    ]
+    last_err: Exception | None = None
+    for path, params in endpoints:
+        try:
+            d = _get(path, params)
+            prods = [_normalize_product(p) for p in _product_list_node(d)[:limit]]
+            if prods:
+                return prods
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+    if last_err:
+        raise last_err
+    return []
 
 
 # ─────────────────── 话题热度曲线（历史趋势的可用替代）+ 达人侦察 ───────────────────

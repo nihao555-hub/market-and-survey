@@ -466,6 +466,8 @@ _DEFAULT_SETTINGS = {
     "defaultPositioning": "中端",
     "notifyEmail": True,
     "notifyInApp": False,
+    "targetCountries": ["US"],
+    "refreshHourUtc": 16,
 }
 
 

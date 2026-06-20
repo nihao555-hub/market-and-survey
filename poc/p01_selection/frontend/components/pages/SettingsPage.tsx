@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { useAtom } from "jotai";
-import { Settings, Zap, Gauge, ShieldCheck, Check } from "lucide-react";
+import { Settings, Zap, Gauge, ShieldCheck, Check, Globe, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { quickParamsAtom } from "@/lib/atoms";
 import { fetchSettings, updateSettings, type Settings as TSettings } from "@/lib/api";
@@ -10,10 +10,28 @@ import {
 } from "./primitives";
 
 const MARKETS = ["US", "GB", "DE", "JP", "FR", "CA", "AU"];
-const MARKET_NAMES: Record<string, string> = {
+const ALL_COUNTRIES = [
+  "US", "GB", "DE", "JP", "FR", "CA", "AU",
+  "KR", "SG", "MY", "TH", "VN", "ID", "PH",
+  "BR", "MX", "IT", "ES", "NL", "SE", "PL",
+  "SA", "AE", "TR", "IN", "TW",
+];
+const COUNTRY_NAMES: Record<string, string> = {
   US: "美国", GB: "英国", DE: "德国", JP: "日本", FR: "法国", CA: "加拿大", AU: "澳大利亚",
+  KR: "韩国", SG: "新加坡", MY: "马来西亚", TH: "泰国", VN: "越南", ID: "印尼", PH: "菲律宾",
+  BR: "巴西", MX: "墨西哥", IT: "意大利", ES: "西班牙", NL: "荷兰", SE: "瑞典", PL: "波兰",
+  SA: "沙特", AE: "阿联酋", TR: "土耳其", IN: "印度", TW: "中国台湾",
 };
+const MARKET_NAMES = COUNTRY_NAMES;
 const POSITIONINGS = ["低价", "中端", "高端"];
+
+const REFRESH_HOURS = [
+  { utc: 16, label: "北京 0:00（UTC 16:00）" },
+  { utc: 0, label: "北京 8:00（UTC 0:00）" },
+  { utc: 4, label: "北京 12:00（UTC 4:00）" },
+  { utc: 8, label: "北京 16:00（UTC 8:00）" },
+  { utc: 12, label: "北京 20:00（UTC 12:00）" },
+];
 
 function Row({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
   return (
@@ -70,6 +88,14 @@ export function SettingsPage() {
   const setMarket = (mk: string) => {
     setParams((prev) => ({ ...prev, markets: [mk] }));
     patch({ defaultMarket: mk });
+  };
+  const toggleCountry = (code: string) => {
+    const current = settings?.targetCountries ?? ["US"];
+    const next = current.includes(code)
+      ? current.filter((c) => c !== code)
+      : [...current, code];
+    if (next.length === 0) return;
+    patch({ targetCountries: next });
   };
   const setPositioning = (p: string) => {
     setParams((prev) => ({ ...prev, positioning: p }));
@@ -167,6 +193,53 @@ export function SettingsPage() {
                 >
                   {POSITIONINGS.map((p) => <option key={p} value={p}>{p}</option>)}
                 </select>
+              </Row>
+            </div>
+          </Panel>
+
+          <Panel title="数据采集设置" bodyClassName="px-5 py-1">
+            <div className="divide-y divide-hairline">
+              <div className="py-3.5">
+                <div className="mb-2 flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-brand" />
+                  <div>
+                    <div className="text-sm font-medium text-ink">目标国家（多选）</div>
+                    <div className="mt-0.5 text-xs text-ink-subtle">每日自动刷新时会对每个勾选的国家采集热销榜、品类榜单、话题趋势等数据</div>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {ALL_COUNTRIES.map((code) => {
+                    const selected = (settings?.targetCountries ?? ["US"]).includes(code);
+                    return (
+                      <button
+                        key={code}
+                        onClick={() => toggleCountry(code)}
+                        className={cn(
+                          "rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all",
+                          selected
+                            ? "border-brand bg-brand/10 text-brand shadow-sm"
+                            : "border-hairline bg-surface-1 text-ink-subtle hover:border-brand/30 hover:text-ink"
+                        )}
+                      >
+                        {code} · {COUNTRY_NAMES[code] || code}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <Row title="定时刷新时间" desc="每天自动触发数据刷新的时间（每 2 小时一次，包含此时刻）">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-3.5 w-3.5 text-ink-subtle" />
+                  <select
+                    value={settings?.refreshHourUtc ?? 16}
+                    onChange={(e) => patch({ refreshHourUtc: Number(e.target.value) })}
+                    className="rounded-lg border border-hairline bg-surface-1 px-3 py-1.5 text-xs text-ink-muted outline-none focus:border-brand/40"
+                  >
+                    {REFRESH_HOURS.map((h) => (
+                      <option key={h.utc} value={h.utc}>{h.label}</option>
+                    ))}
+                  </select>
+                </div>
               </Row>
             </div>
           </Panel>

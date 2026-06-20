@@ -170,6 +170,8 @@ class SettingsType:
     default_positioning: str
     notify_email: bool
     notify_in_app: bool
+    target_countries: typing.List[str] = strawberry.field(default_factory=lambda: ["US"])
+    refresh_hour_utc: int = 16
 
 
 def _thread_summary(t: Thread) -> ThreadSummary:
@@ -233,6 +235,8 @@ def _settings_type(d: dict) -> SettingsType:
         default_model=d["defaultModel"], default_market=d["defaultMarket"],
         default_positioning=d["defaultPositioning"],
         notify_email=bool(d["notifyEmail"]), notify_in_app=bool(d["notifyInApp"]),
+        target_countries=list(d.get("targetCountries") or ["US"]),
+        refresh_hour_utc=int(d.get("refreshHourUtc") or 16),
     )
 
 
@@ -439,9 +443,11 @@ class Mutation:
     # ── 每日数据刷新 ──
     @strawberry.mutation
     def trigger_daily_refresh(self, tenant_id: str = "dev_tenant") -> bool:
-        """手动触发一次每日刷新（后台线程跑，立即返回是否已启动）。"""
+        """手动触发一次每日刷新（后台线程跑，立即返回是否已启动）。按用户设置的目标国家逐个刷新。"""
         from backend.daily_refresh import run_in_background
-        return run_in_background(tenant_id=tenant_id, trigger="manual")
+        settings = st.get_settings(tenant_id)
+        geos = settings.get("targetCountries") or ["US"]
+        return run_in_background(tenant_id=tenant_id, geos=geos, trigger="manual")
 
     # ── API Key ──
     @strawberry.mutation
@@ -465,6 +471,8 @@ class Mutation:
         default_positioning: typing.Optional[str] = None,
         notify_email: typing.Optional[bool] = None,
         notify_in_app: typing.Optional[bool] = None,
+        target_countries: typing.Optional[typing.List[str]] = None,
+        refresh_hour_utc: typing.Optional[int] = None,
     ) -> SettingsType:
         patch = {
             "displayName": display_name,
@@ -474,6 +482,8 @@ class Mutation:
             "defaultPositioning": default_positioning,
             "notifyEmail": notify_email,
             "notifyInApp": notify_in_app,
+            "targetCountries": target_countries,
+            "refreshHourUtc": refresh_hour_utc,
         }
         return _settings_type(st.update_settings(tenant_id, patch))
 

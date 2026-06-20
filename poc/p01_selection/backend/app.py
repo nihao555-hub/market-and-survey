@@ -50,6 +50,15 @@ async def _clear_stale_streams():
 _scheduler = None
 
 
+def _scheduled_refresh():
+    """定时触发时读用户设置拿目标国家列表。"""
+    from backend import storage as _st
+    from backend.daily_refresh import run_daily_refresh
+    settings = _st.get_settings("dev_tenant")
+    geos = settings.get("targetCountries") or ["US"]
+    run_daily_refresh(geos=geos, trigger="schedule")
+
+
 @app.on_event("startup")
 async def _start_daily_refresh_scheduler():
     global _scheduler
@@ -59,7 +68,6 @@ async def _start_daily_refresh_scheduler():
     try:
         from apscheduler.schedulers.background import BackgroundScheduler
         from apscheduler.triggers.cron import CronTrigger
-        from backend.daily_refresh import run_daily_refresh
 
         # 每 N 小时刷新一次（用户要求「每两小时更新一次」），默认 2 小时。
         interval = int(_os.getenv("DAILY_REFRESH_INTERVAL_HOURS", "2"))
@@ -67,10 +75,9 @@ async def _start_daily_refresh_scheduler():
         hour_spec = f"*/{interval}" if interval > 1 else "*"
         _scheduler = BackgroundScheduler(timezone="UTC")
         _scheduler.add_job(
-            run_daily_refresh,
+            _scheduled_refresh,
             trigger=CronTrigger(hour=hour_spec, minute=minute, timezone="UTC"),
             id="daily_refresh",
-            kwargs={"trigger": "schedule"},
             replace_existing=True,
             max_instances=1,
             coalesce=True,
@@ -84,7 +91,10 @@ async def _start_daily_refresh_scheduler():
 
         if _os.getenv("DAILY_REFRESH_ON_STARTUP", "0") == "1":
             from backend.daily_refresh import run_in_background
-            run_in_background(trigger="startup")
+            from backend import storage as _st
+            settings = _st.get_settings("dev_tenant")
+            geos = settings.get("targetCountries") or ["US"]
+            run_in_background(geos=geos, trigger="startup")
     except Exception as _e:
         import logging
         logging.getLogger("uvicorn").warning(f"每日刷新调度未启动: {_e}")

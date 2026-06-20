@@ -296,9 +296,11 @@ export interface Settings {
   defaultPositioning: string;
   notifyEmail: boolean;
   notifyInApp: boolean;
+  targetCountries: string[];
+  refreshHourUtc: number;
 }
 const SETTINGS_FIELDS =
-  "displayName email plan defaultModel defaultMarket defaultPositioning notifyEmail notifyInApp";
+  "displayName email plan defaultModel defaultMarket defaultPositioning notifyEmail notifyInApp targetCountries refreshHourUtc";
 
 export async function fetchSettings(): Promise<Settings> {
   const d = await gqlRequest<{ settings: Settings }>(
@@ -311,10 +313,12 @@ export async function updateSettings(patch: Partial<Settings>): Promise<Settings
   const d = await gqlRequest<{ updateSettings: Settings }>(
     `mutation($displayName: String, $email: String, $defaultModel: String,
               $defaultMarket: String, $defaultPositioning: String,
-              $notifyEmail: Boolean, $notifyInApp: Boolean) {
+              $notifyEmail: Boolean, $notifyInApp: Boolean,
+              $targetCountries: [String!], $refreshHourUtc: Int) {
        updateSettings(displayName: $displayName, email: $email, defaultModel: $defaultModel,
                       defaultMarket: $defaultMarket, defaultPositioning: $defaultPositioning,
-                      notifyEmail: $notifyEmail, notifyInApp: $notifyInApp) { ${SETTINGS_FIELDS} }
+                      notifyEmail: $notifyEmail, notifyInApp: $notifyInApp,
+                      targetCountries: $targetCountries, refreshHourUtc: $refreshHourUtc) { ${SETTINGS_FIELDS} }
      }`,
     {
       displayName: patch.displayName ?? null,
@@ -324,6 +328,8 @@ export async function updateSettings(patch: Partial<Settings>): Promise<Settings
       defaultPositioning: patch.defaultPositioning ?? null,
       notifyEmail: patch.notifyEmail ?? null,
       notifyInApp: patch.notifyInApp ?? null,
+      targetCountries: patch.targetCountries ?? null,
+      refreshHourUtc: patch.refreshHourUtc ?? null,
     }
   );
   return d.updateSettings;
