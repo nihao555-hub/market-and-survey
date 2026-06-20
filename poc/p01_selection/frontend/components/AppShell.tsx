@@ -11,7 +11,6 @@ import { renderPage } from "@/components/pages/registry";
 import { fetchThreads } from "@/lib/api";
 import { BACKEND_BASE } from "@/lib/graphql-client";
 
-/** 页面加载时预热后端（Render 免费版冷启动需要 15-30 秒） */
 let _warmedUp = false;
 function warmUpBackend() {
   if (_warmedUp) return;
@@ -27,10 +26,8 @@ export function AppShell() {
   const isChat = !!activeId || !!draft;
   const isHome = page === "home";
 
-  // 预热后端（首次渲染时触发，避免用户操作时才发现冷启动延迟）
   React.useEffect(() => { warmUpBackend(); }, []);
 
-  // 真实历史任务：从后端拉取，回到非会话态时刷新（侧边栏/首页/右栏共用此数据源）
   React.useEffect(() => {
     if (isChat) return;
     let alive = true;
@@ -38,17 +35,13 @@ export function AppShell() {
       try {
         const t = await fetchThreads();
         if (alive) setThreads(t);
-      } catch {
-        /* 后端未起时静默 */
-      }
+      } catch {}
     })();
-    return () => {
-      alive = false;
-    };
+    return () => { alive = false; };
   }, [isChat, setThreads]);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-surface-1">
+    <div className="flex h-screen w-screen overflow-hidden bg-white">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
@@ -59,13 +52,15 @@ export function AppShell() {
             </main>
           ) : isHome ? (
             <>
-              <main className="min-w-0 flex-1 overflow-y-auto">
+              <main className="min-w-0 flex-1 overflow-y-auto bg-neutral-50 p-6">
                 <WorkspaceHome />
               </main>
               <RightRail />
             </>
           ) : (
-            <main className="min-w-0 flex-1 overflow-y-auto">{renderPage(page)}</main>
+            <main className="min-w-0 flex-1 overflow-y-auto bg-neutral-50 p-6">
+              {renderPage(page)}
+            </main>
           )}
         </div>
       </div>

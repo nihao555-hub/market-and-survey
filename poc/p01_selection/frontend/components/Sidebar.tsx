@@ -3,7 +3,6 @@ import React from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   Plus,
-  Compass,
   LayoutGrid,
   TrendingUp,
   Swords,
@@ -18,45 +17,44 @@ import {
   Flame,
   LayoutList,
   Settings,
-  Crown,
   LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { activeThreadIdAtom, draftCategoryAtom, activePageAtom, threadsAtom, type PageKey } from "@/lib/atoms";
-import { getStoredPlan, clearAuth, PLAN_NAMES, type UserPlan } from "@/lib/auth";
+import { clearAuth } from "@/lib/auth";
 
 type NavItem = { key: PageKey; label: string; icon: React.ReactNode };
 type NavGroup = { title?: string; items: NavItem[] };
 
 const NAV: NavGroup[] = [
   {
-    items: [{ key: "home", label: "工作台", icon: <LayoutGrid className="h-4 w-4" /> }],
+    items: [{ key: "home", label: "Workspace", icon: <LayoutGrid className="h-4 w-4" /> }],
   },
   {
-    title: "调研中心",
+    title: "Research",
     items: [
-      { key: "market", label: "市场调研", icon: <Search className="h-4 w-4" /> },
-      { key: "trend", label: "趋势探索", icon: <TrendingUp className="h-4 w-4" /> },
-      { key: "competitor", label: "竞品分析", icon: <Swords className="h-4 w-4" /> },
-      { key: "audience", label: "受众洞察", icon: <Users className="h-4 w-4" /> },
-      { key: "opportunity", label: "机会挖掘", icon: <Lightbulb className="h-4 w-4" /> },
+      { key: "market", label: "Market scan", icon: <Search className="h-4 w-4" /> },
+      { key: "trend", label: "Trend analysis", icon: <TrendingUp className="h-4 w-4" /> },
+      { key: "competitor", label: "Competitors", icon: <Swords className="h-4 w-4" /> },
+      { key: "audience", label: "Audience", icon: <Users className="h-4 w-4" /> },
+      { key: "opportunity", label: "Opportunities", icon: <Lightbulb className="h-4 w-4" /> },
     ],
   },
   {
-    title: "任务管理",
+    title: "Tasks",
     items: [
-      { key: "tasks", label: "我的任务", icon: <ListTodo className="h-4 w-4" /> },
-      { key: "reports", label: "报告中心", icon: <FileText className="h-4 w-4" /> },
-      { key: "favorites", label: "收藏夹", icon: <Star className="h-4 w-4" /> },
-      { key: "trash", label: "回收站", icon: <Trash2 className="h-4 w-4" /> },
+      { key: "tasks", label: "My tasks", icon: <ListTodo className="h-4 w-4" /> },
+      { key: "reports", label: "Reports", icon: <FileText className="h-4 w-4" /> },
+      { key: "favorites", label: "Favorites", icon: <Star className="h-4 w-4" /> },
+      { key: "trash", label: "Trash", icon: <Trash2 className="h-4 w-4" /> },
     ],
   },
   {
-    title: "榜单与订阅",
+    title: "Data",
     items: [
-      { key: "category", label: "品类榜单", icon: <LayoutList className="h-4 w-4" /> },
-      { key: "social", label: "社媒趋势", icon: <Flame className="h-4 w-4" /> },
-      { key: "monitor", label: "订阅管理", icon: <BellRing className="h-4 w-4" /> },
+      { key: "category", label: "Categories", icon: <LayoutList className="h-4 w-4" /> },
+      { key: "social", label: "Social trends", icon: <Flame className="h-4 w-4" /> },
+      { key: "monitor", label: "Monitors", icon: <BellRing className="h-4 w-4" /> },
     ],
   },
 ];
@@ -66,9 +64,7 @@ export function Sidebar() {
   const [, setDraft] = useAtom(draftCategoryAtom);
   const [active, setActive] = useAtom(activePageAtom);
   const threads = useAtomValue(threadsAtom);
-  const runningCount = threads.filter((t) => t.activeStreamId).length;
 
-  // 切换页面：清空会话与草稿，退出聊天态
   const onNav = (key: PageKey) => {
     setActive(key);
     setActiveId(null);
@@ -77,33 +73,30 @@ export function Sidebar() {
   const goHome = () => onNav("home");
 
   return (
-    <aside className="flex h-full w-60 flex-shrink-0 flex-col border-r border-hairline bg-white">
-      {/* 品牌 */}
-      <div className="flex h-16 items-center gap-2.5 px-5">
-        <img src="/images/logo-icon.png" alt="SelectPilot" className="h-8 w-8 rounded-lg" />
-        <div className="leading-tight">
-          <div className="text-sm font-semibold text-ink">SelectPilot</div>
-          <div className="text-[10px] text-ink-subtle">AI 跨境选品决策引擎</div>
-        </div>
+    <aside className="flex h-full w-[220px] flex-shrink-0 flex-col border-r border-neutral-200 bg-white">
+      {/* Brand */}
+      <div className="flex h-[60px] items-center gap-2 px-4">
+        <img src="/images/logo-icon.png" alt="SelectPilot" className="h-6 w-6 rounded-md" />
+        <span className="text-[14px] font-semibold text-neutral-900 tracking-tight">SelectPilot</span>
       </div>
 
-      {/* 新建调研任务 */}
-      <div className="px-3 pb-1.5">
+      {/* New research button */}
+      <div className="px-3 pb-3">
         <button
           onClick={goHome}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-hover active:scale-[0.99]"
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-[13px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50 active:bg-neutral-100"
         >
-          <Plus className="h-4 w-4" />
-          新建调研任务
+          <Plus className="h-3.5 w-3.5" />
+          New research
         </button>
       </div>
 
-      {/* 导航分组 */}
-      <nav className="scroll-area min-h-0 flex-1 overflow-y-auto px-3 py-2">
+      {/* Navigation */}
+      <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-1">
         {NAV.map((group, gi) => (
           <div key={gi} className="mb-1">
             {group.title && (
-              <div className="px-2 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-ink-tertiary">
+              <div className="px-2 pb-1 pt-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
                 {group.title}
               </div>
             )}
@@ -114,13 +107,13 @@ export function Sidebar() {
                   key={it.key}
                   onClick={() => onNav(it.key)}
                   className={cn(
-                    "mb-0.5 flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors",
+                    "mb-0.5 flex w-full items-center gap-2.5 rounded-md px-2 py-[7px] text-left text-[13px] transition-colors",
                     isActive
-                      ? "bg-brand/10 font-medium text-brand"
-                      : "text-ink-muted hover:bg-surface-1 hover:text-ink"
+                      ? "bg-neutral-100 font-medium text-neutral-900"
+                      : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
                   )}
                 >
-                  <span className={isActive ? "text-brand" : "text-ink-subtle"}>{it.icon}</span>
+                  <span className={isActive ? "text-neutral-900" : "text-neutral-400"}>{it.icon}</span>
                   {it.label}
                 </button>
               );
@@ -129,56 +122,26 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* 当前计划卡 */}
-      <div className="px-3 pb-2">
-        <div className="rounded-xl border border-hairline bg-gradient-to-br from-brand/5 to-brand2/10 p-3">
-          <div className="flex items-center gap-2">
-            <span className="flex h-6 w-6 items-center justify-center rounded-md bg-brand text-white">
-              <Crown className="h-3.5 w-3.5" />
-            </span>
-            <div className="leading-tight">
-              <div className="text-sm font-semibold text-ink">{PLAN_NAMES[getStoredPlan()]}</div>
-              <div className="text-[10px] text-ink-subtle">{getStoredPlan() === "free" ? "基础版" : getStoredPlan() === "pro" ? "专业版" : "企业版"}</div>
-            </div>
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <div className="rounded-lg bg-white/60 px-2.5 py-1.5">
-              <div className="text-base font-semibold leading-none text-ink">{threads.length}</div>
-              <div className="mt-1 text-[10px] text-ink-subtle">累计调研</div>
-            </div>
-            <div className="rounded-lg bg-white/60 px-2.5 py-1.5">
-              <div className="text-base font-semibold leading-none text-ink">{runningCount}</div>
-              <div className="mt-1 text-[10px] text-ink-subtle">进行中</div>
-            </div>
-          </div>
-          {getStoredPlan() === "free" && (
-            <button className="mt-2.5 w-full rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-brand-hover">
-              升级计划
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* 设置 + 退出 */}
-      <div className="border-t border-hairline px-3 py-2 space-y-0.5">
+      {/* Bottom: settings + logout */}
+      <div className="border-t border-neutral-200 px-3 py-2 space-y-0.5">
         <button
           onClick={() => onNav("settings")}
           className={cn(
-            "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors",
+            "flex w-full items-center gap-2.5 rounded-md px-2 py-[7px] text-[13px] transition-colors",
             active === "settings"
-              ? "bg-brand/10 font-medium text-brand"
-              : "text-ink-muted hover:bg-surface-1 hover:text-ink"
+              ? "bg-neutral-100 font-medium text-neutral-900"
+              : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
           )}
         >
-          <Settings className={cn("h-4 w-4", active === "settings" ? "text-brand" : "text-ink-subtle")} />
-          设置
+          <Settings className={cn("h-4 w-4", active === "settings" ? "text-neutral-900" : "text-neutral-400")} />
+          Settings
         </button>
         <button
           onClick={() => { clearAuth(); window.location.href = "/"; }}
-          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-ink-muted hover:bg-red-50 hover:text-red-600 transition-colors"
+          className="flex w-full items-center gap-2.5 rounded-md px-2 py-[7px] text-[13px] text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900 transition-colors"
         >
-          <LogOut className="h-4 w-4 text-ink-subtle" />
-          退出登录
+          <LogOut className="h-4 w-4 text-neutral-400" />
+          Log out
         </button>
       </div>
     </aside>

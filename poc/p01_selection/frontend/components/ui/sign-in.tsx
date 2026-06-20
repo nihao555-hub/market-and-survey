@@ -22,18 +22,18 @@ interface SignInPageProps {
 }
 
 const GlassInputWrapper = ({ children }: { children: React.ReactNode }) => (
-  <div className="rounded-2xl border border-border bg-foreground/5 backdrop-blur-sm transition-colors focus-within:border-violet-400/70 focus-within:bg-violet-500/10">
+  <div className="rounded-lg border border-neutral-200 bg-neutral-50 transition-colors focus-within:border-neutral-400 focus-within:bg-white">
     {children}
   </div>
 );
 
 const TestimonialCard = ({ testimonial, delay }: { testimonial: Testimonial; delay: string }) => (
-  <div className={`animate-testimonial ${delay} flex items-start gap-3 rounded-3xl bg-card/40 backdrop-blur-xl border border-white/10 p-5 w-64`}>
-    <img src={testimonial.avatarSrc} className="h-10 w-10 object-cover rounded-2xl" alt="avatar" />
+  <div className={`animate-testimonial ${delay} flex items-start gap-3 rounded-xl bg-white/90 backdrop-blur-sm border border-neutral-200 p-4 w-64 shadow-sm`}>
+    <img src={testimonial.avatarSrc} className="h-9 w-9 object-cover rounded-full" alt="avatar" />
     <div className="text-sm leading-snug">
-      <p className="flex items-center gap-1 font-medium text-white">{testimonial.name}</p>
-      <p className="text-white/60">{testimonial.handle}</p>
-      <p className="mt-1 text-white/80">{testimonial.text}</p>
+      <p className="flex items-center gap-1 font-medium text-neutral-900">{testimonial.name}</p>
+      <p className="text-neutral-400 text-[12px]">{testimonial.handle}</p>
+      <p className="mt-1 text-neutral-600 text-[13px]">{testimonial.text}</p>
     </div>
   </div>
 );
@@ -135,8 +135,8 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               /* ── Verification step ── */
               <>
                 <div className="animate-element animate-delay-100 flex flex-col items-center gap-3">
-                  <div className="w-14 h-14 rounded-2xl bg-violet-100 flex items-center justify-center">
-                    <Mail className="w-7 h-7 text-violet-600" />
+                  <div className="w-14 h-14 rounded-xl bg-neutral-100 flex items-center justify-center">
+                    <Mail className="w-7 h-7 text-neutral-600" />
                   </div>
                   <h1 className="text-2xl font-semibold">验证邮箱</h1>
                   <p className="text-muted-foreground text-sm text-center">
@@ -160,41 +160,41 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                   </div>
 
                   <button type="submit" disabled={loading}
-                    className="animate-element animate-delay-400 w-full rounded-2xl bg-violet-600 py-4 font-medium text-white hover:bg-violet-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><KeyRound className="w-4 h-4" /> 验证并登录</>}
+                    className="animate-element animate-delay-400 w-full rounded-lg bg-neutral-900 py-3.5 text-[14px] font-medium text-white hover:bg-neutral-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><KeyRound className="w-4 h-4" /> Verify & sign in</>}
                   </button>
                 </form>
 
                 <p className="animate-element animate-delay-500 text-center text-sm text-muted-foreground">
-                  {countdown > 0 ? `${countdown} 秒后可重新发送` : (
-                    <button onClick={handleResend} className="text-violet-500 hover:underline">重新发送验证码</button>
+  {countdown > 0 ? `Resend in ${countdown}s` : (
+                    <button onClick={handleResend} className="text-neutral-900 hover:underline">Resend code</button>
                   )}
                 </p>
               </>
             ) : (
               /* ── Main form ── */
               <>
-                <h1 className="animate-element animate-delay-100 text-4xl md:text-5xl font-semibold leading-tight tracking-tight">
+                <h1 className="animate-element animate-delay-100 text-[28px] md:text-[32px] font-semibold leading-tight tracking-tight">
                   {isLogin ? (
-                    <span className="font-light text-foreground">欢迎回来</span>
+                    <span className="text-neutral-900">Welcome back</span>
                   ) : (
-                    <span className="font-light text-foreground">创建账号</span>
+                    <span className="text-neutral-900">Create your account</span>
                   )}
                 </h1>
-                <p className="animate-element animate-delay-200 text-muted-foreground">
-                  {isLogin ? "登录你的 SelectPilot 账号，继续你的选品之旅" : "免费注册，开启 AI 跨境选品新体验"}
+                <p className="animate-element animate-delay-200 text-neutral-500 text-[14px]">
+                  {isLogin ? "Sign in to continue your product research" : "Free to start. AI-powered product selection."}
                 </p>
 
                 {/* Login tab switcher */}
                 {isLogin && (
-                  <div className="animate-element animate-delay-200 flex rounded-2xl border border-border p-1 bg-muted/50">
+                  <div className="animate-element animate-delay-200 flex rounded-lg border border-neutral-200 p-0.5 bg-neutral-50">
                     <button type="button" onClick={() => setLoginTab("password")}
-                      className={`flex-1 rounded-xl py-2.5 text-sm font-medium transition-all ${loginTab === "password" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                      密码登录
+                      className={`flex-1 rounded-md py-2 text-[13px] font-medium transition-all ${loginTab === "password" ? "bg-white shadow-sm text-neutral-900" : "text-neutral-500 hover:text-neutral-900"}`}>
+                      Password
                     </button>
                     <button type="button" onClick={() => setLoginTab("code")}
-                      className={`flex-1 rounded-xl py-2.5 text-sm font-medium transition-all ${loginTab === "code" ? "bg-white shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                      验证码登录
+                      className={`flex-1 rounded-md py-2 text-[13px] font-medium transition-all ${loginTab === "code" ? "bg-white shadow-sm text-neutral-900" : "text-neutral-500 hover:text-neutral-900"}`}>
+                      Email code
                     </button>
                   </div>
                 )}
@@ -257,28 +257,28 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                         <input type="checkbox" name="rememberMe" className="custom-checkbox" />
                         <span className="text-foreground/90">保持登录</span>
                       </label>
-                      <button type="button" onClick={onResetPassword} className="hover:underline text-violet-500 transition-colors text-sm">
-                        忘记密码？
+                      <button type="button" onClick={onResetPassword} className="hover:underline text-neutral-900 transition-colors text-[13px]">
+                        Forgot password?
                       </button>
                     </div>
                   )}
 
                   <button type="submit" disabled={loading}
-                    className={`animate-element ${isLogin ? "animate-delay-600" : "animate-delay-600"} w-full rounded-2xl bg-violet-600 py-4 font-medium text-white hover:bg-violet-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2`}>
+                    className={`animate-element ${isLogin ? "animate-delay-600" : "animate-delay-600"} w-full rounded-lg bg-neutral-900 py-3.5 text-[14px] font-medium text-white hover:bg-neutral-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2`}>
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                       <>
-                        {isLogin ? (loginTab === "code" ? "发送验证码" : "登录") : "注册"}
+                        {isLogin ? (loginTab === "code" ? "Send code" : "Sign in") : "Create account"}
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
                   </button>
                 </form>
 
-                <p className="animate-element animate-delay-800 text-center text-sm text-muted-foreground">
+                <p className="animate-element animate-delay-800 text-center text-[13px] text-neutral-500">
                   {isLogin ? (
-                    <>还没有账号？ <button onClick={onSwitchMode} className="text-violet-500 hover:underline transition-colors">免费注册</button></>
+                    <>Don&apos;t have an account? <button onClick={onSwitchMode} className="text-neutral-900 font-medium hover:underline transition-colors">Sign up</button></>
                   ) : (
-                    <>已有账号？ <button onClick={onSwitchMode} className="text-violet-500 hover:underline transition-colors">去登录</button></>
+                    <>Already have an account? <button onClick={onSwitchMode} className="text-neutral-900 font-medium hover:underline transition-colors">Sign in</button></>
                   )}
                 </p>
               </>
@@ -290,8 +290,8 @@ export const SignInPage: React.FC<SignInPageProps> = ({
       {/* Right column: hero image + testimonials */}
       {heroImageSrc && (
         <section className="hidden md:block flex-1 relative p-4">
-          <div className="animate-slide-right animate-delay-300 absolute inset-4 rounded-3xl bg-cover bg-center" style={{ backgroundImage: `url(${heroImageSrc})` }} />
-          <div className="absolute inset-4 rounded-3xl bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+          <div className="animate-slide-right animate-delay-300 absolute inset-4 rounded-2xl bg-cover bg-center" style={{ backgroundImage: `url(${heroImageSrc})` }} />
+          <div className="absolute inset-4 rounded-2xl bg-gradient-to-t from-black/20 via-transparent to-transparent" />
           {testimonials.length > 0 && (
             <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-4 px-8 w-full justify-center">
               <TestimonialCard testimonial={testimonials[0]} delay="animate-delay-1000" />
