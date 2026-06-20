@@ -116,7 +116,8 @@ async def _stop_daily_refresh_scheduler():
 #   CORS_ALLOW_ORIGIN_REGEX  可选正则（如 https://.*\.vercel\.app 放行所有预览部署）
 from fastapi.middleware.cors import CORSMiddleware
 import os as _os_cors
-_cors_origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+_cors_origins = ["http://localhost:3000", "http://127.0.0.1:3000",
+                  "https://market-survey-nu.vercel.app"]
 _extra_origins = (_os_cors.getenv("CORS_ALLOW_ORIGINS") or "").strip()
 if _extra_origins:
     _cors_origins += [o.strip() for o in _extra_origins.split(",") if o.strip()]
@@ -337,7 +338,7 @@ async def admin_daily_refresh_status(tenant_id: str = Depends(require_tenant)):
 
 @app.get("/healthz")
 async def healthz():
-    """健康检查：确认进程存活 + Redis 可达。"""
+    """健康检查：确认进程存活 + Redis 可达 + Auth DB 可用。"""
     redis_ok = False
     try:
         c = aioredis.from_url(REDIS_URL, decode_responses=True)
@@ -349,12 +350,103 @@ async def healthz():
     return {"ok": True, "redis": redis_ok}
 
 
+# ─── 用户认证 API（注册/登录/邮箱验证）───
+from pydantic import BaseModel as _BM
+
+class _RegisterBody(_BM):
+    email: str
+    name: str = ""
+    password: str
+
+class _LoginBody(_BM):
+    email: str
+    password: str
+
+class _LoginCodeBody(_BM):
+    email: str
+    code: str
+
+class _SendCodeBody(_BM):
+    email: str
+    purpose: str = "login"
+
+class _VerifyBody(_BM):
+    email: str
+    code: str
+
+
+@app.post("/auth/register")
+async def auth_register(body: _RegisterBody):
+    from backend.user_auth import register
+    result = register(body.email, body.name, body.password)
+    if not result.get("ok"):
+        raise HTTPException(400, detail=result.get("detail", "注册失败"))
+    return result
+
+
+@app.post("/auth/send-code")
+async def auth_send_code(body: _SendCodeBody):
+    from backend.user_auth import send_code
+    result = send_code(body.email, body.purpose)
+    if not result.get("ok"):
+        raise HTTPException(400, detail=result.get("detail", "发送失败"))
+    return result
+
+
+@app.post("/auth/verify-email")
+async def auth_verify_email(body: _VerifyBody):
+    from backend.user_auth import verify_email
+    result = verify_email(body.email, body.code)
+    if not result.get("ok"):
+        raise HTTPException(400, detail=result.get("detail", "验证失败"))
+    return result
+
+
+@app.post("/auth/login")
+async def auth_login(body: _LoginBody):
+    from backend.user_auth import login_password
+    result = login_password(body.email, body.password)
+    if not result.get("ok"):
+        raise HTTPException(401, detail=result.get("detail", "登录失败"))
+    return result
+
+
+@app.post("/auth/login-code")
+async def auth_login_code(body: _LoginCodeBody):
+    from backend.user_auth import login_code
+    result = login_code(body.email, body.code)
+    if not result.get("ok"):
+        raise HTTPException(401, detail=result.get("detail", "登录失败"))
+    return result
+
+
+@app.get("/auth/me")
+async def auth_me(token: str):
+    from backend.user_auth import get_user_by_token
+    user = get_user_by_token(token)
+    if not user:
+        raise HTTPException(401, detail="未登录或 token 已过期")
+    return {"email": user["email"], "name": user["name"], "plan": user["plan"]}
+
+
+@app.get("/auth/usage")
+async def auth_usage(token: str):
+    from backend.user_auth import check_usage
+    result = check_usage(token)
+    if not result.get("ok"):
+        raise HTTPException(401, detail=result.get("detail", "未登录"))
+    return result
+
+
 @app.get("/")
 async def root():
     return {"ok": True, "endpoints": ["/chat", "/stop", "/selection/start",
                                         "/events", "/catchup", "/thread/{id}",
                                         "/metrics", "/healthz", "/graphql",
-                                        "/report-file", "/report-asset"]}
+                                        "/report-file", "/report-asset",
+                                        "/auth/register", "/auth/login",
+                                        "/auth/send-code", "/auth/verify-email",
+                                        "/auth/me", "/auth/usage"]}
 
 
 # ─── 报告文件 / 资源服务（前端下载 5 件套 + 嵌图） ───

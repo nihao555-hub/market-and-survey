@@ -21,6 +21,7 @@ import { MarkdownRenderer } from "./MarkdownRenderer";
 import { ReportArtifacts } from "./ReportArtifacts";
 import { AlertTriangle, Compass } from "lucide-react";
 import type { UIMessage, ReportArtifacts as ReportArtifactsData } from "@/lib/agent-types";
+import { AgentChart, chartDataToOption, type ChartData } from "@/components/charts/AgentChart";
 
 /** 单条消息渲染（steering §9.5 主消息渲染入口） */
 function MessageBubble({ message, isStreaming }: { message: UIMessage; isStreaming: boolean }) {
@@ -70,6 +71,12 @@ function MessageBubble({ message, isStreaming }: { message: UIMessage; isStreami
                 artifacts={(part as unknown as { data: ReportArtifactsData }).data}
               />
             );
+          }
+          if (part.type === "data-chart") {
+            const chartData = (part as unknown as { data: ChartData }).data;
+            if (chartData && chartData.series) {
+              return <AgentChart key={i} option={chartDataToOption(chartData)} />;
+            }
           }
           return null;
         })}
