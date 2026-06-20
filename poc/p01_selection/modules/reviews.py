@@ -1,5 +1,5 @@
 """
-Amazon 评论数据抓取（适配 2026 反爬政策）
+Amazon 评论数据获取（适配 2026 反爬政策）
 
 事实：
 - /product-reviews/<ASIN> 全量评论页 → 强制登录态，无登录跳 Sign-In 页
@@ -261,10 +261,10 @@ def get_product_review_summary(asin: str, use_proxy: bool = True) -> dict:
 def get_reviews_batch(asins: list[str], use_proxy: bool = True,
                       max_total: int = 260, concurrency: int = 8) -> dict:
     """
-    多 ASIN 横向批量抓取（并发，绕过登录限制的合法方式）。
+    多 ASIN 横向批量获取（并发，绕过登录限制的合法方式）。
     返回聚合结果：所有评论 + 关键词云聚合 + 每个 ASIN 概览。
     
-    并发抓取大幅提速：20 个 ASIN 串行需 ~14 分钟，并发 6 个只需 ~3 分钟。
+    并发获取大幅提速：20 个 ASIN 串行需 ~14 分钟，并发 6 个只需 ~3 分钟。
     """
     from concurrent.futures import ThreadPoolExecutor, as_completed
     

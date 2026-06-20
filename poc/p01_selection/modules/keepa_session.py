@@ -1,5 +1,5 @@
 """
-Keepa 登录态产品页数据抓取（免费账号即可）
+Keepa 登录态产品页数据获取（免费账号即可）
 
 实测结论（2026-06）：
 - 未登录：botasaurus 能过 Cloudflare，但 Keepa SPA 只渲染空壳，数据 WebSocket 需登录态才推送
@@ -88,7 +88,7 @@ def _get_logged_in_driver():
         else:
             # 即使没检测到 logout 标记，也尝试继续（有些账号页措辞不同）
             _logged_in = True
-            logger.warning("[keepa_session] ⚠ 未明确检测到登录标记，仍尝试抓取")
+            logger.warning("[keepa_session] ⚠ 未明确检测到登录标记，仍尝试获取")
         return _driver
     except Exception as e:
         logger.error(f"[keepa_session] driver 初始化失败: {str(e)[:160]}")

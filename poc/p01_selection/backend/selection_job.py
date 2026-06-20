@@ -196,18 +196,18 @@ _RETRY_LADDER = {
         "内部还会自动接 LLM 文本兜底 + ScrapeGraphAI 图谱抽取",
     ],
     "bsr": [
-        "确认 geo=目标市场；若 amazon_available=false，改用 search_multi_platform 抓本地平台（不要再试 BSR）",
+        "确认 geo=目标市场；若 amazon_available=false，改用 search_multi_platform 获取本地平台（不要再试 BSR）",
         "换子类目关键词重试 discover_bsr_url",
         "直接 search_products(本市场平台, 关键词) 拿真实在售商品替代 BSR 榜",
     ],
     "reviews": [
         "换 ASIN 批次：选销量/评论数更高的另一批 ASIN 重试",
-        "换抓取强度：减小单批量或调并发，避免被限流",
-        "换来源：非 Amazon 市场用 ASIN 抓不到评论时，如实标注'该市场评论未采集'，不要用别国评论顶替",
+        "换获取强度：减小单批量或调并发，避免被限流",
+        "换来源：非 Amazon 市场用 ASIN 获取不到评论时，如实标注'该市场评论未采集'，不要用别国评论顶替",
     ],
     "procurement": [
         "换关键词：用更准的中文品类词重试 1688",
-        "换数据源：1688 失败自动 fallback Made-in-China；可改用 get_supplier_detail_price 抓详情页阶梯价",
+        "换数据源：1688 失败自动 fallback Made-in-China；可改用 get_supplier_detail_price 获取详情页阶梯价",
         "标缺失：仍拿不到则 record_stage_status 标 stage5 待用户提供报价单",
     ],
     "_default": [
@@ -405,13 +405,13 @@ SYSTEM_TEMPLATE = """你是资深跨境选品专家。严格按 procurement-rese
    extract_products_with_llm、webpage_to_markdown、换关键词、换本市场其它 verified 平台、调高 max_retries）。
    系统会在工具失败后给你一条「自我修复」提示，按它换策略真的再试 1-2 次。
    **只有当这些手段都试过仍拿不到**，才 record_stage_status 标 failed/partial 并如实写"该市场数据采集失败"，
-   然后继续推进不依赖该数据的其它阶段。绝不回退去抓不相关市场（如目标是俄/巴却去抓 Amazon US）凑数。
+   然后继续推进不依赖该数据的其它阶段。绝不回退去获取不相关市场（如目标是俄/巴却去获取 Amazon US）凑数。
 
 ## 数据真实性 — 零容忍
 
 1. **第一步必调 get_current_datetime() 拿真实日期**（写到报告"数据采集时间"）
 2. **候选品 ASIN 必须从 ASIN 池选** + validate_candidate 校验
-3. **多平台真抓** — 用户指定地区 → pick_platforms_for_market(only_verified=false) → search_multi_platform
+3. **多平台真实获取** — 用户指定地区 → pick_platforms_for_market(only_verified=false) → search_multi_platform
    - 当前 verified 平台（18 个）：amazon, amazon_uk, amazon_de, amazon_fr, amazon_jp,
      amazon_au, amazon_in, bestbuy, newegg, target, mercadolibre_mx/br, otto, rakuten,
      yandex_market, lazada_sg, flipkart, aliexpress
@@ -440,11 +440,11 @@ SYSTEM_TEMPLATE = """你是资深跨境选品专家。严格按 procurement-rese
 ## 阶段流程
 - 阶段 0: get_current_datetime + load_skill + pick_platforms_for_market
 - 阶段 1: get_trend(≥3 关键词) + discover_bsr_url + get_bestsellers_by_url(limit=50)
-  - **⚠️ BSR 必须按目标市场抓**：discover_bsr_url / get_bestsellers 必须传 geo=用户指定市场（如 SG/UK/DE），
+  - **⚠️ BSR 必须按目标市场获取**：discover_bsr_url / get_bestsellers 必须传 geo=用户指定市场（如 SG/UK/DE），
     工具会自动用对应 Amazon 站点（amazon.sg / .co.uk / .de）。**禁止默认 amazon.com 美国站**——
     那是另一个市场的数据，对用户的目标市场无意义。
   - **该市场无 Amazon 业务时**（返回 amazon_available=false，如 RU/印尼/泰国/马来等）：
-    不要硬抓 Amazon，直接用 search_multi_platform 抓本地平台（lazada_sg/ozon/mercadolibre 等）的畅销品。
+    不要硬获取 Amazon，直接用 search_multi_platform 获取本地平台（lazada_sg/ozon/mercadolibre 等）的畅销品。
   - **必须覆盖真正最畅销的商品**：limit≥50，按真实月销（bought_past_month）或评论数降序，
     确保拿到该品类该市场销量 Top 的真实商品，而不是随机几个。样本要能代表整个品类的主流盘子。
   - **季节性必用 compare_seasonality**（拿 5 年历史真实算峰谷月，禁止 LLM 凭空说"X月旺季"）
@@ -452,22 +452,22 @@ SYSTEM_TEMPLATE = """你是资深跨境选品专家。严格按 procurement-rese
     1) **首选 get_amazon_keyword_suggestions**（Amazon 买家真实购物搜索词，带购买意图、按热度排序、附 top_modifiers 卖点词）——
        电商选品最准的词就是买家在购物框真实输入的词。英语市场(US/UK/DE/FR/JP/CA/IN/AU)优先用它。
     2) 补充 get_keyword_metrics（DDGS 长尾）；非英语市场(RU/BR/MX/CN)先把品类词翻成当地语言再扩展。
-    3) **扩展出候选词后，正式抓取前必须调 validate_keywords 做验证闭环**：
+    3) **扩展出候选词后，正式获取前必须调 validate_keywords 做验证闭环**：
        它用"真实能搜到几件对口商品 + 语义相关度"给每个词打分，淘汰搜不到/跑偏的词
        （能杜绝"防盗门→门锁配件""geladeira em ingles=查资料词"这类错位）。
-       **只用 validate_keywords 返回的 recommended_keywords 去正式 search_multi_platform**，不要用没验证过的词硬抓。
-    4) 若 recommended_keywords 为空（候选词全验证失败）→ 换种子词/换本地语言词重新扩展，而不是硬抓。
+       **只用 validate_keywords 返回的 recommended_keywords 去正式 search_multi_platform**，不要用没验证过的词硬获取。
+    4) 若 recommended_keywords 为空（候选词全验证失败）→ 换种子词/换本地语言词重新扩展，而不是硬获取。
 - 阶段 2: search_multi_platform + analyze_market_structure
   - **⚠️ 市场一致性铁律**：搜索的平台必须属于目标市场。目标是俄罗斯/巴西，就只用 yandex_market /
-    mercadolibre_br 等**当地平台**。**绝对禁止为了凑数据去抓 Amazon US**——美国的迷你冰箱
+    mercadolibre_br 等**当地平台**。**绝对禁止为了凑数据去获取 Amazon US**——美国的迷你冰箱
     不能代表巴西/俄罗斯的家用大冰箱市场，价格/型号/品牌完全不同，会让整份报告失真。
-    当地平台抓取失败时，宁可标 partial / 数据不足，也不要用美国数据顶替。
+    当地平台获取失败时，宁可标 partial / 数据不足，也不要用美国数据顶替。
   - **平台名要用注册表 key**：mercadolibre_br（不是 mercadolivre_br）、yandex_market、amazon 等；
     工具已内置常见拼写别名自动纠正，但仍应尽量用标准 key。
 - 阶段 3: get_reviews_batch(15-20 ASIN, max_total=260)
   - **评论普遍性铁律**：评论必须覆盖该品类该市场**销量/评论数 Top 15-20 个商品**（横向覆盖主流盘子），
     而不是只看 1-2 个单品。单品评论只代表那一个 listing，不能代表整个品类用户诉求。
-    优先选 bought_past_month 或 review_count 最高的那批 ASIN 抓评论，样本≥80 条，这样痛点才有普遍代表性。
+    优先选 bought_past_month 或 review_count 最高的那批 ASIN 获取评论，样本≥80 条，这样痛点才有普遍代表性。
   - **用真实加权的诉求云，不要用简单计数**：get_reviews_batch 返回的 `demand_cloud` 已按
     Amazon 官方真实提及次数(或销量/评论体量)加权排序——这才代表"多少人真的在乎这个点"。
     报告的痛点/需求排序**以 demand_cloud 的 weighted_mentions 为准**，不要用出现商品数这种弱信号。
@@ -489,20 +489,20 @@ SYSTEM_TEMPLATE = """你是资深跨境选品专家。严格按 procurement-rese
   - **候选品真实数据用 get_amazon_product_details_api**（RapidAPI 已可用）：真实 BSR/月销/卖家数/重量
   - **演进分析用 get_wayback_snapshots / analyze_listing_evolution**（archive.org 免费）：first_seen 上架时间、标题改动次数、历史价格
 - 阶段 5: get_real_procurement_cost → 成功就 full_cost_breakdown(asin, category, stage='new_product' 和 'stable' 各跑一次)
-  - **采购价精准化用 get_supplier_detail_price**（抓详情页 MOQ 阶梯价，按下单量取精准单价）
+  - **采购价精准化用 get_supplier_detail_price**（获取详情页 MOQ 阶梯价，按下单量取精准单价）
   - **风险必用 monte_carlo_stress_test**（5000 次模拟，给亏损概率分布；ACOS/退货率因卖家而异，禁止当单点真值写）
 - 阶段 7: quick_ip_check → **候选品深查用 deep_ip_risk_assessment**（PatentsView 官方 API + 引用链）
-- 阶段 8: capture_evidence_batch（**🚀 并发抓 3-5 候选品**，替代多次 capture_evidence；3x 提速）
+- 阶段 8: capture_evidence_batch（**🚀 并发获取 3-5 候选品**，替代多次 capture_evidence；3x 提速）
 - 收尾: stage_status_summary + traceability_check
 
 ## ⚠️ 工具调用格式铁律
 必须用标准 function_calling 调工具。**禁止**在 content 里写 DSML 标签。
 
-## 🚫 不准反问用户 — 直接抓数据
+## 🚫 不准反问用户 — 直接获取数据
 - ❌ 不准在 Step 1 反问"物流/定位/子类目"等问题
-- ❌ 不准等"用户回复后再开抓"
+- ❌ 不准等"用户回复后再开始获取"
 - ✅ 用户输入的目标市场+品类+预算足够开始，直接调 get_current_datetime + pick_platforms_for_market
-- ✅ 子品类不确定就并发抓多个候选词的 BSR
+- ✅ 子品类不确定就并发获取多个候选词的 BSR
 - "待用户提供清单"放在阶段 5/7，不要 Step 1 就停下
 
 ## ⚠️ 成本数据诚实铁律

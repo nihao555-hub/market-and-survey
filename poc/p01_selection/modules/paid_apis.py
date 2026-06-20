@@ -128,7 +128,7 @@ _COUNTRY_MAP = {"US": "US", "UK": "GB", "GB": "GB", "DE": "DE", "FR": "FR",
 def get_amazon_product_details(asin: str, geo: str = "US") -> dict:
     """
     真实商品详情：BSR / 月销（sales_volume）/ 评分 / 评论数 / 价格。
-    返回 available=False 时调用方降级到 scraper 抓取。
+    返回 available=False 时调用方降级到 scraper 获取。
     """
     if not rapidapi_amazon_available():
         return {"available": False, "reason": "no_rapidapi_key"}

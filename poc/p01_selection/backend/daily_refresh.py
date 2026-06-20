@@ -297,7 +297,7 @@ def _collect_tikhub_products(term: str, geo: str) -> dict:
 def _collect_tier2(term: str, geo: str, channel_ok: bool) -> list[dict]:
     """电商商品级数据。优先 TikTok Shop 实时；可选叠加 Amazon BSR（默认关，机房 IP 必封）。"""
     out: list[dict] = [_collect_tikhub_products(term, geo)]
-    # Amazon BSR 抓取很慢且机房 IP 基本必封，默认关闭；需要时 ENABLE_AMAZON_BSR=1 显式开启。
+    # Amazon BSR 获取较慢且机房 IP 基本必封，默认关闭；需要时 ENABLE_AMAZON_BSR=1 显式开启。
     if os.getenv("ENABLE_AMAZON_BSR") == "1" and (_proxy_alive() or _paid_api_available()):
         try:
             from modules.agent_tools import tool_get_bestsellers
@@ -307,7 +307,7 @@ def _collect_tier2(term: str, geo: str, channel_ok: bool) -> list[dict]:
             out.append(dict(
                 source="bestsellers", tier=2, status="ok" if ok else "empty",
                 real_data=ok,
-                summary=(f"BSR Top {len(items)} 抓取成功" if ok else "未抓到 BSR 榜单"),
+                summary=(f"BSR Top {len(items)} 获取成功" if ok else "未获取到 BSR 榜单"),
                 payload=r,
             ))
         except Exception as e:

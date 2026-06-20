@@ -1,5 +1,5 @@
 """
-1688 真实采购成本（仅返回真实抓取结果，不估算、不模拟）
+1688 真实采购成本（仅返回真实获取结果，不估算、不模拟）
 若抓不到数据，返回 error 让 Agent 知道并采取真实替代方案。
 
 供应链多级备用：
@@ -148,7 +148,7 @@ def get_supplier_detail_price(detail_url: str, target_qty: int = 500,
             html = fetch(detail_url, use_proxy=use_proxy, force_browser=True)
         except Exception as e:
             last_err = str(e)[:120]
-            logger.warning(f"[detail_price] 第{attempt}次抓取失败: {last_err}")
+            logger.warning(f"[detail_price] 第{attempt}次获取失败: {last_err}")
             continue
         if not html or len(html) < 8000:
             last_err = f"page_too_small_{len(html or '')}"

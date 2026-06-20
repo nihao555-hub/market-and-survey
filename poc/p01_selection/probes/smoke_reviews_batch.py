@@ -1,4 +1,4 @@
-"""验证多 ASIN 批量评论抓取，一次拿 16+ 条真评论"""
+"""验证多 ASIN 批量评论获取，一次拿 16+ 条真评论"""
 import sys, io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", line_buffering=True)
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", line_buffering=True)
@@ -12,7 +12,7 @@ r = get_reviews_batch(ASINS, use_proxy=True, max_total=30)
 
 OUT = Path(__file__).resolve().parents[1] / "reports" / "reviews_batch_test.md"
 buf = []
-buf.append("# 多 ASIN 批量评论抓取测试")
+buf.append("# 多 ASIN 批量评论获取测试")
 buf.append(f"\n**ASIN 数**: {r['asins_count']}  **评论总数**: {r['total_reviews']}\n")
 buf.append("## 各 ASIN 概览\n")
 for p in r['per_asin']:

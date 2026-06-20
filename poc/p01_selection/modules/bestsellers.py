@@ -1,5 +1,5 @@
 """
-Amazon Best Sellers / Movers & Shakers / 子类目 BSR 抓取
+Amazon Best Sellers / Movers & Shakers / 子类目 BSR 获取
 不硬编码类目 URL，让 LLM 给关键词，工具自动从 Amazon 站内搜索/导航发现真实 URL。
 所有数据带 source_url，方便报告引用。
 """

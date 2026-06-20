@@ -5,7 +5,7 @@
 
 ## 🚫 数据真实性铁律（违反将导致报告报废）
 
-1. **候选品 = 真实抓取的 ASIN**：所有候选 SKU 的 ASIN/标题/售价/评分必须来自 `get_bestsellers / search_products / get_movers_shakers / get_movers_shakers` 抓到的真实商品。
+1. **候选品 = 真实获取的 ASIN**：所有候选 SKU 的 ASIN/标题/售价/评分必须来自 `get_bestsellers / search_products / get_movers_shakers / get_movers_shakers` 抓到的真实商品。
 2. **提候选品前先看池子**：先调 `get_asin_pool()` 看当前已采集到哪些真 ASIN。
 3. **每个候选品必须 validate**：在用 ASIN 做利润测算/IP 检查前，调 `validate_candidate(asin)` 确认在池中。
 4. **采购成本必须查 1688**：用 `estimate_procurement_cost(中文关键词, target_sale_price_usd)` 拿真实区间，不允许凭印象。
@@ -30,7 +30,7 @@
 6. 排除项（不做的品牌、专利雷区、敏感品类）
 
 **输出**：用编号清单一次问完。商家答完才进入阶段 1。
-不要在没拿到答复前调用任何抓取工具。
+不要在没拿到答复前调用任何获取工具。
 
 ---
 

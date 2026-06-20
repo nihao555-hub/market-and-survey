@@ -27,9 +27,9 @@ const PLATFORMS: { source: string; label: string; icon: React.ReactNode; accent:
 ];
 
 const STATUS_MAP: Record<string, { kind: StatusKind; label: string }> = {
-  ok: { kind: "done", label: "已抓取" },
+  ok: { kind: "done", label: "已获取" },
   empty: { kind: "neutral", label: "暂无数据" },
-  error: { kind: "error", label: "抓取失败" },
+  error: { kind: "error", label: "获取失败" },
   unavailable: { kind: "pending", label: "通道未就绪" },
 };
 const statusInfo = (s: string) => STATUS_MAP[s] ?? { kind: "neutral" as StatusKind, label: s };
@@ -130,7 +130,7 @@ export function SocialTrendsPage() {
             <EmptyState
               icon={<Flame className="h-6 w-6" />}
               title="还没有社媒趋势数据"
-              hint="等待每 2 小时一次的自动刷新，或在「监控与订阅」页点击「立即刷新」抓取一次真实数据。"
+              hint="等待每 2 小时一次的自动刷新，或点击「立即刷新」获取一次真实数据。"
             />
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">

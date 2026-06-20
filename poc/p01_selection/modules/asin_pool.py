@@ -1,5 +1,5 @@
 """
-ASIN 候选池：所有从真实抓取拿到的 ASIN 都自动进池子
+ASIN 候选池：所有从真实获取拿到的 ASIN 都自动进池子
 LLM 提候选品时必须从这个池里选，禁止凭空创造。
 """
 from __future__ import annotations

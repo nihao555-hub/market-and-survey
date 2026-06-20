@@ -17,7 +17,7 @@ from modules.scraper import fetch
 
 
 def _adaptor(*args, **kwargs):
-    """延迟导入 scrapling（可选爬虫依赖；仅在真正抓取/解析时才需要）。
+    """延迟导入 scrapling（可选爬虫依赖；仅在真正获取/解析时才需要）。
     未安装时给出清晰提示，而不是在 import 阶段就让整个后端起不来。"""
     from scrapling.parser import Adaptor  # noqa: PLC0415
     return Adaptor(*args, **kwargs)

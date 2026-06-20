@@ -167,7 +167,7 @@ def build_candidate_gallery(candidates: list[dict], evidence_dir: str = None,
     
     ev_path = Path(evidence_dir) if evidence_dir else None
     lines = ["\n\n---\n\n## 📸 候选品图廊（真实产品图）\n",
-             "> 以下为候选品真实主图与平台截图，全部来自实时抓取。\n"]
+             "> 以下为候选品真实主图与平台截图，全部来自实时获取。\n"]
     
     shown = 0
     for c in candidates:
@@ -440,7 +440,7 @@ def one_pager(full_report_md: str, candidates: list = None,
 
     out = []
     out.append("# 📌 选品决策 · 一页速览\n")
-    out.append(f"> 生成于报告系统 · 数据全部实时抓取、可溯源\n\n")
+    out.append(f"> 生成于报告系统 · 数据全部实时获取、可溯源\n\n")
 
     # 1) 决策速览卡（最顶，最重要）
     out.append(decision_card)

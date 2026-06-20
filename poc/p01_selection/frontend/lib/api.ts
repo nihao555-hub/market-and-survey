@@ -120,7 +120,7 @@ export async function setDataSourceConnected(
   return d.setDataSourceConnected;
 }
 
-// ─────────── 监控规则 ───────────
+// ─────────── 订阅规则 ───────────
 export interface Monitor {
   id: string;
   name: string;
@@ -177,7 +177,7 @@ export async function deleteMonitor(monitorId: string): Promise<boolean> {
   return d.deleteMonitor;
 }
 
-// ─────────── 每日数据刷新（定时爬取真实数据落库）───────────
+// ─────────── 每日数据刷新（定时获取真实数据落库）───────────
 export interface DataSnapshot {
   id: string;
   term: string;

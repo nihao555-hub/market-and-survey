@@ -1,4 +1,4 @@
-"""抓取代理订阅，解析 vmess 节点，筛美国节点"""
+"""获取代理订阅，解析 vmess 节点，筛美国节点"""
 import base64, json, ssl, sys
 import urllib.request
 

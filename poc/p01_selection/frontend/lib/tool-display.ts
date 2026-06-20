@@ -2,7 +2,7 @@
  * 工具名人类化（steering §4.1）：把 snake_case 工具名 + 参数转成可读文案。
  * 用映射表而非 if-else 链，便于扩展（steering 明确要求）。
  *
- * 措辞合规：前端一律用「获取 / 搜索 / 读取 / 分析」等中性词，不出现「抓取/爬取」。
+ * 措辞合规：前端一律用「获取 / 搜索 / 读取 / 分析」等中性词。
  */
 type ToolDisplayRule = {
   inProgress: (input: any) => string;
@@ -102,7 +102,7 @@ export function getToolDisplayMessage(
 ): string {
   const rule = TOOL_DISPLAY_RULES[toolName];
   if (rule) return isFinished ? rule.finished(input) : rule.inProgress(input);
-  // 默认：snake_case → 中性文案（统一用「获取/执行」，不用「抓取」）
+  // 默认：snake_case → 中性文案（统一用「获取/执行」）
   const human = toolName.replace(/_/g, " ");
   return isFinished ? `已完成 ${human}` : `正在执行 ${human}`;
 }
