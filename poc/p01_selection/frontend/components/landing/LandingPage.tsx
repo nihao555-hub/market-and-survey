@@ -80,7 +80,7 @@ function Hero() {
           {/* Right — App screenshot */}
           <div className="relative">
             <div className="rounded-2xl border border-neutral-200 shadow-2xl shadow-neutral-200/50 overflow-hidden bg-white">
-              <img src="/images/hero-app.png" alt="SelectPilot 产品界面" className="w-full" />
+              <img src="/images/screenshot-dashboard.png" alt="SelectPilot 工作台" className="w-full" />
             </div>
             <div className="absolute -inset-4 bg-gradient-to-tr from-violet-100/40 via-transparent to-violet-100/20 rounded-3xl -z-10 blur-2xl" />
           </div>
@@ -100,49 +100,103 @@ function Hero() {
   );
 }
 
-/* ─── WHY SECTION (3 feature cards) ─── */
-function WhySection() {
+/* ─── FEATURE SHOWCASE 1: AI Chat ─── */
+function FeatureShowcase1() {
   return (
-    <section id="features" className="py-20 md:py-28">
+    <section className="py-20 md:py-28 bg-neutral-50/70">
       <div className="mx-auto max-w-[1200px] px-6">
-        <div className="grid md:grid-cols-[1fr_1.2fr] gap-8 md:gap-12 items-start mb-16">
+        <div className="grid md:grid-cols-2 items-center gap-12 md:gap-16">
           <div>
-            <p className="text-[13px] font-medium uppercase tracking-widest text-violet-600 mb-3">为什么选择 SelectPilot？</p>
-            <h2 className="text-[32px] md:text-[40px] font-semibold leading-[1.15] tracking-tight text-neutral-900">
-              真实数据驱动选品，<br/>不靠猜测和经验
+            <p className="text-[13px] font-medium uppercase tracking-widest text-violet-600 mb-3">AI Agent 调研</p>
+            <h2 className="text-[28px] md:text-[36px] font-semibold leading-[1.15] tracking-tight text-neutral-900 mb-4">
+              对话即调研，<br/>一句话启动 8 阶段分析
             </h2>
+            <p className="text-[15px] text-neutral-500 leading-relaxed mb-6">
+              输入品类或产品名称，AI Agent 自动完成品类扫描、热销分析、竞品深挖、利润测算。结果以 ECharts 交互图表呈现，可导出 PDF 报告。
+            </p>
+            <ul className="space-y-3">
+              {["DeepSeek 大模型驱动", "8 阶段结构化调研流程", "实时数据工具链调用", "ECharts 图表自动渲染"].map((item) => (
+                <li key={item} className="flex items-center gap-2.5 text-[14px] text-neutral-600">
+                  <Check className="h-4 w-4 text-violet-600 flex-shrink-0" />
+                  {item}
+                </li>
+              ))}
+            </ul>
           </div>
-          <p className="text-[16px] text-neutral-500 leading-relaxed md:pt-10">
-            跨境电商卖家面临信息过载、数据零散的困境。SelectPilot 将 TikTok Shop 实时数据、Amazon BSR 排名、社媒趋势、采购成本全部整合到一个 AI 对话界面中，让你用自然语言完成原本需要数小时的市场调研。
-          </p>
+          <div className="relative">
+            <div className="rounded-2xl border border-neutral-200 shadow-xl overflow-hidden bg-white">
+              <img src="/images/feature-ai-chat.png" alt="AI Agent 调研界面" className="w-full" />
+            </div>
+          </div>
         </div>
+      </div>
+    </section>
+  );
+}
 
-        <div className="grid md:grid-cols-3 gap-5">
-          {[
-            {
-              title: "一个平台，全链路数据",
-              desc: "品类排名、实时热销、社媒趋势、采购成本、利润测算，从发现到决策一站完成。",
-              icon: BarChart3,
-            },
-            {
-              title: "AI Agent 即时调研",
-              desc: "对话式交互，输入一个品类或产品名称，AI 自动完成 8 阶段深度调研，产出 ECharts 图表报告。",
-              icon: Bot,
-            },
-            {
-              title: "26 国实时数据覆盖",
-              desc: "支持全球 26 个国家/地区的 TikTok Shop、Amazon、社媒趋势数据，每日自动更新。",
-              icon: Globe2,
-            },
-          ].map((f, i) => (
-            <article key={i} className="group rounded-2xl border border-neutral-100 bg-neutral-50/50 p-7 hover:border-neutral-200 hover:bg-white hover:shadow-lg hover:shadow-neutral-100/50 transition-all">
-              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-neutral-100 shadow-sm">
-                <f.icon className="h-5 w-5 text-violet-600" />
-              </div>
-              <h3 className="text-[15px] font-semibold text-neutral-900 mb-2">{f.title}</h3>
-              <p className="text-[14px] text-neutral-500 leading-relaxed">{f.desc}</p>
-            </article>
-          ))}
+/* ─── FEATURE SHOWCASE 2: Categories ─── */
+function FeatureShowcase2() {
+  return (
+    <section className="py-20 md:py-28">
+      <div className="mx-auto max-w-[1200px] px-6">
+        <div className="grid md:grid-cols-2 items-center gap-12 md:gap-16">
+          {/* Image on left this time */}
+          <div className="relative md:order-1">
+            <div className="rounded-2xl border border-neutral-200 shadow-xl overflow-hidden bg-white">
+              <img src="/images/feature-categories.png" alt="品类排名榜单" className="w-full" />
+            </div>
+          </div>
+          <div className="md:order-2">
+            <p className="text-[13px] font-medium uppercase tracking-widest text-violet-600 mb-3">品类榜单</p>
+            <h2 className="text-[28px] md:text-[36px] font-semibold leading-[1.15] tracking-tight text-neutral-900 mb-4">
+              28 个品类实时排名，<br/>一眼看清市场格局
+            </h2>
+            <p className="text-[15px] text-neutral-500 leading-relaxed mb-6">
+              TikTok Shop 全部 28 个品类的实时排名数据，包含商品数量、均价、增长率、竞争指数。支持按国家切换，每日 0 点自动更新。
+            </p>
+            <ul className="space-y-3">
+              {["28 品类 × 26 国覆盖", "每日自动采集更新", "趋势迷你图一目了然", "竞争指数量化评估"].map((item) => (
+                <li key={item} className="flex items-center gap-2.5 text-[14px] text-neutral-600">
+                  <Check className="h-4 w-4 text-violet-600 flex-shrink-0" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── FEATURE SHOWCASE 3: Profit Engine ─── */
+function FeatureShowcase3() {
+  return (
+    <section className="py-20 md:py-28 bg-neutral-50/70">
+      <div className="mx-auto max-w-[1200px] px-6">
+        <div className="grid md:grid-cols-2 items-center gap-12 md:gap-16">
+          <div>
+            <p className="text-[13px] font-medium uppercase tracking-widest text-violet-600 mb-3">利润测算</p>
+            <h2 className="text-[28px] md:text-[36px] font-semibold leading-[1.15] tracking-tight text-neutral-900 mb-4">
+              14 项成本拆解，<br/>蒙特卡洛风险模拟
+            </h2>
+            <p className="text-[15px] text-neutral-500 leading-relaxed mb-6">
+              从采购成本到物流、平台佣金、营销费用，14 项费用精确拆解。蒙特卡洛压力测试模拟 10,000 种场景，给出利润分布和亏损概率。
+            </p>
+            <ul className="space-y-3">
+              {["1688/Made-in-China 实时采购价", "14 项成本自动计算", "蒙特卡洛 10,000 次模拟", "亏损风险概率预警"].map((item) => (
+                <li key={item} className="flex items-center gap-2.5 text-[14px] text-neutral-600">
+                  <Check className="h-4 w-4 text-violet-600 flex-shrink-0" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="relative">
+            <div className="rounded-2xl border border-neutral-200 shadow-xl overflow-hidden bg-white">
+              <img src="/images/feature-profit.png" alt="利润测算引擎" className="w-full" />
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -158,7 +212,7 @@ function HowSection() {
     { num: "04", title: "决策报告", desc: "综合利润测算 + 风险评估 + 推荐 SKU，一键导出。" },
   ];
   return (
-    <section id="how" className="py-20 md:py-28 bg-neutral-50/70">
+    <section id="how" className="py-20 md:py-28">
       <div className="mx-auto max-w-[1200px] px-6">
         <div className="text-center mb-16">
           <p className="text-[13px] font-medium uppercase tracking-widest text-violet-600 mb-3">工作流程</p>
@@ -168,7 +222,7 @@ function HowSection() {
         </div>
         <div className="grid md:grid-cols-4 gap-6">
           {steps.map((s) => (
-            <div key={s.num} className="relative rounded-2xl border border-neutral-100 bg-white p-6">
+            <div key={s.num} className="relative rounded-2xl border border-neutral-100 bg-white p-6 hover:shadow-md transition-shadow">
               <span className="text-[40px] font-bold text-neutral-100 leading-none">{s.num}</span>
               <h3 className="mt-3 text-[15px] font-semibold text-neutral-900">{s.title}</h3>
               <p className="mt-2 text-[13px] text-neutral-500 leading-relaxed">{s.desc}</p>
@@ -191,7 +245,7 @@ function FeaturesGrid() {
     { icon: TrendingUp, title: "社媒趋势 × 8 平台", desc: "TikTok、抖音、微博、小红书、快手、B站、X、Lemon8 热榜聚合。" },
   ];
   return (
-    <section className="py-20 md:py-28">
+    <section id="features" className="py-20 md:py-28 bg-neutral-50/70">
       <div className="mx-auto max-w-[1200px] px-6">
         <div className="text-center mb-14">
           <p className="text-[13px] font-medium uppercase tracking-widest text-violet-600 mb-3">核心能力</p>
@@ -204,7 +258,7 @@ function FeaturesGrid() {
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {items.map((f, i) => (
-            <div key={i} className="rounded-2xl border border-neutral-100 p-6 hover:border-neutral-200 hover:shadow-md transition-all">
+            <div key={i} className="rounded-2xl border border-neutral-100 bg-white p-6 hover:border-neutral-200 hover:shadow-md transition-all">
               <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-violet-50">
                 <f.icon className="h-[18px] w-[18px] text-violet-600" />
               </div>
@@ -275,7 +329,7 @@ const plans = [
 
 function Pricing() {
   return (
-    <section id="pricing" className="py-20 md:py-28 bg-neutral-50/70">
+    <section id="pricing" className="py-20 md:py-28">
       <div className="mx-auto max-w-[1200px] px-6">
         <div className="text-center mb-14">
           <p className="text-[13px] font-medium uppercase tracking-widest text-violet-600 mb-3">定价方案</p>
@@ -329,16 +383,42 @@ function Pricing() {
   );
 }
 
-/* ─── TESTIMONIAL ─── */
-function Testimonial() {
+/* ─── TESTIMONIALS ─── */
+function Testimonials() {
+  const items = [
+    {
+      text: "以前选品靠刷 TikTok + 翻 Amazon 评论，一个品类要花两三天。用了 SelectPilot 之后，AI 调研 10 分钟就出报告，图表一目了然。",
+      name: "李明",
+      role: "TikTok Shop 卖家，月 GMV $50K+",
+    },
+    {
+      text: "利润测算功能帮我避开了好几个看似热销但实际毛利只有 8% 的品类。蒙特卡洛模拟直接告诉我亏损概率。",
+      name: "Sarah Chen",
+      role: "跨境电商运营经理",
+    },
+    {
+      text: "26 个国家的品类数据一键切换，不用再一个个站点去扒数据了。每天自动更新省了我们团队大量时间。",
+      name: "Kevin Liu",
+      role: "多店铺运营，年 GMV $2M",
+    },
+  ];
   return (
-    <section className="py-20 md:py-28">
-      <div className="mx-auto max-w-[800px] px-6 text-center">
-        <blockquote className="text-[20px] md:text-[24px] font-medium leading-relaxed text-neutral-800 mb-6">
-          "以前选品靠刷 TikTok + 翻 Amazon 评论，一个品类要花两三天。用了 SelectPilot 之后，输入品类名称 AI 就自动调研完了，图表报告一目了然，选品决策时间从天缩短到分钟。"
-        </blockquote>
-        <div className="text-[14px] text-neutral-500">
-          <span className="font-medium text-neutral-700">李明</span> · TikTok Shop 卖家，月 GMV $50K+
+    <section className="py-20 md:py-28 bg-neutral-50/70">
+      <div className="mx-auto max-w-[1200px] px-6">
+        <div className="text-center mb-12">
+          <p className="text-[13px] font-medium uppercase tracking-widest text-violet-600 mb-3">用户反馈</p>
+          <h2 className="text-[32px] md:text-[40px] font-semibold tracking-tight text-neutral-900">卖家们怎么说</h2>
+        </div>
+        <div className="grid md:grid-cols-3 gap-5">
+          {items.map((t, i) => (
+            <div key={i} className="rounded-2xl border border-neutral-100 bg-white p-6">
+              <p className="text-[14px] text-neutral-600 leading-relaxed mb-5">&ldquo;{t.text}&rdquo;</p>
+              <div>
+                <div className="text-[14px] font-medium text-neutral-900">{t.name}</div>
+                <div className="text-[12px] text-neutral-400">{t.role}</div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </section>
@@ -372,7 +452,7 @@ const faqs = [
 function FAQ() {
   const [openIdx, setOpenIdx] = useState<number | null>(null);
   return (
-    <section id="faq" className="py-20 md:py-28 bg-neutral-50/70">
+    <section id="faq" className="py-20 md:py-28">
       <div className="mx-auto max-w-[720px] px-6">
         <div className="text-center mb-12">
           <p className="text-[13px] font-medium uppercase tracking-widest text-violet-600 mb-3">常见问题</p>
@@ -402,7 +482,7 @@ function FAQ() {
 /* ─── BOTTOM CTA ─── */
 function BottomCTA() {
   return (
-    <section className="py-20 md:py-28">
+    <section className="py-20 md:py-28 bg-neutral-50/70">
       <div className="mx-auto max-w-[1200px] px-6 text-center">
         <h2 className="text-[32px] md:text-[44px] font-semibold tracking-tight text-neutral-900 mb-4">
           开始用 AI 发现下一个爆品
@@ -450,7 +530,7 @@ function Footer() {
           ))}
         </div>
         <div className="border-t border-neutral-100 pt-6 text-center text-[12px] text-neutral-400">
-          © 2026 SelectPilot. All rights reserved.
+          &copy; 2026 SelectPilot. All rights reserved.
         </div>
       </div>
     </footer>
@@ -464,12 +544,14 @@ export function LandingPage() {
       <Navbar />
       <main>
         <Hero />
-        <WhySection />
+        <FeatureShowcase1 />
+        <FeatureShowcase2 />
+        <FeatureShowcase3 />
         <HowSection />
         <FeaturesGrid />
         <Stats />
         <Pricing />
-        <Testimonial />
+        <Testimonials />
         <FAQ />
         <BottomCTA />
       </main>
