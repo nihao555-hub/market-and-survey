@@ -321,7 +321,7 @@ SOCIAL_TREND_TERM = "🔥 实时社媒趋势"
 
 
 def _collect_social_trends(limit: int = 20) -> list[dict]:
-    """跨平台实时社媒热搜/热词（TikTok/抖音/微博/小红书）。每批采集一次。"""
+    """跨平台实时社媒热搜/热词（TikTok/X/Lemon8，面向海外）。每批采集一次。"""
     if not _tikhub_ok():
         return [dict(
             source="social_trends", tier=2, status="unavailable", real_data=False,

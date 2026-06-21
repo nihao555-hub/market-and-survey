@@ -93,7 +93,7 @@ function Hero() {
         <div className="mx-auto max-w-[1500px] px-[40px] py-[24px]">
           <div className="flex items-center gap-[48px] overflow-hidden">
             <div className="flex items-center gap-[48px] animate-marquee whitespace-nowrap">
-              {["TikTok Shop", "Amazon", "1688", "Douyin", "Xiaohongshu", "Weibo", "Bilibili", "Lemon8", "TikTok Shop", "Amazon", "1688", "Douyin"].map((name, i) => (
+              {["TikTok Shop", "Amazon", "1688", "Walmart", "Shopee", "Lemon8", "X/Twitter", "Google Trends", "TikTok Shop", "Amazon", "1688", "Walmart"].map((name, i) => (
                 <span key={i} className="text-[14px] font-medium text-[#a8a29e] tracking-wide flex-shrink-0">{name}</span>
               ))}
             </div>
@@ -208,7 +208,7 @@ function WhySection() {
 function FeaturesSection() {
   const features = [
     { icon: Search, title: "市场扫描", desc: "AI Agent 完成 8 阶段结构化调研，从品类扫描到竞品深度分析。" },
-    { icon: TrendingUp, title: "趋势跟踪", desc: "来自 TikTok、抖音、微博、小红书、快手、B站、X 和 Lemon8 的实时趋势。" },
+    { icon: TrendingUp, title: "趋势跟踪", desc: "来自 TikTok、X/Twitter、Lemon8、Google Trends 和 Amazon 的实时趋势。" },
     { icon: ShoppingCart, title: "爆品排行榜", desc: "28 个品类覆盖 26 个国家，每日午夜自动刷新。竞争指数量化。" },
     { icon: LineChart, title: "ECharts 可视化", desc: "AI 输出自动渲染为交互式柱状图、折线图、饼图和雷达图。" },
     { icon: Calculator, title: "利润建模", desc: "14 项成本拆解，配合蒙特卡洛 10,000 场景压力测试。" },

@@ -554,14 +554,9 @@ def lemon8_hot_keywords(limit: int = 30) -> list[dict]:
     return out[:limit]
 
 
-# 平台注册表：name → (中文标签, fetcher)。逐个用便宜调用实测可用后才登记。
+# 平台注册表：name → (中文标签, fetcher)。面向海外市场，只保留国际平台。
 TREND_SOURCES: dict[str, tuple[str, Any]] = {
     "tiktok": ("TikTok 趋势搜索词", tiktok_trending_searchwords),
-    "douyin": ("抖音热榜", douyin_hot_search),
-    "weibo": ("微博热搜", weibo_hot_search),
-    "xiaohongshu": ("小红书热词", xhs_trending),
-    "kuaishou": ("快手热榜", kuaishou_hot_list),
-    "bilibili": ("B站热搜", bilibili_hot_search),
     "twitter": ("X/Twitter 趋势", twitter_trending),
     "lemon8": ("Lemon8 热词", lemon8_hot_keywords),
 }

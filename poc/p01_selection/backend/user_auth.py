@@ -177,19 +177,19 @@ def _send_email(to: str, subject: str, html_body: str) -> bool:
 def _verification_email_html(code: str, purpose: str) -> str:
     action = "注册" if purpose == "verify" else "登录"
     return f"""
-    <div style="font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
-      <div style="text-align: center; margin-bottom: 32px;">
-        <div style="display: inline-block; width: 48px; height: 48px; background: linear-gradient(135deg, #F97316, #F59E0B); border-radius: 12px; line-height: 48px; color: white; font-size: 24px;">&#x1F9ED;</div>
-        <h2 style="margin: 12px 0 0; color: #0F172A; font-size: 20px;">SelectPilot</h2>
+    <div style="font-family: -apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif; max-width: 420px; margin: 0 auto; padding: 48px 24px; background: #ffffff;">
+      <div style="text-align: center; margin-bottom: 36px;">
+        <div style="display: inline-block; width: 40px; height: 40px; background: #333333; border-radius: 8px; line-height: 40px; color: white; font-size: 18px;">S</div>
+        <h2 style="margin: 10px 0 0; color: #333333; font-size: 17px; font-weight: 600; letter-spacing: -0.2px;">SelectPilot</h2>
       </div>
-      <div style="background: #fff; border: 1px solid #E2E8F0; border-radius: 16px; padding: 32px; text-align: center;">
-        <p style="color: #64748B; font-size: 14px; margin: 0 0 24px;">你正在{action} SelectPilot 账号，请使用以下验证码：</p>
-        <div style="background: #FFF7ED; border: 2px solid #FDBA74; border-radius: 12px; padding: 20px; margin: 0 auto; display: inline-block;">
-          <span style="font-family: 'JetBrains Mono', monospace; font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #EA580C;">{code}</span>
+      <div style="background: #f9f9f9; border: 1px solid #ebebeb; border-radius: 8px; padding: 28px 24px; text-align: center;">
+        <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 0 0 20px;">你正在{action} SelectPilot 账号</p>
+        <div style="background: #ffffff; border: 1px solid #d6d6d6; border-radius: 6px; padding: 16px 24px; margin: 0 auto; display: inline-block;">
+          <span style="font-family: 'SF Mono', 'JetBrains Mono', monospace; font-size: 28px; font-weight: 700; letter-spacing: 6px; color: #333333;">{code}</span>
         </div>
-        <p style="color: #94A3B8; font-size: 12px; margin: 24px 0 0;">验证码 10 分钟内有效，请勿泄露给他人。</p>
+        <p style="color: #999999; font-size: 12px; margin: 20px 0 0;">验证码 10 分钟内有效</p>
       </div>
-      <p style="color: #CBD5E1; font-size: 11px; text-align: center; margin-top: 24px;">如果这不是你的操作，请忽略此邮件。</p>
+      <p style="color: #cccccc; font-size: 11px; text-align: center; margin-top: 20px;">如非本人操作，请忽略此邮件。</p>
     </div>
     """
 

@@ -1,6 +1,6 @@
 "use client";
 import React, { useRef, useEffect } from "react";
-import { Flame, RefreshCw, Clock, Hash, Layers, Music2, Sparkles, MessageCircle, BookOpen, Video, Tv, Twitter, Citrus, BarChart3, TrendingUp } from "lucide-react";
+import { Flame, RefreshCw, Clock, Hash, Layers, Music2, Twitter, Citrus, BarChart3, TrendingUp } from "lucide-react";
 import type { EChartsOption } from "echarts";
 import {
   fetchDailyRefreshStatus, fetchDataSnapshots, fetchAllSnapshots,
@@ -16,11 +16,6 @@ const SOCIAL_TREND_TERM = "🔥 实时社媒趋势";
 
 const PLATFORMS: { source: string; label: string; icon: React.ReactNode; accent: string; color: string }[] = [
   { source: "trend_tiktok", label: "TikTok", icon: <Music2 className="h-4 w-4" />, accent: "text-pink-500", color: "#ec4899" },
-  { source: "trend_douyin", label: "抖音", icon: <Sparkles className="h-4 w-4" />, accent: "text-rose-500", color: "#f43f5e" },
-  { source: "trend_weibo", label: "微博", icon: <MessageCircle className="h-4 w-4" />, accent: "text-orange-500", color: "#f97316" },
-  { source: "trend_xiaohongshu", label: "小红书", icon: <BookOpen className="h-4 w-4" />, accent: "text-red-500", color: "#ef4444" },
-  { source: "trend_kuaishou", label: "快手", icon: <Video className="h-4 w-4" />, accent: "text-amber-500", color: "#f59e0b" },
-  { source: "trend_bilibili", label: "B站", icon: <Tv className="h-4 w-4" />, accent: "text-sky-500", color: "#0ea5e9" },
   { source: "trend_twitter", label: "X / Twitter", icon: <Twitter className="h-4 w-4" />, accent: "text-blue-500", color: "#3b82f6" },
   { source: "trend_lemon8", label: "Lemon8", icon: <Citrus className="h-4 w-4" />, accent: "text-lime-500", color: "#84cc16" },
 ];
