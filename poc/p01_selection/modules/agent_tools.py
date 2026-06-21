@@ -26,6 +26,9 @@ from modules.sourcing_1688 import get_real_procurement_cost, search_1688, get_su
 from modules.real_cost_data import build_real_cost_params, get_usd_cny_rate, get_hts_duty
 from modules.platforms import PLATFORMS, REGIONS, CONTINENTS, list_platforms_by_region, status_summary
 from modules import paid_apis
+from modules.scraper_api import (scraperapi_available, scraperapi_status,
+                                  search_products_via_scraperapi, fetch_via_scraperapi,
+                                  PLATFORM_SCRAPERAPI_CONFIG)
 from modules.keepa_graph import get_keepa_price_history_chart, get_keepa_charts_batch
 from modules.keepa_session import get_keepa_product_data, keepa_session_available
 from modules.keepa_chart_reader import read_keepa_chart
@@ -2497,6 +2500,133 @@ def tool_browse_daily_dataset(query: str = "", kinds: list = None,
     }
 
 
+# =====================  ScraperAPI 工具  =====================
+def tool_scraperapi_search(platform: str, keyword: str, limit: int = 20) -> dict:
+    """通过 ScraperAPI 搜索全球电商平台（自动代理+反爬绕过+地理定位）。
+    
+    适用场景：
+    - 平台被本地代理封锁（status=blocked）时的备选方案
+    - 需要特定国家地理定位（俄罗斯/中东/东南亚/拉美等无 xray 节点的地区）
+    - 有反爬保护的平台（Walmart/eBay/Etsy/Coupang/Ozon 等）
+    
+    免费额度：1000 credits/月，Amazon 5 credits/req，render=true +10/req。
+    """
+    logger.info(f"🔧 scraperapi_search({platform}, {keyword})")
+    if not scraperapi_available():
+        return {"available": False, "platform": platform,
+                "error": "SCRAPERAPI_KEY 未配置。请配置环境变量后重试。",
+                "products": [], "_hint": "免费注册 scraperapi.com 获取 1000 credits/月"}
+    
+    result = search_products_via_scraperapi(platform, keyword, limit)
+    return result
+
+
+def tool_scraperapi_status() -> dict:
+    """查询 ScraperAPI 可用性和额度余量。"""
+    return scraperapi_status()
+
+
+def tool_search_global_platforms(keyword: str, regions: list[str] = None,
+                                  use_scraperapi_for_blocked: bool = True,
+                                  limit_per_platform: int = 15) -> dict:
+    """全球主流电商平台一键搜索 — 自动选择最佳抓取策略。
+    
+    对 verified 平台：走 xray 代理（免费、快）
+    对 blocked 平台：自动回落到 ScraperAPI（需配 key，有免费额度）
+    
+    regions 可选：US/UK/EU/JP/KR/SEA/LATAM/TR/RU/IN/AE/AU/CN/Global
+    不传则搜全部 verified + ScraperAPI 可覆盖的 blocked 平台。
+    """
+    logger.info(f"🔧 search_global_platforms({keyword}, regions={regions})")
+    
+    # 确定要搜的平台
+    target_platforms = []
+    if regions:
+        for r in regions:
+            r = r.upper()
+            if r in REGIONS:
+                target_platforms.extend(REGIONS[r])
+            elif r in CONTINENTS:
+                for sub_r in CONTINENTS[r]:
+                    target_platforms.extend(REGIONS.get(sub_r, []))
+    else:
+        # 默认：所有 verified + ScraperAPI 支持的 blocked
+        for k, v in PLATFORMS.items():
+            if v.get("status") == "verified":
+                target_platforms.append(k)
+            elif use_scraperapi_for_blocked and k in PLATFORM_SCRAPERAPI_CONFIG:
+                target_platforms.append(k)
+    
+    # 去重
+    seen = set()
+    target_platforms = [p for p in target_platforms if not (p in seen or seen.add(p))]
+    
+    # 分类：verified 走本地代理，blocked 走 ScraperAPI
+    local_platforms = []
+    scraperapi_platforms = []
+    skipped = []
+    
+    for plat in target_platforms:
+        p = PLATFORMS.get(plat, {})
+        status = p.get("status", "untested")
+        if status == "verified" or status == "partial":
+            local_platforms.append(plat)
+        elif status == "blocked" and use_scraperapi_for_blocked and scraperapi_available():
+            if plat in PLATFORM_SCRAPERAPI_CONFIG:
+                scraperapi_platforms.append(plat)
+            else:
+                skipped.append({"platform": plat, "reason": "blocked, no ScraperAPI config"})
+        elif status == "blocked":
+            skipped.append({"platform": plat, "reason": "blocked, SCRAPERAPI_KEY not set"})
+        else:
+            local_platforms.append(plat)
+    
+    results = {}
+    
+    # 1. 本地代理平台（并发）
+    if local_platforms:
+        local_result = tool_search_multi_platform(local_platforms, keyword,
+                                                   limit_per_platform=limit_per_platform)
+        results.update(local_result.get("results", {}))
+    
+    # 2. ScraperAPI 平台（顺序，省额度）
+    for plat in scraperapi_platforms[:5]:  # 限制最多 5 个 ScraperAPI 请求（省额度）
+        try:
+            r = tool_scraperapi_search(plat, keyword, limit_per_platform)
+            results[plat] = {
+                "platform_name": r.get("platform_name"),
+                "count": r.get("count", 0),
+                "products": (r.get("products") or [])[:5],
+                "url": r.get("url"),
+                "error": r.get("error"),
+                "method": r.get("method", "scraperapi"),
+                "credit_cost": r.get("credit_cost"),
+            }
+        except Exception as e:
+            results[plat] = {"error": str(e)[:200], "count": 0, "products": []}
+    
+    # 汇总
+    successful = [p for p, r in results.items() if r.get("count", 0) > 0]
+    failed = [p for p, r in results.items() if r.get("count", 0) == 0]
+    total_items = sum(r.get("count", 0) for r in results.values())
+    
+    return {
+        "keyword": keyword,
+        "total_platforms_tried": len(results),
+        "local_proxy_platforms": len(local_platforms),
+        "scraperapi_platforms": len(scraperapi_platforms),
+        "skipped": skipped,
+        "results": results,
+        "_summary": {
+            "成功平台": successful,
+            "失败平台": failed,
+            "跳过平台": [s["platform"] for s in skipped],
+            "总商品数": total_items,
+            "策略": f"本地代理 {len(local_platforms)} 个 + ScraperAPI {len(scraperapi_platforms)} 个",
+        }
+    }
+
+
 # =====================  工具 schema（DeepSeek function calling）=====================
 TOOLS_SCHEMA = [
     {"type": "function", "function": {
@@ -2981,6 +3111,29 @@ TOOLS_SCHEMA = [
                       "description": "限定取哪几类：categories/hot_selling/social_trends/hashtags，不传则全取"},
             "limit": {"type": "integer", "default": 30}
         }}}},
+    {"type": "function", "function": {
+        "name": "scraperapi_search",
+        "description": "**全球电商平台搜索（ScraperAPI 代理层）**：通过 ScraperAPI 搜索被封锁的电商平台。自动 IP 轮换 + 反爬绕过 + 地理定位（全球 195 个国家）。免费 1000 credits/月。适用：Walmart/eBay/Etsy/Coupang/Ozon/Noon/Trendyol/Shopee 等 blocked 平台。对 Amazon 类支持 autoparse 直接返回结构化 JSON。需配 SCRAPERAPI_KEY 环境变量。",
+        "parameters": {"type": "object", "properties": {
+            "platform": {"type": "string", "description": "平台 id（如 walmart/ebay/coupang/ozon/shopee_sg/noon 等）"},
+            "keyword": {"type": "string", "description": "搜索关键词"},
+            "limit": {"type": "integer", "default": 20}
+        }, "required": ["platform", "keyword"]}}},
+    {"type": "function", "function": {
+        "name": "scraperapi_status",
+        "description": "查询 ScraperAPI 可用性、额度余量、支持的平台列表。开局调一次确认是否有 ScraperAPI 额度，决定是否可以抓 blocked 平台。",
+        "parameters": {"type": "object", "properties": {}}}},
+    {"type": "function", "function": {
+        "name": "search_global_platforms",
+        "description": "**全球全平台一键搜索（智能策略）**：自动选择最佳路径——verified 平台走免费 xray 代理，blocked 平台走 ScraperAPI（有免费额度）。覆盖全球所有主流电商：北美(Amazon/Walmart/BestBuy/Target)、欧洲(Amazon UK/DE/FR/Otto/Cdiscount)、东南亚(Shopee/Lazada/Tokopedia)、拉美(MercadoLibre MX/BR)、俄罗斯(Ozon/Wildberries/Yandex)、中东(Amazon AE/Noon)、大洋洲(Amazon AU)、韩国(Coupang)、土耳其(Trendyol)、印度(Flipkart)。可按 regions 限定地区。",
+        "parameters": {"type": "object", "properties": {
+            "keyword": {"type": "string", "description": "搜索关键词"},
+            "regions": {"type": "array", "items": {"type": "string"},
+                        "description": "地区过滤：US/UK/EU/JP/KR/SEA/LATAM/TR/RU/IN/AE/AU/CN/Global。不传则全球搜索"},
+            "use_scraperapi_for_blocked": {"type": "boolean", "default": True,
+                                            "description": "是否对 blocked 平台自动使用 ScraperAPI"},
+            "limit_per_platform": {"type": "integer", "default": 15}
+        }, "required": ["keyword"]}}},
 ]
 
 TOOL_IMPL = {
@@ -3052,4 +3205,7 @@ TOOL_IMPL = {
     "generate_price_chart": tool_generate_price_chart,
     "webpage_to_markdown": tool_webpage_to_markdown,
     "file_to_markdown": tool_file_to_markdown,
+    "scraperapi_search": tool_scraperapi_search,
+    "scraperapi_status": tool_scraperapi_status,
+    "search_global_platforms": tool_search_global_platforms,
 }

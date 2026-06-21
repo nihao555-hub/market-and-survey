@@ -352,6 +352,33 @@ PLATFORMS = {
         "status": "verified", "evidence_date": "2026-05",
     },
 
+    # ════ 非洲 ════
+    "jumia_ng": {
+        "name": "Jumia NG", "region": "NG", "needs_proxy": None,
+        "search_url": "https://www.jumia.com.ng/catalog/?q={kw}",
+        "card_sel": "article.prd",
+        "title_sel": "h3.name", "price_sel": "div.prc",
+        "rating_sel": None, "asin_in_url": False,
+        "status": "untested", "evidence_date": "2026-06",
+        "note": "非洲最大电商，覆盖尼日利亚/肯尼亚/埃及等11国",
+    },
+    "jumia_ke": {
+        "name": "Jumia KE", "region": "KE", "needs_proxy": None,
+        "search_url": "https://www.jumia.co.ke/catalog/?q={kw}",
+        "card_sel": "article.prd",
+        "title_sel": "h3.name", "price_sel": "div.prc",
+        "rating_sel": None, "asin_in_url": False,
+        "status": "untested", "evidence_date": "2026-06",
+    },
+    "jumia_eg": {
+        "name": "Jumia EG", "region": "EG", "needs_proxy": None,
+        "search_url": "https://www.jumia.com.eg/catalog/?q={kw}",
+        "card_sel": "article.prd",
+        "title_sel": "h3.name", "price_sel": "div.prc",
+        "rating_sel": None, "asin_in_url": False,
+        "status": "untested", "evidence_date": "2026-06",
+    },
+
     # ════ 中国（本土电商，给"卖到中国/国内对标"用）════
     "jd": {
         "name": "京东 JD", "region": "CN", "needs_proxy": None,
@@ -404,6 +431,7 @@ REGIONS = {
     "IN": ["amazon_in", "flipkart"],
     "AE": ["amazon_ae", "noon"],
     "AU": ["amazon_au"],
+    "AF": ["jumia_ng", "jumia_ke", "jumia_eg"],
     "CN": ["jd", "tmall", "taobao", "pinduoduo"],
     "Global": ["temu", "shein", "aliexpress", "alibaba"],
     "CN_B2B": ["1688", "alibaba"],
@@ -417,6 +445,7 @@ CONTINENTS = {
     "Asia": ["JP", "KR", "SEA", "IN", "CN"],
     "Middle East": ["AE"],
     "Oceania": ["AU"],
+    "Africa": ["AF"],
 }
 
 
