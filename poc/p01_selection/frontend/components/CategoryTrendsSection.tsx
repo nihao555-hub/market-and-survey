@@ -78,10 +78,10 @@ interface CategoryPoint {
 }
 
 function buildCategoryPoints(snapshots: DataSnapshot[]): CategoryPoint[] {
+  // Group by day for better aggregation of backfill data
   const byRun = new Map<string, DataSnapshot[]>();
   for (const s of snapshots) {
-    const key = s.capturedAt || s.id;
-    const runKey = s.capturedAt?.slice(0, 16) || key; // group by minute
+    const runKey = s.capturedAt?.slice(0, 10) || s.id;
     if (!byRun.has(runKey)) byRun.set(runKey, []);
     byRun.get(runKey)!.push(s);
   }
@@ -91,15 +91,25 @@ function buildCategoryPoints(snapshots: DataSnapshot[]): CategoryPoint[] {
     const categories: Record<string, { avgPrice: number; count: number; avgRating: number }> = {};
     for (const s of snaps) {
       const name = (s.payload?.category_name || s.payload?.category_name_en || "") as string;
-      const prods = (s.payload?.products || []) as Array<{ price?: number; rating?: number }>;
-      if (!name || prods.length === 0) continue;
-      const prices = prods.map((p) => p.price).filter((v): v is number => typeof v === "number" && v > 0);
-      const ratings = prods.map((p) => p.rating).filter((v): v is number => typeof v === "number" && v > 0);
-      categories[name] = {
-        avgPrice: prices.length ? +(prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2) : 0,
-        count: prods.length,
-        avgRating: ratings.length ? +(ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : 0,
-      };
+      if (!name) continue;
+      // Handle both backfill (direct fields) and live (products array) formats
+      if (typeof s.payload?.avg_price === "number" || typeof s.payload?.product_count === "number") {
+        categories[name] = {
+          avgPrice: (s.payload.avg_price as number) || 0,
+          count: (s.payload.product_count as number) || 0,
+          avgRating: (s.payload.avg_rating as number) || 0,
+        };
+      } else {
+        const prods = (s.payload?.products || []) as Array<{ price?: number; rating?: number }>;
+        if (prods.length === 0) continue;
+        const prices = prods.map((p) => p.price).filter((v): v is number => typeof v === "number" && v > 0);
+        const ratings = prods.map((p) => p.rating).filter((v): v is number => typeof v === "number" && v > 0);
+        categories[name] = {
+          avgPrice: prices.length ? +(prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2) : 0,
+          count: prods.length,
+          avgRating: ratings.length ? +(ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : 0,
+        };
+      }
     }
     if (Object.keys(categories).length > 0) {
       points.push({ time: fmtShortTime(time) || time, categories });
@@ -140,9 +150,11 @@ interface SocialPoint {
 }
 
 function buildSocialPoints(snapshots: DataSnapshot[]): SocialPoint[] {
+  // Group by day (for backfill) or by minute (for live data)
   const byRun = new Map<string, DataSnapshot[]>();
   for (const s of snapshots) {
-    const runKey = s.capturedAt?.slice(0, 16) || s.id;
+    // Use day-level grouping for better aggregation of backfill + live data
+    const runKey = s.capturedAt?.slice(0, 10) || s.id;
     if (!byRun.has(runKey)) byRun.set(runKey, []);
     byRun.get(runKey)!.push(s);
   }
@@ -153,8 +165,12 @@ function buildSocialPoints(snapshots: DataSnapshot[]): SocialPoint[] {
     for (const s of snaps) {
       const meta = SOCIAL_PLATFORMS.find((p) => p.source === s.source);
       if (!meta) continue;
+      // Use hot_count for backfill data, or items.length for live data
+      const hotCount = s.payload?.hot_count as number | undefined;
       const items = (s.payload?.items || []) as Array<{ heat?: number; views?: number }>;
-      platforms[meta.label] = items.length;
+      const val = hotCount ?? items.length;
+      // Accumulate across multiple snapshots at same time
+      platforms[meta.label] = (platforms[meta.label] || 0) + val;
     }
     if (Object.keys(platforms).length > 0) {
       points.push({ time: fmtShortTime(time) || time, platforms });
@@ -174,7 +190,7 @@ function buildSocialChartOption(points: SocialPoint[]): EChartsOption {
   return {
     legend: { data: platList, bottom: 0, textStyle: { fontSize: 11, color: "#888" }, type: "scroll" },
     xAxis: { type: "category", data: times, axisLabel: { fontSize: 10, color: "#999" }, axisLine: { lineStyle: { color: "#e5e5e5" } } },
-    yAxis: { type: "value", name: "热词数量", nameTextStyle: { fontSize: 11, color: "#999" }, axisLabel: { fontSize: 10, color: "#999" }, splitLine: { lineStyle: { color: "#f0f0f0" } } },
+    yAxis: { type: "value", name: "热度指数", nameTextStyle: { fontSize: 11, color: "#999" }, axisLabel: { fontSize: 10, color: "#999" }, splitLine: { lineStyle: { color: "#f0f0f0" } } },
     series: platList.map((plat, i) => ({
       name: plat,
       type: "line" as const,
@@ -357,7 +373,32 @@ interface CatCardData {
   top5: Array<{ title: string; price: number; sold: number; rating: number; image?: string }>;
 }
 
+/** Extract stats from a single snapshot — handles both live (products array) and backfill (direct fields) */
+function _extractStats(s: DataSnapshot): { avgPrice: number; count: number; avgRating: number } | null {
+  const p = s.payload;
+  if (!p) return null;
+  // Backfill format: direct avg_price / product_count / avg_rating
+  if (typeof p.avg_price === "number" || typeof p.product_count === "number") {
+    return {
+      avgPrice: (p.avg_price as number) || 0,
+      count: (p.product_count as number) || 0,
+      avgRating: (p.avg_rating as number) || 0,
+    };
+  }
+  // Live format: products array
+  const prods = (p.products || []) as Array<{ price?: number; rating?: number }>;
+  if (prods.length === 0) return null;
+  const prices = prods.map((pr) => pr.price).filter((v): v is number => typeof v === "number" && v > 0);
+  const ratings = prods.map((pr) => pr.rating).filter((v): v is number => typeof v === "number" && v > 0);
+  return {
+    avgPrice: prices.length ? +(prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2) : 0,
+    count: prods.length,
+    avgRating: ratings.length ? +(ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : 0,
+  };
+}
+
 function buildCatCards(latestSnaps: DataSnapshot[], historySnaps: DataSnapshot[]): CatCardData[] {
+  // Group history by time (minute granularity)
   const byRun = new Map<string, DataSnapshot[]>();
   for (const s of historySnaps) {
     const key = s.capturedAt?.slice(0, 16) || s.id;
@@ -366,31 +407,44 @@ function buildCatCards(latestSnaps: DataSnapshot[], historySnaps: DataSnapshot[]
   }
   const entries = [...byRun.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 
+  // Collect all category names from both latest and history
   const catNames = new Set<string>();
-  for (const s of latestSnaps) {
+  for (const s of [...latestSnaps, ...historySnaps]) {
     const name = (s.payload?.category_name || s.payload?.category_name_en || "") as string;
     if (name) catNames.add(name);
   }
 
   const cards: CatCardData[] = [];
   for (const catName of catNames) {
+    // Find latest snapshot with products array for Top 5
     const latestSnap = latestSnaps.find((s) => (s.payload?.category_name || s.payload?.category_name_en) === catName);
     const prods = (latestSnap?.payload?.products || []) as Array<{ title?: string; price?: number; sold_count?: number; rating?: number; image?: string }>;
-    const prices = prods.map((p) => p.price).filter((v): v is number => typeof v === "number" && v > 0);
-    const ratings = prods.map((p) => p.rating).filter((v): v is number => typeof v === "number" && v > 0);
 
+    // Get latest stats (from live data or most recent history)
+    const latestStats = latestSnap ? _extractStats(latestSnap) : null;
+    let latestAvgPrice = latestStats?.avgPrice ?? 0;
+    let latestCount = latestStats?.count ?? prods.length;
+    let latestAvgRating = latestStats?.avgRating ?? 0;
+
+    // Build history arrays
     const priceHistory: number[] = [];
     const countHistory: number[] = [];
     const ratingHistory: number[] = [];
     for (const [, snaps] of entries) {
       const s = snaps.find((snap) => (snap.payload?.category_name || snap.payload?.category_name_en) === catName);
       if (!s) continue;
-      const ps = (s.payload?.products || []) as Array<{ price?: number; rating?: number }>;
-      const pr = ps.map((p) => p.price).filter((v): v is number => typeof v === "number" && v > 0);
-      const rt = ps.map((p) => p.rating).filter((v): v is number => typeof v === "number" && v > 0);
-      priceHistory.push(pr.length ? +(pr.reduce((a, b) => a + b, 0) / pr.length).toFixed(2) : 0);
-      countHistory.push(ps.length);
-      ratingHistory.push(rt.length ? +(rt.reduce((a, b) => a + b, 0) / rt.length).toFixed(1) : 0);
+      const stats = _extractStats(s);
+      if (!stats) continue;
+      priceHistory.push(stats.avgPrice);
+      countHistory.push(stats.count);
+      ratingHistory.push(stats.avgRating);
+    }
+
+    // If no latest stats but we have history, use the last history point
+    if (!latestStats && priceHistory.length > 0) {
+      latestAvgPrice = priceHistory[priceHistory.length - 1];
+      latestCount = countHistory[countHistory.length - 1];
+      latestAvgRating = ratingHistory[ratingHistory.length - 1];
     }
 
     const top5 = prods
@@ -407,9 +461,9 @@ function buildCatCards(latestSnaps: DataSnapshot[], historySnaps: DataSnapshot[]
 
     cards.push({
       name: catName,
-      latestAvgPrice: prices.length ? +(prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2) : 0,
-      latestCount: prods.length,
-      latestAvgRating: ratings.length ? +(ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : 0,
+      latestAvgPrice,
+      latestCount,
+      latestAvgRating,
       priceHistory,
       countHistory,
       ratingHistory,
@@ -563,26 +617,44 @@ export function CategoryTrendsSection() {
 
   const load = useCallback(async () => {
     try {
-      const [status, catSnaps, socialSnaps, catHistory, socialHistory, gSnaps] = await Promise.all([
+      // Fetch social data by individual source for better coverage
+      const [status, catSnaps, catHistory, gSnaps, ...socialResults] = await Promise.all([
         fetchDailyRefreshStatus(),
         fetchDataSnapshots({ source: "category_rank", limit: 40 }),
-        fetchDataSnapshots({ term: SOCIAL_TREND_TERM, limit: 50 }),
-        fetchAllSnapshots({ source: "category_rank", limit: 300 }),
-        fetchAllSnapshots({ term: SOCIAL_TREND_TERM, limit: 300 }),
-        fetchAllSnapshots({ source: "google_trends", limit: 300 }),
+        fetchAllSnapshots({ source: "category_rank", limit: 2000 }),
+        fetchAllSnapshots({ source: "google_trends", limit: 500 }),
+        // Fetch each social platform separately
+        ...SOCIAL_PLATFORMS.map((p) => fetchAllSnapshots({ source: p.source, limit: 500 })),
       ]);
       setLastUpdate(status?.finishedAt ?? null);
       setTierOk(status?.tier2ChannelOk ?? false);
       setLatestCats(catSnaps);
-      setLatestSocial(socialSnaps);
       setHistoryCats(catHistory);
-      setHistorySocial(socialHistory);
       setGoogleSnaps(gSnaps);
+      // Merge all social platform snapshots
+      const allSocial = (socialResults as DataSnapshot[][]).flat();
+      setLatestSocial(allSocial.filter((s) => !s.payload?.backfill));
+      setHistorySocial(allSocial);
     } catch { /* silent */ }
     finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Auto-backfill if no historical data exists after initial load
+  const autoBackfillDone = React.useRef(false);
+  useEffect(() => {
+    if (loading || autoBackfillDone.current || backfilling) return;
+    // Check if we have very little history (< 3 days of data)
+    const uniqueDates = new Set([
+      ...historyCats.map((s) => s.capturedAt?.slice(0, 10)),
+      ...historySocial.map((s) => s.capturedAt?.slice(0, 10)),
+    ]);
+    if (uniqueDates.size < 3 && latestCats.length > 0) {
+      autoBackfillDone.current = true;
+      handleBackfillRef.current();
+    }
+  }, [loading, historyCats, historySocial, latestCats, backfilling]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -594,15 +666,18 @@ export function CategoryTrendsSection() {
     }
   };
 
-  const handleBackfill = async () => {
+  const handleBackfill = React.useCallback(async () => {
     setBackfilling(true);
     try {
       await backfillGoogleTrends();
-      setTimeout(() => { load(); setBackfilling(false); }, 8000);
+      // Wait for backfill to complete in background, then reload
+      setTimeout(() => { load(); setBackfilling(false); }, 15000);
     } catch {
       setBackfilling(false);
     }
-  };
+  }, [load]);
+  const handleBackfillRef = React.useRef(handleBackfill);
+  handleBackfillRef.current = handleBackfill;
 
   // Build chart data
   const socialPoints = React.useMemo(() => buildSocialPoints(historySocial), [historySocial]);
@@ -610,8 +685,8 @@ export function CategoryTrendsSection() {
   const socialChartOpt = React.useMemo(() => buildSocialChartOption(socialPoints), [socialPoints]);
   const googleChartOpt = React.useMemo(() => buildGoogleTrendChartOption(googleItems), [googleItems]);
 
-  const hasData = latestCats.length > 0 || latestSocial.length > 0 || googleItems.length > 0;
-  const hasHistory = socialPoints.length > 1 || googleItems.length > 0;
+  const hasData = latestCats.length > 0 || latestSocial.length > 0 || googleItems.length > 0 || historyCats.length > 0 || historySocial.length > 0;
+  const hasHistory = socialPoints.length > 1 || googleItems.length > 0 || historyCats.length > 1;
 
   return (
     <section className="mt-6">
