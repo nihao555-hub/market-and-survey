@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: selectpilot-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: "8001"
+      - key: EMBEDDED_REDIS
+        value: "1"
+      - key: DAILY_REFRESH_ENABLED
+        value: "1"
+      - key: BACKEND_AUTH_REQUIRED
+        value: "0"
+      - key: TIKHUB_API_KEY
+        sync: false
+      - key: DEEPSEEK_API_KEY
+        sync: false
+    healthCheckPath: /healthz
