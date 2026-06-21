@@ -150,11 +150,35 @@ def _resolve_db_url() -> tuple[str, bool]:
 DB_URL, _IS_SQLITE = _resolve_db_url()
 _engine_kwargs: dict = {"future": True}
 if not _IS_SQLITE:
-    # 托管 Postgres（Supabase）：连接易被回收，开 pre_ping + 适度连接池。
+    # 托管 Postgres（Render/Supabase）：连接易被回收，开 pre_ping + 适度连接池。
     _engine_kwargs.update(pool_pre_ping=True, pool_size=5, max_overflow=10,
                           pool_recycle=300)
-_engine = create_engine(DB_URL, **_engine_kwargs)
-Base.metadata.create_all(_engine)
+
+
+def _create_engine_with_retry(url: str, kwargs: dict, max_retries: int = 3):
+    """创建引擎并建表，PostgreSQL 首次连接可能因 DNS 延迟失败，自动重试。"""
+    import time
+    engine = create_engine(url, **kwargs)
+    for attempt in range(max_retries):
+        try:
+            Base.metadata.create_all(engine)
+            return engine
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
+            else:
+                # PostgreSQL 不可达时回落到 SQLite
+                import logging
+                logging.getLogger(__name__).warning(
+                    f"PostgreSQL 连接失败 ({e})，回落到 SQLite")
+                fallback_url = f"sqlite:///{DB_PATH}"
+                engine = create_engine(fallback_url, future=True)
+                Base.metadata.create_all(engine)
+                return engine
+    return engine
+
+
+_engine = _create_engine_with_retry(DB_URL, _engine_kwargs)
 SessionLocal = sessionmaker(bind=_engine, future=True)
 
 # 轻量迁移：给已存在的旧 threads 表补新增列。仅 SQLite 需要（PRAGMA/ALTER 幂等）；
