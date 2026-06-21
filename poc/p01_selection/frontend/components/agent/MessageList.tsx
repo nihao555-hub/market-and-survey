@@ -19,7 +19,7 @@ import { Message } from "@/components/ai-elements/message";
 import { ThinkingStepsDisplay } from "./ThinkingStepsDisplay";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 import { ReportArtifacts } from "./ReportArtifacts";
-import { AlertTriangle, Compass } from "lucide-react";
+import { AlertTriangle, Compass, Loader2 } from "lucide-react";
 import type { UIMessage, ReportArtifacts as ReportArtifactsData } from "@/lib/agent-types";
 import { AgentChart, chartDataToOption, type ChartData } from "@/components/charts/AgentChart";
 
@@ -86,10 +86,30 @@ function MessageBubble({ message, isStreaming }: { message: UIMessage; isStreami
   );
 }
 
+/* ─── ThinkingIndicator: shown when streaming starts but no content yet ─── */
+function ThinkingIndicator() {
+  return (
+    <Message from="assistant" className="max-w-full">
+      <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[4px] border border-[var(--gray-5)] bg-[var(--gray-1)]">
+        <Compass className="h-4 w-4 text-[var(--gray-11)]" strokeWidth={1.75} />
+      </div>
+      <div className="flex items-center gap-2 py-1">
+        <Loader2 className="h-4 w-4 animate-spin text-[var(--gray-8)]" />
+        <span className="text-[13px] text-[var(--gray-9)]">正在思考中…</span>
+      </div>
+    </Message>
+  );
+}
+
 export function MessageList({ threadId }: { threadId: string }) {
   const messages = useAtomValue(messagesAtomFamily(threadId));
   const isStreaming = useAtomValue(isStreamingAtomFamily(threadId));
   const error = useAtomValue(errorAtomFamily(threadId));
+
+  const hasContent = messages.some(
+    (m) => m.role === "assistant" && m.parts.some((p) => p.type === "text" && (p as { text?: string }).text)
+  );
+  const showThinking = isStreaming && !hasContent;
 
   return (
     <Conversation className="h-full">
@@ -98,6 +118,7 @@ export function MessageList({ threadId }: { threadId: string }) {
         {messages.map((m) => (
           <MessageBubble key={m.id} message={m} isStreaming={isStreaming} />
         ))}
+        {showThinking && <ThinkingIndicator />}
         {error && (
           <div className="flex items-center gap-2 rounded-[4px] border border-red-200 bg-red-50 px-3 py-2 text-[14px] text-red-700">
             <AlertTriangle className="h-4 w-4 flex-shrink-0" />

@@ -24,13 +24,13 @@ export function PageHeader({
     <div className="mb-6 flex items-start justify-between gap-4">
       <div className="flex items-start gap-3">
         {icon && (
-          <span className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-brand/10 text-brand">
+          <span className="mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--gray-4)] text-[var(--gray-12)]">
             {icon}
           </span>
         )}
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-tight text-ink">{title}</h1>
-          {subtitle && <p className="mt-1 text-sm text-ink-subtle">{subtitle}</p>}
+          <h1 className="text-xl font-semibold tracking-tight text-[var(--gray-12)]">{title}</h1>
+          {subtitle && <p className="mt-1 text-sm text-[var(--gray-9)]">{subtitle}</p>}
         </div>
       </div>
       {actions && <div className="flex flex-shrink-0 items-center gap-2">{actions}</div>}
@@ -55,14 +55,14 @@ export function Panel({
   bodyClassName?: string;
 }) {
   return (
-    <section className={cn("rounded-2xl border border-hairline bg-white", className)}>
+    <section className={cn("rounded-2xl border border-[var(--gray-5)] bg-[var(--gray-1)]", className)}>
       {title && (
-        <div className="flex items-center justify-between border-b border-hairline px-5 py-3.5">
-          <h2 className="text-sm font-semibold text-ink">{title}</h2>
+        <div className="flex items-center justify-between border-b border-[var(--gray-5)] px-5 py-3.5">
+          <h2 className="text-sm font-semibold text-[var(--gray-12)]">{title}</h2>
           {action && (
             <button
               onClick={onAction}
-              className="inline-flex items-center gap-0.5 text-xs text-brand transition-colors hover:text-brand-hover"
+              className="inline-flex items-center gap-0.5 text-xs text-[var(--gray-12)] transition-colors hover:text-[var(--gray-11)]"
             >
               {action}
               <ChevronRight className="h-3.5 w-3.5" />
@@ -89,12 +89,12 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-1 text-ink-tertiary">
+      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--gray-3)] text-[var(--gray-7)]">
         {icon}
       </span>
       <div>
-        <div className="text-sm font-medium text-ink">{title}</div>
-        {hint && <div className="mt-1 max-w-sm text-xs text-ink-subtle">{hint}</div>}
+        <div className="text-sm font-medium text-[var(--gray-12)]">{title}</div>
+        {hint && <div className="mt-1 max-w-sm text-xs text-[var(--gray-9)]">{hint}</div>}
       </div>
       {action}
     </div>
@@ -107,7 +107,7 @@ export function StatTile({
   value,
   delta,
   icon,
-  tone = "text-brand",
+  tone = "text-[var(--gray-12)]",
 }: {
   label: string;
   value: string;
@@ -116,14 +116,14 @@ export function StatTile({
   tone?: string;
 }) {
   return (
-    <div className="rounded-xl border border-hairline bg-white p-4">
+    <div className="rounded-xl border border-[var(--gray-5)] bg-[var(--gray-1)] p-4">
       <div className="flex items-center justify-between">
-        <span className="text-xs text-ink-subtle">{label}</span>
-        <span className={cn("flex h-7 w-7 items-center justify-center rounded-lg bg-surface-1", tone)}>
+        <span className="text-xs text-[var(--gray-9)]">{label}</span>
+        <span className={cn("flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--gray-3)]", tone)}>
           {icon}
         </span>
       </div>
-      <div className="mt-2 text-xl font-semibold text-ink">{value}</div>
+      <div className="mt-2 text-xl font-semibold text-[var(--gray-12)]">{value}</div>
       {delta && <div className={cn("mt-0.5 text-xs", tone)}>{delta}</div>}
     </div>
   );
@@ -144,11 +144,11 @@ const BTN_SIZE: Record<ButtonSize, string> = {
   md: "px-3.5 py-2 text-sm",
 };
 const BTN_VARIANT: Record<ButtonVariant, string> = {
-  primary: "bg-brand text-white shadow-sm hover:bg-brand-hover",
-  secondary: "border border-hairline bg-white text-ink-muted hover:bg-surface-1 hover:text-ink",
-  ghost: "text-ink-muted hover:bg-surface-1 hover:text-ink",
+  primary: "bg-[var(--gray-12)] text-white shadow-sm hover:bg-[var(--gray-11)]",
+  secondary: "border border-[var(--gray-5)] bg-[var(--gray-1)] text-[var(--gray-8)] hover:bg-[var(--gray-3)] hover:text-[var(--gray-12)]",
+  ghost: "text-[var(--gray-8)] hover:bg-[var(--gray-3)] hover:text-[var(--gray-12)]",
   danger: "bg-danger text-white shadow-sm hover:bg-danger/90",
-  outline: "border border-brand/30 bg-white text-brand hover:bg-brand/5",
+  outline: "border border-[var(--gray-12)]/30 bg-[var(--gray-1)] text-[var(--gray-12)] hover:bg-[var(--gray-3)]",
 };
 
 export function Button({
@@ -182,10 +182,10 @@ export type StatusKind = "running" | "done" | "pending" | "error" | "info" | "ne
 const STATUS_STYLE: Record<StatusKind, { box: string; dot: string }> = {
   running: { box: "bg-info/10 text-info", dot: "bg-info animate-pulse" },
   done: { box: "bg-success/10 text-success", dot: "bg-success" },
-  pending: { box: "bg-surface-2 text-ink-subtle", dot: "bg-ink-tertiary" },
+  pending: { box: "bg-[var(--gray-4)] text-[var(--gray-9)]", dot: "bg-ink-tertiary" },
   error: { box: "bg-danger/10 text-danger", dot: "bg-danger" },
   info: { box: "bg-info/10 text-info", dot: "bg-info" },
-  neutral: { box: "bg-surface-2 text-ink-subtle", dot: "bg-ink-tertiary" },
+  neutral: { box: "bg-[var(--gray-4)] text-[var(--gray-9)]", dot: "bg-ink-tertiary" },
 };
 
 export function StatusBadge({ status, label }: { status: StatusKind; label: string }) {
@@ -218,7 +218,7 @@ export function FilterTabs<T extends string>({
             onClick={() => onChange(t.key)}
             className={cn(
               "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
-              active ? "bg-brand/10 font-medium text-brand" : "text-ink-muted hover:bg-surface-1 hover:text-ink"
+              active ? "bg-[var(--gray-4)] font-medium text-[var(--gray-12)]" : "text-[var(--gray-8)] hover:bg-[var(--gray-3)] hover:text-[var(--gray-12)]"
             )}
           >
             {t.label}
@@ -226,7 +226,7 @@ export function FilterTabs<T extends string>({
               <span
                 className={cn(
                   "rounded-full px-1.5 text-[11px]",
-                  active ? "bg-brand/15 text-brand" : "bg-surface-2 text-ink-subtle"
+                  active ? "bg-[var(--gray-12)]/15 text-[var(--gray-12)]" : "bg-[var(--gray-4)] text-[var(--gray-9)]"
                 )}
               >
                 {t.count}
@@ -258,12 +258,12 @@ export function Switch({
       onClick={() => onChange(!checked)}
       className={cn(
         "relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors disabled:opacity-50",
-        checked ? "bg-brand" : "bg-surface-3"
+        checked ? "bg-[var(--gray-12)]" : "bg-[var(--gray-3)]-3"
       )}
     >
       <span
         className={cn(
-          "inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform",
+          "inline-block h-4 w-4 transform rounded-full bg-[var(--gray-1)] shadow transition-transform",
           checked ? "translate-x-4" : "translate-x-0.5"
         )}
       />
@@ -273,7 +273,7 @@ export function Switch({
 
 /** 骨架屏占位 */
 export function Skeleton({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded-md bg-surface-2", className)} />;
+  return <div className={cn("animate-pulse rounded-md bg-[var(--gray-4)]", className)} />;
 }
 
 /** 通用数据表格（列配置 + 行数据 + 行点击 + 空态） */
@@ -308,7 +308,7 @@ export function DataTable<T>({
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="bg-surface-1 text-[11px] uppercase tracking-wide text-ink-subtle">
+          <tr className="bg-[var(--gray-3)] text-[11px] uppercase tracking-wide text-[var(--gray-9)]">
             {columns.map((c, i) => (
               <th
                 key={c.key}
@@ -331,8 +331,8 @@ export function DataTable<T>({
               key={getRowKey(row)}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
               className={cn(
-                "border-t border-hairline transition-colors",
-                onRowClick && "cursor-pointer hover:bg-surface-1"
+                "border-t border-[var(--gray-5)] transition-colors",
+                onRowClick && "cursor-pointer hover:bg-[var(--gray-3)]"
               )}
             >
               {columns.map((c, i) => (

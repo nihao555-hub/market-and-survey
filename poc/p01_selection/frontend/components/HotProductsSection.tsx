@@ -59,9 +59,9 @@ function fmtInt(n?: number | null): string {
 
 function rankBadge(i: number): string {
   if (i === 0) return "bg-amber-400 text-white";
-  if (i === 1) return "bg-slate-400 text-white";
+  if (i === 1) return "bg-[var(--gray-8)] text-white";
   if (i === 2) return "bg-amber-700 text-white";
-  return "bg-white/90 text-ink";
+  return "bg-[var(--gray-1)]/90 text-[var(--gray-12)]";
 }
 
 export function HotProductsSection() {
@@ -105,18 +105,18 @@ export function HotProductsSection() {
     <section className="mt-6">
       <div className="mb-3 flex items-end justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-ink">
-            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-brand/10 text-brand">
+          <h2 className="flex items-center gap-2 text-base font-semibold text-[var(--gray-12)]">
+            <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-[var(--gray-4)] text-[var(--gray-12)]">
               <Flame className="h-4 w-4" />
             </span>
             实时社媒选品榜 · TikTok Shop 全球爆款
           </h2>
-          <p className="mt-1 text-xs text-ink-subtle">
+          <p className="mt-1 text-xs text-[var(--gray-9)]">
             来自 TikHub 的 TikTok Shop 海外实时商品，按「估算销售额 = 价格 × 销量」排序，辅助选品决策（销量 / 评分为平台公开数据，销售额为估算）。
           </p>
         </div>
         {scanned > 0 && (
-          <span className="hidden flex-shrink-0 items-center gap-1 rounded-full bg-surface-2 px-2.5 py-1 text-[11px] text-ink-subtle sm:inline-flex">
+          <span className="hidden flex-shrink-0 items-center gap-1 rounded-full bg-[var(--gray-4)] px-2.5 py-1 text-[11px] text-[var(--gray-9)] sm:inline-flex">
             <TrendingUp className="h-3 w-3" /> 已扫描 {scanned} 件在售
           </span>
         )}
@@ -125,12 +125,12 @@ export function HotProductsSection() {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
         {products === null
           ? Array.from({ length: TOP_N }).map((_, i) => (
-              <div key={i} className="overflow-hidden rounded-2xl border border-hairline bg-white">
-                <div className="aspect-square w-full animate-pulse bg-surface-2" />
+              <div key={i} className="overflow-hidden rounded-2xl border border-[var(--gray-5)] bg-[var(--gray-1)]">
+                <div className="aspect-square w-full animate-pulse bg-[var(--gray-4)]" />
                 <div className="space-y-2 p-3">
-                  <div className="h-3 w-full animate-pulse rounded bg-surface-2" />
-                  <div className="h-8 w-2/3 animate-pulse rounded bg-surface-2" />
-                  <div className="h-3 w-1/2 animate-pulse rounded bg-surface-2" />
+                  <div className="h-3 w-full animate-pulse rounded bg-[var(--gray-4)]" />
+                  <div className="h-8 w-2/3 animate-pulse rounded bg-[var(--gray-4)]" />
+                  <div className="h-3 w-1/2 animate-pulse rounded bg-[var(--gray-4)]" />
                 </div>
               </div>
             ))
@@ -142,10 +142,10 @@ export function HotProductsSection() {
                   type="button"
                   key={p.product_id}
                   onClick={() => setSelectedProduct({ ...p, _source: p._term })}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-hairline bg-white text-left transition-all hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md"
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-[var(--gray-5)] bg-[var(--gray-1)] text-left transition-all hover:-translate-y-0.5 hover:border-[var(--gray-6)] hover:shadow-md"
                 >
                   {/* 商品图 */}
-                  <div className="relative aspect-square w-full overflow-hidden bg-surface-2">
+                  <div className="relative aspect-square w-full overflow-hidden bg-[var(--gray-4)]">
                     {p.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -155,7 +155,7 @@ export function HotProductsSection() {
                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center text-ink-tertiary">
+                      <div className="flex h-full w-full items-center justify-center text-[var(--gray-7)]">
                         <ShoppingCart className="h-8 w-8" />
                       </div>
                     )}
@@ -188,26 +188,26 @@ export function HotProductsSection() {
 
                   {/* 信息区 */}
                   <div className="flex flex-1 flex-col p-3">
-                    <div className="line-clamp-2 min-h-[32px] text-[12px] font-medium leading-tight text-ink">
+                    <div className="line-clamp-2 min-h-[32px] text-[12px] font-medium leading-tight text-[var(--gray-12)]">
                       {p.title}
                     </div>
 
                     {/* 估算销售额：选品头条指标 */}
-                    <div className="mt-2 rounded-lg bg-brand/5 px-2.5 py-1.5">
-                      <div className="flex items-center gap-1 text-[10px] text-ink-subtle">
-                        <TrendingUp className="h-3 w-3 text-brand" /> 估算销售额
+                    <div className="mt-2 rounded-lg bg-[var(--gray-3)] px-2.5 py-1.5">
+                      <div className="flex items-center gap-1 text-[10px] text-[var(--gray-9)]">
+                        <TrendingUp className="h-3 w-3 text-[var(--gray-12)]" /> 估算销售额
                       </div>
-                      <div className="text-sm font-bold text-brand">{fmtMoney(p._gmv, sym)}</div>
+                      <div className="text-sm font-bold text-[var(--gray-12)]">{fmtMoney(p._gmv, sym)}</div>
                     </div>
 
                     {/* 价格 + 原价 */}
                     <div className="mt-2 flex items-baseline gap-1.5">
-                      <span className="text-sm font-semibold text-ink">
+                      <span className="text-sm font-semibold text-[var(--gray-12)]">
                         {sym}
                         {p.price}
                       </span>
                       {p.original_price ? (
-                        <span className="text-[11px] text-ink-tertiary line-through">
+                        <span className="text-[11px] text-[var(--gray-7)] line-through">
                           {sym}
                           {p.original_price}
                         </span>
@@ -215,7 +215,7 @@ export function HotProductsSection() {
                     </div>
 
                     {/* 销量 / 评分 / 评论 / SKU */}
-                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-ink-subtle">
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-[var(--gray-9)]">
                       <span className="inline-flex items-center gap-0.5">
                         <ShoppingCart className="h-3 w-3" /> 已售 {fmtInt(p.sold_count)}
                       </span>
@@ -223,15 +223,15 @@ export function HotProductsSection() {
                         <span className="inline-flex items-center gap-0.5">
                           <Star className="h-3 w-3 fill-current text-amber-500" />
                           {p.rating}
-                          {p.review_count ? <span className="text-ink-tertiary">({fmtInt(p.review_count)})</span> : null}
+                          {p.review_count ? <span className="text-[var(--gray-7)]">({fmtInt(p.review_count)})</span> : null}
                         </span>
                       ) : null}
                       {p.sku_count ? <span>{p.sku_count} 规格</span> : null}
                     </div>
 
                     {/* 店铺 + 关联关键词 */}
-                    <div className="mt-2 flex items-center justify-between gap-2 border-t border-hairline pt-2">
-                      <span className="inline-flex min-w-0 items-center gap-1 text-[11px] text-ink-muted">
+                    <div className="mt-2 flex items-center justify-between gap-2 border-t border-[var(--gray-5)] pt-2">
+                      <span className="inline-flex min-w-0 items-center gap-1 text-[11px] text-[var(--gray-8)]">
                         {p.shop_logo ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={p.shop_logo} alt="" className="h-4 w-4 flex-shrink-0 rounded-full object-cover" />
@@ -240,7 +240,7 @@ export function HotProductsSection() {
                         )}
                         <span className="truncate">{p.shop_name || "—"}</span>
                       </span>
-                      <span className="inline-flex flex-shrink-0 items-center gap-0.5 rounded bg-surface-2 px-1.5 py-0.5 text-[10px] text-ink-subtle">
+                      <span className="inline-flex flex-shrink-0 items-center gap-0.5 rounded bg-[var(--gray-4)] px-1.5 py-0.5 text-[10px] text-[var(--gray-9)]">
                         <Tag className="h-2.5 w-2.5" />
                         {p._term}
                       </span>

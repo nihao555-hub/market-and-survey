@@ -217,23 +217,23 @@ export function SocialTrendsPage() {
             <StatTile
               label="趋势通道"
               value={channelOk ? "已就绪" : "未就绪"}
-              tone={channelOk ? "text-success" : "text-ink-subtle"}
+              tone={channelOk ? "text-success" : "text-[var(--gray-9)]"}
               icon={<Flame className="h-4 w-4" />}
             />
           </div>
 
           {!channelOk && (
-            <div className="mb-5 rounded-[8px] border border-hairline bg-surface-1 px-3 py-2 text-xs text-ink-subtle">
-              社媒趋势通道（TikHub）需配置 <span className="font-medium text-ink-muted">TIKHUB_API_KEY</span>；通道未就绪时如实标注，<span className="font-medium text-ink-muted">不编造数据</span>，接入后自动补齐。
+            <div className="mb-5 rounded-[8px] border border-[var(--gray-5)] bg-[var(--gray-3)] px-3 py-2 text-xs text-[var(--gray-9)]">
+              社媒趋势通道（TikHub）需配置 <span className="font-medium text-[var(--gray-8)]">TIKHUB_API_KEY</span>；通道未就绪时如实标注，<span className="font-medium text-[var(--gray-8)]">不编造数据</span>，接入后自动补齐。
             </div>
           )}
 
           {/* ═══ Trend Charts (hero section) ═══ */}
           {hasHistory && (
-            <section className="mb-6 rounded-[8px] border border-hairline bg-white overflow-hidden">
+            <section className="mb-6 rounded-[8px] border border-[var(--gray-5)] bg-[var(--gray-1)] overflow-hidden">
               <div className="flex items-center justify-between border-b border-surface-3 px-5 py-3">
-                <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
-                  <TrendingUp className="h-4 w-4 text-ink-subtle" />
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--gray-12)]">
+                  <TrendingUp className="h-4 w-4 text-[var(--gray-9)]" />
                   平台趋势走势
                 </h2>
                 <div className="flex items-center gap-1">
@@ -241,7 +241,7 @@ export function SocialTrendsPage() {
                     onClick={() => setChartMode("count")}
                     className={cn(
                       "rounded-[4px] px-2.5 py-1 text-[12px] font-medium transition-colors",
-                      chartMode === "count" ? "bg-ink text-white" : "text-ink-subtle hover:bg-surface-1 hover:text-ink"
+                      chartMode === "count" ? "bg-ink text-white" : "text-[var(--gray-9)] hover:bg-[var(--gray-3)] hover:text-[var(--gray-12)]"
                     )}
                   >
                     热词数量
@@ -250,7 +250,7 @@ export function SocialTrendsPage() {
                     onClick={() => setChartMode("heat")}
                     className={cn(
                       "rounded-[4px] px-2.5 py-1 text-[12px] font-medium transition-colors",
-                      chartMode === "heat" ? "bg-ink text-white" : "text-ink-subtle hover:bg-surface-1 hover:text-ink"
+                      chartMode === "heat" ? "bg-ink text-white" : "text-[var(--gray-9)] hover:bg-[var(--gray-3)] hover:text-[var(--gray-12)]"
                     )}
                   >
                     Top1 热度
@@ -280,12 +280,12 @@ export function SocialTrendsPage() {
                 const info = statusInfo(snap?.status ?? "empty");
                 const items: TrendItem[] = Array.isArray(snap?.payload?.items) ? snap!.payload.items : [];
                 return (
-                  <div key={p.source} className="rounded-[8px] border border-hairline bg-white p-4">
+                  <div key={p.source} className="rounded-[8px] border border-[var(--gray-5)] bg-[var(--gray-1)] p-4">
                     <div className="mb-3 flex items-center justify-between gap-2">
-                      <span className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
+                      <span className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--gray-12)]">
                         <span className={p.accent}>{p.icon}</span>{p.label}
                         {items.length > 0 && (
-                          <span className="rounded-full bg-surface-2 px-1.5 py-0.5 text-[10px] font-normal text-ink-subtle">
+                          <span className="rounded-full bg-[var(--gray-4)] px-1.5 py-0.5 text-[10px] font-normal text-[var(--gray-9)]">
                             {items.length} 词
                           </span>
                         )}
@@ -297,16 +297,16 @@ export function SocialTrendsPage() {
                         {items.slice(0, 15).map((it, i) => {
                           const heat = fmtHeat(it.heat) ?? fmtHeat(it.views);
                           return (
-                            <li key={i} className="flex items-center gap-2.5 rounded-[4px] bg-surface-1 px-2.5 py-1.5">
+                            <li key={i} className="flex items-center gap-2.5 rounded-[4px] bg-[var(--gray-3)] px-2.5 py-1.5">
                               <span className={cn(
                                 "flex h-5 w-5 flex-shrink-0 items-center justify-center rounded text-[11px] font-semibold",
-                                i < 3 ? "bg-brand/15 text-brand" : "bg-surface-2 text-ink-subtle"
+                                i < 3 ? "bg-[var(--gray-12)]/15 text-[var(--gray-12)]" : "bg-[var(--gray-4)] text-[var(--gray-9)]"
                               )}>
                                 {i + 1}
                               </span>
-                              <span className="min-w-0 flex-1 truncate text-xs text-ink">{it.keyword}</span>
+                              <span className="min-w-0 flex-1 truncate text-xs text-[var(--gray-12)]">{it.keyword}</span>
                               {heat && (
-                                <span className="inline-flex flex-shrink-0 items-center gap-0.5 text-[10px] text-ink-subtle">
+                                <span className="inline-flex flex-shrink-0 items-center gap-0.5 text-[10px] text-[var(--gray-9)]">
                                   <Flame className="h-2.5 w-2.5 text-orange-400" />{heat}
                                 </span>
                               )}
@@ -315,7 +315,7 @@ export function SocialTrendsPage() {
                         })}
                       </ol>
                     ) : (
-                      <div className="rounded-[4px] bg-surface-1 px-3 py-6 text-center text-xs text-ink-subtle">
+                      <div className="rounded-[4px] bg-[var(--gray-3)] px-3 py-6 text-center text-xs text-[var(--gray-9)]">
                         {snap?.summary || "暂无数据"}
                       </div>
                     )}

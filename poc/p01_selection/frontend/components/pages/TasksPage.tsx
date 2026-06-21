@@ -58,10 +58,10 @@ export function TasksPage() {
   const columns: Column<ThreadSummary>[] = [
     {
       key: "name", header: "任务名称",
-      render: (t) => <span className="font-medium text-ink">{parseTitle(t.title).name}</span>,
+      render: (t) => <span className="font-medium text-[var(--gray-12)]">{parseTitle(t.title).name}</span>,
     },
-    { key: "market", header: "目标市场", render: (t) => <span className="text-ink-muted">{parseTitle(t.title).market}</span> },
-    { key: "time", header: "创建时间", render: (t) => <span className="text-ink-subtle">{formatDate(t.updatedAt)}</span> },
+    { key: "market", header: "目标市场", render: (t) => <span className="text-[var(--gray-8)]">{parseTitle(t.title).market}</span> },
+    { key: "time", header: "创建时间", render: (t) => <span className="text-[var(--gray-9)]">{formatDate(t.updatedAt)}</span> },
     {
       key: "status", header: "进度状态",
       render: (t) => (t.activeStreamId
@@ -76,8 +76,8 @@ export function TasksPage() {
             onClick={() => onFav(t)}
             title={t.isFavorite ? "取消收藏" : "收藏"}
             className={cn(
-              "rounded p-1.5 transition-colors hover:bg-surface-2",
-              t.isFavorite ? "text-brand" : "text-ink-subtle hover:text-ink"
+              "rounded p-1.5 transition-colors hover:bg-[var(--gray-4)]",
+              t.isFavorite ? "text-[var(--gray-12)]" : "text-[var(--gray-9)] hover:text-[var(--gray-12)]"
             )}
           >
             <Star className={cn("h-4 w-4", t.isFavorite && "fill-current")} />
@@ -85,7 +85,7 @@ export function TasksPage() {
           <button
             onClick={() => onDelete(t)}
             title="移入回收站"
-            className="rounded p-1.5 text-ink-subtle transition-colors hover:bg-danger/10 hover:text-danger"
+            className="rounded p-1.5 text-[var(--gray-9)] transition-colors hover:bg-danger/10 hover:text-danger"
           >
             <Trash2 className="h-4 w-4" />
           </button>

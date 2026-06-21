@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 function Favicon({ host }: { host: string }) {
   const [failed, setFailed] = React.useState(false);
   if (failed || !host) {
-    return <Globe className="h-3.5 w-3.5 text-ink-subtle" />;
+    return <Globe className="h-3.5 w-3.5 text-[var(--gray-9)]" />;
   }
   return (
     // eslint-disable-next-line @next/next/no-img-element
@@ -70,11 +70,11 @@ function LinkChip({ url }: { url: string }) {
       target="_blank"
       rel="noreferrer"
       title={url}
-      className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-hairline bg-white px-2 py-1 text-xs text-ink-muted transition-colors hover:border-hairline-strong hover:text-ink"
+      className="inline-flex max-w-full items-center gap-1.5 rounded-md border border-[var(--gray-5)] bg-[var(--gray-1)] px-2 py-1 text-xs text-[var(--gray-8)] transition-colors hover:border-[var(--gray-5)]-strong hover:text-[var(--gray-12)]"
     >
       <Favicon host={host} />
       <span className="truncate">{label}</span>
-      <ExternalLink className="h-3 w-3 flex-shrink-0 text-ink-subtle" />
+      <ExternalLink className="h-3 w-3 flex-shrink-0 text-[var(--gray-9)]" />
     </a>
   );
 }
@@ -128,32 +128,32 @@ function ProductCards({ items }: { items: Array<Record<string, unknown>> }) {
         return (
           <div
             key={i}
-            className="flex items-start gap-2 rounded-md border border-hairline bg-surface-1 px-2.5 py-1.5"
+            className="flex items-start gap-2 rounded-md border border-[var(--gray-5)] bg-[var(--gray-3)] px-2.5 py-1.5"
           >
             {img ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={img}
                 alt=""
-                className="mt-0.5 h-9 w-9 flex-shrink-0 rounded border border-hairline object-cover"
+                className="mt-0.5 h-9 w-9 flex-shrink-0 rounded border border-[var(--gray-5)] object-cover"
                 onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
               />
             ) : (
-              <Package className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-ink-subtle" />
+              <Package className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-[var(--gray-9)]" />
             )}
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
-                <span className="truncate text-xs text-ink" title={title}>
+                <span className="truncate text-xs text-[var(--gray-12)]" title={title}>
                   {title}
                 </span>
                 {sponsored && (
-                  <span className="flex-shrink-0 rounded bg-surface-2 px-1 py-0.5 text-[9px] text-ink-subtle">
+                  <span className="flex-shrink-0 rounded bg-[var(--gray-4)] px-1 py-0.5 text-[9px] text-[var(--gray-9)]">
                     广告位
                   </span>
                 )}
               </div>
-              <div className="mt-0.5 flex flex-wrap gap-x-2.5 gap-y-0.5 text-[11px] text-ink-subtle">
-                {price != null && <span className="text-brand">价 {String(price)}</span>}
+              <div className="mt-0.5 flex flex-wrap gap-x-2.5 gap-y-0.5 text-[11px] text-[var(--gray-9)]">
+                {price != null && <span className="text-[var(--gray-12)]">价 {String(price)}</span>}
                 {rating != null && <span>★ {String(rating)}</span>}
                 {reviews != null && <span>{String(reviews)} 评价</span>}
                 {bought != null && <span className="text-success">月销 {String(bought)}</span>}
@@ -164,7 +164,7 @@ function ProductCards({ items }: { items: Array<Record<string, unknown>> }) {
                     href={url}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-0.5 text-ink-muted hover:text-brand"
+                    className="inline-flex items-center gap-0.5 text-[var(--gray-8)] hover:text-[var(--gray-12)]"
                   >
                     打开 <ExternalLink className="h-2.5 w-2.5" />
                   </a>
@@ -177,7 +177,7 @@ function ProductCards({ items }: { items: Array<Record<string, unknown>> }) {
       {items.length > COLLAPSED && (
         <button
           onClick={() => setShowAll((v) => !v)}
-          className="px-1 text-[11px] text-brand hover:underline"
+          className="px-1 text-[11px] text-[var(--gray-12)] hover:underline"
         >
           {showAll ? "收起" : `展开全部 ${items.length} 个`}
         </button>
@@ -197,29 +197,29 @@ const HIDDEN_KEYS = new Set(["markdown", "markdown_remote", "markdown_local"]);
 
 function StructuredValue({ value, depth = 0 }: { value: unknown; depth?: number }) {
   if (value === null || value === undefined) {
-    return <span className="text-ink-subtle">—</span>;
+    return <span className="text-[var(--gray-9)]">—</span>;
   }
   if (typeof value !== "object") {
     const s = formatPrimitive(value);
     if (URL_RE.test(s)) return <LinkChip url={s} />;
-    return <span className="break-words text-ink-muted">{s}</span>;
+    return <span className="break-words text-[var(--gray-8)]">{s}</span>;
   }
   if (isProductList(value)) {
     return <ProductCards items={value as Array<Record<string, unknown>>} />;
   }
   if (Array.isArray(value)) {
-    if (value.length === 0) return <span className="text-ink-subtle">空</span>;
+    if (value.length === 0) return <span className="text-[var(--gray-9)]">空</span>;
     // 基础类型数组 → 内联 chips
     if (value.every((v) => typeof v !== "object")) {
       return (
         <div className="flex flex-wrap gap-1">
           {value.slice(0, 100).map((v, i) => (
-            <span key={i} className="rounded bg-surface-2 px-1.5 py-0.5 text-[11px] text-ink-muted">
+            <span key={i} className="rounded bg-[var(--gray-4)] px-1.5 py-0.5 text-[11px] text-[var(--gray-8)]">
               {formatPrimitive(v)}
             </span>
           ))}
           {value.length > 100 && (
-            <span className="text-[11px] text-ink-subtle">…共 {value.length} 项</span>
+            <span className="text-[11px] text-[var(--gray-9)]">…共 {value.length} 项</span>
           )}
         </div>
       );
@@ -227,12 +227,12 @@ function StructuredValue({ value, depth = 0 }: { value: unknown; depth?: number 
     return (
       <div className="space-y-1">
         {value.slice(0, 50).map((v, i) => (
-          <div key={i} className="rounded border border-hairline/60 p-1.5">
+          <div key={i} className="rounded border border-[var(--gray-5)]/60 p-1.5">
             <StructuredValue value={v} depth={depth + 1} />
           </div>
         ))}
         {value.length > 50 && (
-          <div className="px-1 text-[11px] text-ink-subtle">…共 {value.length} 项</div>
+          <div className="px-1 text-[11px] text-[var(--gray-9)]">…共 {value.length} 项</div>
         )}
       </div>
     );
@@ -241,12 +241,12 @@ function StructuredValue({ value, depth = 0 }: { value: unknown; depth?: number 
   const entries = Object.entries(value as Record<string, unknown>).filter(
     ([k, v]) => !HIDDEN_KEYS.has(k) && v !== null && v !== undefined && v !== ""
   );
-  if (entries.length === 0) return <span className="text-ink-subtle">空</span>;
+  if (entries.length === 0) return <span className="text-[var(--gray-9)]">空</span>;
   return (
     <div className="space-y-1">
       {entries.map(([k, v]) => (
         <div key={k} className="grid grid-cols-[minmax(72px,auto)_1fr] gap-2 text-xs">
-          <span className="font-medium text-ink-subtle">{k}</span>
+          <span className="font-medium text-[var(--gray-9)]">{k}</span>
           <div className="min-w-0">
             <StructuredValue value={v} depth={depth + 1} />
           </div>
@@ -266,14 +266,14 @@ export function ToolOutputView({ output }: { output: unknown }) {
 
   // 字符串输出（少见）：直接显示
   if (typeof output === "string") {
-    return <pre className="overflow-x-auto whitespace-pre-wrap text-xs text-ink-muted">{output}</pre>;
+    return <pre className="overflow-x-auto whitespace-pre-wrap text-xs text-[var(--gray-8)]">{output}</pre>;
   }
 
   return (
     <div className="space-y-2">
       {urls.length > 0 && (
         <div>
-          <div className="mb-1 flex items-center gap-1 text-[10px] font-medium text-ink-subtle">
+          <div className="mb-1 flex items-center gap-1 text-[10px] font-medium text-[var(--gray-9)]">
             <Globe className="h-3 w-3" /> 数据来源 / 证据
           </div>
           <div className="flex flex-wrap gap-1.5">

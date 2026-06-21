@@ -26,11 +26,82 @@ import {
   activePageAtom,
   type PageKey,
 } from "@/lib/atoms";
-import { marketIso, marketLabel } from "@/lib/markets";
+import { marketIso, marketLabel, marketsByContinent } from "@/lib/markets";
 import { Flag } from "@/components/ui/Flag";
 import { HotProductsSection } from "@/components/HotProductsSection";
 import { CategoryTrendsSection } from "@/components/CategoryTrendsSection";
 import { formatDate, parseTitle } from "@/lib/thread-format";
+
+/* ─── MarketSelector: Twenty CRM style dropdown for multi-market selection ─── */
+function MarketSelector({
+  params,
+  setParams,
+}: {
+  params: { markets: string[]; positioning: string; modelChoice: "flash" | "pro" };
+  setParams: (fn: (p: typeof params) => typeof params) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    function close(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, []);
+
+  const toggle = (code: string) => {
+    setParams((prev) => {
+      const selected = prev.markets.includes(code)
+        ? prev.markets.filter((c) => c !== code)
+        : [...prev.markets, code];
+      return { ...prev, markets: selected.length > 0 ? selected : ["US"] };
+    });
+  };
+
+  const grouped = marketsByContinent();
+  const selected = params.markets;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="inline-flex items-center gap-1.5 rounded-[4px] border border-[var(--gray-5)] bg-[var(--gray-1)] px-2.5 py-1 text-[12px] font-medium text-[var(--gray-11)] hover:bg-[var(--bg-transparent-light)] transition-colors"
+      >
+        <Flag iso={marketIso(selected[0] || "US")} size={12} />
+        {selected.length === 1 ? marketLabel(selected[0]) : `${selected.length} 个市场`}
+        <ChevronDown className="h-3 w-3 text-[var(--gray-8)]" />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1 w-[280px] rounded-[8px] border border-[var(--gray-5)] bg-[var(--gray-1)] p-3 shadow-lg">
+          {grouped.map((g) => (
+            <div key={g.region} className="mb-2 last:mb-0">
+              <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[var(--gray-9)]">{g.region}</div>
+              <div className="flex flex-wrap gap-1">
+                {g.markets.map((m) => (
+                  <button
+                    key={m.code}
+                    onClick={() => toggle(m.code)}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-[4px] border px-2 py-1 text-[11px] font-medium transition-colors",
+                      selected.includes(m.code)
+                        ? "border-[var(--gray-12)] bg-[var(--gray-12)] text-[var(--gray-1)]"
+                        : "border-[var(--gray-5)] bg-[var(--gray-1)] text-[var(--gray-11)] hover:bg-[var(--gray-3)]"
+                    )}
+                  >
+                    <Flag iso={m.iso} size={11} />
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const TOOLS: { key: PageKey; label: string; desc: string; icon: React.ReactNode }[] = [
   { key: "market", label: "市场扫描", desc: "规模 / 趋势 / 竞争格局", icon: <Search className="h-4 w-4" /> },
@@ -66,8 +137,6 @@ export function WorkspaceHome() {
     setDraftKind("general");
     setDraft(c);
   };
-
-  const firstMarket = (params.markets[0] as string) || "US";
 
   const recentRows = threads.slice(0, 8).map((t) => {
     const { name, market } = parseTitle(t.title);
@@ -124,10 +193,7 @@ export function WorkspaceHome() {
 
         {/* Filter chips */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-[4px] border border-[var(--gray-5)] bg-[var(--gray-1)] px-2.5 py-1 text-[12px] font-medium text-[var(--gray-11)]">
-            <Flag iso={marketIso(firstMarket)} size={12} />
-            {marketLabel(firstMarket)}
-          </span>
+          <MarketSelector params={params} setParams={setParams} />
           <span className="inline-flex items-center gap-1.5 rounded-[4px] border border-[var(--gray-5)] bg-[var(--gray-1)] px-2.5 py-1 text-[12px] font-medium text-[var(--gray-11)]">
             <Clock className="h-3 w-3 text-[var(--gray-8)]" />
             近 30 天

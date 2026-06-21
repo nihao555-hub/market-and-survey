@@ -368,8 +368,8 @@ export function LiveDataPanel({ kind }: { kind: ResearchKind }) {
     return (
       <section className="mt-7">
         <div className="mb-3 flex items-center gap-2">
-          <Database className="h-4 w-4 text-ink-subtle" />
-          <h3 className="text-sm font-semibold text-ink">{"\u4eca\u65e5\u5b9e\u65f6\u6570\u636e"}</h3>
+          <Database className="h-4 w-4 text-[var(--gray-9)]" />
+          <h3 className="text-sm font-semibold text-[var(--gray-12)]">{"\u4eca\u65e5\u5b9e\u65f6\u6570\u636e"}</h3>
         </div>
         <Panel bodyClassName="p-4">
           <div className="space-y-2">
@@ -384,8 +384,8 @@ export function LiveDataPanel({ kind }: { kind: ResearchKind }) {
     return (
       <section className="mt-7">
         <div className="mb-3 flex items-center gap-2">
-          <Database className="h-4 w-4 text-ink-subtle" />
-          <h3 className="text-sm font-semibold text-ink">{"\u4eca\u65e5\u5b9e\u65f6\u6570\u636e"}</h3>
+          <Database className="h-4 w-4 text-[var(--gray-9)]" />
+          <h3 className="text-sm font-semibold text-[var(--gray-12)]">{"\u4eca\u65e5\u5b9e\u65f6\u6570\u636e"}</h3>
         </div>
         <Panel bodyClassName="p-0">
           <EmptyState
@@ -401,8 +401,8 @@ export function LiveDataPanel({ kind }: { kind: ResearchKind }) {
   return (
     <section className="mt-7">
       <div className="mb-3 flex items-center gap-2">
-        <Database className="h-4 w-4 text-brand" />
-        <h3 className="text-sm font-semibold text-ink">{"\u4eca\u65e5\u5b9e\u65f6\u6570\u636e"}</h3>
+        <Database className="h-4 w-4 text-[var(--gray-12)]" />
+        <h3 className="text-sm font-semibold text-[var(--gray-12)]">{"\u4eca\u65e5\u5b9e\u65f6\u6570\u636e"}</h3>
         <span className="rounded-full bg-success/10 px-2 py-0.5 text-[10px] font-medium text-success">
           LIVE
         </span>
@@ -411,9 +411,9 @@ export function LiveDataPanel({ kind }: { kind: ResearchKind }) {
       {/* Chart hero section */}
       {chartData && Object.keys(chartData.option).length > 0 && (
         <Panel className="mb-4" bodyClassName="p-0">
-          <div className="border-b border-hairline px-4 py-3">
-            <h4 className="flex items-center gap-2 text-xs font-semibold text-ink">
-              <BarChart3 className="h-3.5 w-3.5 text-ink-subtle" />
+          <div className="border-b border-[var(--gray-5)] px-4 py-3">
+            <h4 className="flex items-center gap-2 text-xs font-semibold text-[var(--gray-12)]">
+              <BarChart3 className="h-3.5 w-3.5 text-[var(--gray-9)]" />
               {chartData.title}
             </h4>
           </div>
@@ -424,7 +424,7 @@ export function LiveDataPanel({ kind }: { kind: ResearchKind }) {
       )}
 
       <Panel bodyClassName="p-0">
-        <div className="border-b border-hairline px-4 py-3">
+        <div className="border-b border-[var(--gray-5)] px-4 py-3">
           <FilterTabs tabs={tabList} value={activeTab} onChange={setActiveTab} />
         </div>
 
@@ -437,7 +437,7 @@ export function LiveDataPanel({ kind }: { kind: ResearchKind }) {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-surface-1 text-[11px] uppercase tracking-wide text-ink-subtle">
+                    <tr className="bg-[var(--gray-3)] text-[11px] uppercase tracking-wide text-[var(--gray-9)]">
                       <th className="px-3 py-2.5 pl-4 text-left font-medium">#</th>
                       <th className="px-3 py-2.5 text-left font-medium">{"\u5546\u54c1"}</th>
                       <th className="px-3 py-2.5 text-left font-medium">{"\u54c1\u7c7b"}</th>
@@ -450,36 +450,36 @@ export function LiveDataPanel({ kind }: { kind: ResearchKind }) {
                   <tbody>
                     {catProducts.slice(0, 50).map(({ p, cat }, i) => (
                       <tr key={`${p.product_id ?? "x"}-${i}`}
-                          className="border-t border-hairline transition-colors hover:bg-surface-1">
-                        <td className="px-3 py-2.5 pl-4 text-xs text-ink-subtle">{i + 1}</td>
+                          className="border-t border-[var(--gray-5)] transition-colors hover:bg-[var(--gray-3)]">
+                        <td className="px-3 py-2.5 pl-4 text-xs text-[var(--gray-9)]">{i + 1}</td>
                         <td className="max-w-[260px] px-3 py-2.5">
                           <div className="flex items-center gap-2">
                             {p.image ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={p.image} alt="" className="h-8 w-8 flex-shrink-0 rounded object-cover" />
                             ) : (
-                              <ShoppingCart className="h-4 w-4 flex-shrink-0 text-ink-tertiary" />
+                              <ShoppingCart className="h-4 w-4 flex-shrink-0 text-[var(--gray-7)]" />
                             )}
-                            <span className="line-clamp-2 text-xs font-medium text-ink">{p.title}</span>
+                            <span className="line-clamp-2 text-xs font-medium text-[var(--gray-12)]">{p.title}</span>
                           </div>
                         </td>
                         <td className="px-3 py-2.5">
-                          <span className="inline-flex items-center gap-0.5 rounded bg-brand/10 px-1.5 py-0.5 text-[10px] font-medium text-brand">
+                          <span className="inline-flex items-center gap-0.5 rounded bg-[var(--gray-4)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--gray-12)]">
                             <Package className="h-2.5 w-2.5" />{cat}
                           </span>
                         </td>
-                        <td className="px-3 py-2.5 text-right text-xs font-semibold text-ink">
+                        <td className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--gray-12)]">
                           {p.currency_symbol || "$"}{p.price}
                         </td>
-                        <td className="px-3 py-2.5 text-right text-xs text-ink-muted">{fmtInt(p.sold_count)}</td>
-                        <td className="px-3 py-2.5 text-right text-xs text-ink-muted">
+                        <td className="px-3 py-2.5 text-right text-xs text-[var(--gray-8)]">{fmtInt(p.sold_count)}</td>
+                        <td className="px-3 py-2.5 text-right text-xs text-[var(--gray-8)]">
                           {p.rating ? (
                             <span className="inline-flex items-center gap-0.5">
                               <Star className="h-3 w-3 fill-current text-amber-500" />{p.rating}
                             </span>
                           ) : "\u2014"}
                         </td>
-                        <td className="max-w-[120px] truncate px-3 py-2.5 text-xs text-ink-subtle">
+                        <td className="max-w-[120px] truncate px-3 py-2.5 text-xs text-[var(--gray-9)]">
                           {p.shop_name || "\u2014"}
                         </td>
                       </tr>
@@ -498,7 +498,7 @@ export function LiveDataPanel({ kind }: { kind: ResearchKind }) {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-surface-1 text-[11px] uppercase tracking-wide text-ink-subtle">
+                    <tr className="bg-[var(--gray-3)] text-[11px] uppercase tracking-wide text-[var(--gray-9)]">
                       <th className="px-3 py-2.5 pl-4 text-left font-medium">#</th>
                       <th className="px-3 py-2.5 text-left font-medium">{"\u5546\u54c1"}</th>
                       <th className="px-3 py-2.5 text-right font-medium">{"\u4ef7\u683c"}</th>
@@ -510,11 +510,11 @@ export function LiveDataPanel({ kind }: { kind: ResearchKind }) {
                   <tbody>
                     {hotProducts.slice(0, 30).map((p, i) => (
                       <tr key={p.product_id ?? i}
-                          className="border-t border-hairline transition-colors hover:bg-surface-1">
+                          className="border-t border-[var(--gray-5)] transition-colors hover:bg-[var(--gray-3)]">
                         <td className="px-3 py-2.5 pl-4">
                           <span className={cn(
                             "inline-flex h-5 w-5 items-center justify-center rounded text-[11px] font-bold",
-                            i < 3 ? "bg-brand/15 text-brand" : "text-ink-subtle",
+                            i < 3 ? "bg-[var(--gray-12)]/15 text-[var(--gray-12)]" : "text-[var(--gray-9)]",
                           )}>{i + 1}</span>
                         </td>
                         <td className="max-w-[280px] px-3 py-2.5">
@@ -523,23 +523,23 @@ export function LiveDataPanel({ kind }: { kind: ResearchKind }) {
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={p.image} alt="" className="h-8 w-8 flex-shrink-0 rounded object-cover" />
                             ) : (
-                              <ShoppingCart className="h-4 w-4 flex-shrink-0 text-ink-tertiary" />
+                              <ShoppingCart className="h-4 w-4 flex-shrink-0 text-[var(--gray-7)]" />
                             )}
-                            <span className="line-clamp-2 text-xs font-medium text-ink">{p.title}</span>
+                            <span className="line-clamp-2 text-xs font-medium text-[var(--gray-12)]">{p.title}</span>
                           </div>
                         </td>
-                        <td className="px-3 py-2.5 text-right text-xs font-semibold text-ink">
+                        <td className="px-3 py-2.5 text-right text-xs font-semibold text-[var(--gray-12)]">
                           {p.currency_symbol || "$"}{p.price}
                         </td>
-                        <td className="px-3 py-2.5 text-right text-xs text-ink-muted">{fmtInt(p.sold_count)}</td>
-                        <td className="px-3 py-2.5 text-right text-xs text-ink-muted">
+                        <td className="px-3 py-2.5 text-right text-xs text-[var(--gray-8)]">{fmtInt(p.sold_count)}</td>
+                        <td className="px-3 py-2.5 text-right text-xs text-[var(--gray-8)]">
                           {p.rating ? (
                             <span className="inline-flex items-center gap-0.5">
                               <Star className="h-3 w-3 fill-current text-amber-500" />{p.rating}
                             </span>
                           ) : "\u2014"}
                         </td>
-                        <td className="max-w-[120px] truncate px-3 py-2.5 text-xs text-ink-subtle">
+                        <td className="max-w-[120px] truncate px-3 py-2.5 text-xs text-[var(--gray-9)]">
                           {p.shop_name || "\u2014"}
                         </td>
                       </tr>
@@ -561,11 +561,11 @@ export function LiveDataPanel({ kind }: { kind: ResearchKind }) {
                   const items: TrendItem[] = Array.isArray(snap?.payload?.items) ? snap!.payload.items : [];
                   if (!snap?.realData || items.length === 0) return null;
                   return (
-                    <div key={source} className="rounded-xl border border-hairline bg-surface-1 p-3">
-                      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-ink">
+                    <div key={source} className="rounded-xl border border-[var(--gray-5)] bg-[var(--gray-3)] p-3">
+                      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-[var(--gray-12)]">
                         {meta.icon}
                         {meta.label}
-                        <span className="ml-auto rounded-full bg-surface-2 px-1.5 text-[10px] font-normal text-ink-subtle">
+                        <span className="ml-auto rounded-full bg-[var(--gray-4)] px-1.5 text-[10px] font-normal text-[var(--gray-9)]">
                           {items.length}
                         </span>
                       </div>
@@ -573,14 +573,14 @@ export function LiveDataPanel({ kind }: { kind: ResearchKind }) {
                         {items.slice(0, 8).map((it, idx) => {
                           const heat = typeof it.heat === "number" && it.heat > 0 ? fmtInt(it.heat) : null;
                           return (
-                            <li key={idx} className="flex items-center gap-2 rounded px-1.5 py-1 text-[11px] text-ink">
+                            <li key={idx} className="flex items-center gap-2 rounded px-1.5 py-1 text-[11px] text-[var(--gray-12)]">
                               <span className={cn(
                                 "flex h-4 w-4 flex-shrink-0 items-center justify-center rounded text-[10px] font-semibold",
-                                idx < 3 ? "bg-brand/15 text-brand" : "text-ink-tertiary",
+                                idx < 3 ? "bg-[var(--gray-12)]/15 text-[var(--gray-12)]" : "text-[var(--gray-7)]",
                               )}>{idx + 1}</span>
                               <span className="min-w-0 flex-1 truncate">{it.keyword}</span>
                               {heat && (
-                                <span className="flex-shrink-0 text-[10px] text-ink-subtle">
+                                <span className="flex-shrink-0 text-[10px] text-[var(--gray-9)]">
                                   <Flame className="mr-0.5 inline h-2.5 w-2.5 text-orange-400" />{heat}
                                 </span>
                               )}
@@ -608,7 +608,7 @@ export function LiveDataPanel({ kind }: { kind: ResearchKind }) {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-surface-1 text-[11px] uppercase tracking-wide text-ink-subtle">
+                    <tr className="bg-[var(--gray-3)] text-[11px] uppercase tracking-wide text-[var(--gray-9)]">
                       <th className="px-3 py-2.5 pl-4 text-left font-medium">#</th>
                       <th className="px-3 py-2.5 text-left font-medium">{"\u8bdd\u9898"}</th>
                       <th className="px-3 py-2.5 text-right font-medium">{"\u6d4f\u89c8\u91cf"}</th>
@@ -618,20 +618,20 @@ export function LiveDataPanel({ kind }: { kind: ResearchKind }) {
                   <tbody>
                     {hashtags.slice(0, 30).map((h, i) => (
                       <tr key={h.hashtag ?? i}
-                          className="border-t border-hairline transition-colors hover:bg-surface-1">
+                          className="border-t border-[var(--gray-5)] transition-colors hover:bg-[var(--gray-3)]">
                         <td className="px-3 py-2.5 pl-4">
                           <span className={cn(
                             "inline-flex h-5 w-5 items-center justify-center rounded text-[11px] font-bold",
-                            i < 3 ? "bg-brand/15 text-brand" : "text-ink-subtle",
+                            i < 3 ? "bg-[var(--gray-12)]/15 text-[var(--gray-12)]" : "text-[var(--gray-9)]",
                           )}>{i + 1}</span>
                         </td>
                         <td className="px-3 py-2.5">
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-ink">
-                            <Hash className="h-3 w-3 text-brand" />{h.hashtag}
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-[var(--gray-12)]">
+                            <Hash className="h-3 w-3 text-[var(--gray-12)]" />{h.hashtag}
                           </span>
                         </td>
-                        <td className="px-3 py-2.5 text-right text-xs text-ink-muted">{fmtInt(h.views)}</td>
-                        <td className="px-3 py-2.5 text-right text-xs text-ink-muted">{fmtInt(h.publish_count)}</td>
+                        <td className="px-3 py-2.5 text-right text-xs text-[var(--gray-8)]">{fmtInt(h.views)}</td>
+                        <td className="px-3 py-2.5 text-right text-xs text-[var(--gray-8)]">{fmtInt(h.publish_count)}</td>
                       </tr>
                     ))}
                   </tbody>

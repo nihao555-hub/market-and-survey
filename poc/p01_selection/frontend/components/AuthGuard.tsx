@@ -36,7 +36,7 @@ export function AuthGuard({ children, requiredPlan = "free" }: AuthGuardProps) {
 
   if (status === "checking") {
     return (
-      <div className="flex h-screen items-center justify-center bg-white">
+      <div className="flex h-screen items-center justify-center bg-[var(--gray-1)]">
         <div className="animate-pulse text-neutral-400 text-sm">加载中...</div>
       </div>
     );
@@ -44,7 +44,7 @@ export function AuthGuard({ children, requiredPlan = "free" }: AuthGuardProps) {
 
   if (status === "no_auth") {
     return (
-      <div className="flex h-screen items-center justify-center bg-white">
+      <div className="flex h-screen items-center justify-center bg-[var(--gray-1)]">
         <div className="text-center max-w-sm px-6">
           <div className="mb-4 text-5xl">🔒</div>
           <h2 className="text-xl font-semibold text-neutral-900 mb-2">请先登录</h2>
@@ -70,7 +70,7 @@ export function AuthGuard({ children, requiredPlan = "free" }: AuthGuardProps) {
 
   if (status === "no_plan") {
     return (
-      <div className="flex h-screen items-center justify-center bg-white">
+      <div className="flex h-screen items-center justify-center bg-[var(--gray-1)]">
         <div className="text-center max-w-sm px-6">
           <div className="mb-4 text-5xl">⬆️</div>
           <h2 className="text-xl font-semibold text-neutral-900 mb-2">需要升级套餐</h2>

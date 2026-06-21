@@ -81,7 +81,7 @@ function Hero() {
 
           {/* Right: product screenshot - like taito.ai hero image */}
           <div className="mt-12 lg:mt-0 lg:flex-1 relative">
-            <div className="rounded-[12px] border border-[#e7e5e4] shadow-2xl overflow-hidden bg-white">
+            <div className="rounded-[12px] border border-[#e7e5e4] shadow-2xl overflow-hidden bg-[var(--gray-1)]">
               <img src="/images/screenshot-workspace.png" alt="SelectPilot workspace" className="w-full" />
             </div>
           </div>
@@ -123,18 +123,18 @@ function WhySection() {
 
         {/* 3-column article cards - like taito.ai */}
         <div className="grid md:grid-cols-3 gap-4">
-          <article className="rounded-[12px] border border-[#e7e5e4] bg-white overflow-hidden group">
+          <article className="rounded-[12px] border border-[#e7e5e4] bg-[var(--gray-1)] overflow-hidden group">
             <div className="aspect-[4/3] bg-[#f5f5f4] overflow-hidden relative">
               <img src="/images/screenshot-research.png" alt="AI Research" className="w-full h-full object-cover object-top" />
               {/* Overlay icons like taito.ai */}
               <div className="absolute bottom-4 left-4 flex gap-2">
-                <div className="w-10 h-10 rounded-[8px] bg-white/90 backdrop-blur flex items-center justify-center shadow-sm">
+                <div className="w-10 h-10 rounded-[8px] bg-[var(--gray-1)]/90 backdrop-blur flex items-center justify-center shadow-sm">
                   <Search className="w-5 h-5 text-[#524f49]" />
                 </div>
-                <div className="w-10 h-10 rounded-[8px] bg-white/90 backdrop-blur flex items-center justify-center shadow-sm">
+                <div className="w-10 h-10 rounded-[8px] bg-[var(--gray-1)]/90 backdrop-blur flex items-center justify-center shadow-sm">
                   <BarChart3 className="w-5 h-5 text-[#524f49]" />
                 </div>
-                <div className="w-10 h-10 rounded-[8px] bg-white/90 backdrop-blur flex items-center justify-center shadow-sm">
+                <div className="w-10 h-10 rounded-[8px] bg-[var(--gray-1)]/90 backdrop-blur flex items-center justify-center shadow-sm">
                   <TrendingUp className="w-5 h-5 text-[#524f49]" />
                 </div>
               </div>
@@ -147,11 +147,11 @@ function WhySection() {
             </div>
           </article>
 
-          <article className="rounded-[12px] border border-[#e7e5e4] bg-white overflow-hidden group">
+          <article className="rounded-[12px] border border-[#e7e5e4] bg-[var(--gray-1)] overflow-hidden group">
             <div className="aspect-[4/3] bg-[#f5f5f4] overflow-hidden relative">
               <img src="/images/screenshot-categories.png" alt="Multi-platform" className="w-full h-full object-cover object-top" />
               {/* Chat mock overlay like taito.ai's Slack integration card */}
-              <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur rounded-[8px] p-3 shadow-sm">
+              <div className="absolute bottom-4 left-4 right-4 bg-[var(--gray-1)]/95 backdrop-blur rounded-[8px] p-3 shadow-sm">
                 <div className="flex items-center gap-2 mb-1">
                   <div className="w-5 h-5 rounded-full bg-[#0f0e0d] flex items-center justify-center">
                     <Bot className="w-3 h-3 text-white" />
@@ -170,11 +170,11 @@ function WhySection() {
             </div>
           </article>
 
-          <article className="rounded-[12px] border border-[#e7e5e4] bg-white overflow-hidden group">
+          <article className="rounded-[12px] border border-[#e7e5e4] bg-[var(--gray-1)] overflow-hidden group">
             <div className="aspect-[4/3] bg-[#f5f5f4] overflow-hidden relative">
               <img src="/images/screenshot-hotselling.png" alt="Global Coverage" className="w-full h-full object-cover object-top" />
               {/* Country list overlay like taito.ai's policies card */}
-              <div className="absolute top-4 right-4 bg-white/95 backdrop-blur rounded-[8px] p-3 shadow-sm">
+              <div className="absolute top-4 right-4 bg-[var(--gray-1)]/95 backdrop-blur rounded-[8px] p-3 shadow-sm">
                 <p className="text-[12px] font-medium text-[#0f0e0d] mb-2">市场覆盖</p>
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
@@ -290,7 +290,7 @@ function WorkflowSection() {
 
           {/* Right: workflow visual */}
           <div className="mt-10 lg:mt-0 lg:flex-1">
-            <div className="rounded-[12px] border border-[#e7e5e4] bg-white p-6 shadow-sm">
+            <div className="rounded-[12px] border border-[#e7e5e4] bg-[var(--gray-1)] p-6 shadow-sm">
               <p className="text-[14px] text-[#524f49] mb-4 border-b border-[#e7e5e4] pb-4">调研美国市场家居园艺品类趋势产品</p>
               <div className="space-y-3">
                 {[
@@ -349,7 +349,7 @@ function BuiltForSection() {
 
         <div className="grid md:grid-cols-3 gap-4">
           {roles.map((role, i) => (
-            <div key={i} className="rounded-[12px] border border-[#e7e5e4] bg-white p-8 flex flex-col">
+            <div key={i} className="rounded-[12px] border border-[#e7e5e4] bg-[var(--gray-1)] p-8 flex flex-col">
               <p className="text-[14px] text-[#a8a29e] mb-2">{role.eyebrow}</p>
               <h3 className="text-[20px] font-medium text-[#0f0e0d] mb-3">{role.title}</h3>
               <p className="text-[16px] leading-[1.6] text-[#524f49]">{role.desc}</p>
@@ -432,7 +432,7 @@ function SecuritySection() {
         </header>
         <ul className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {badges.map((b, i) => (
-            <li key={i} className="rounded-[12px] border border-[#e7e5e4] bg-white p-6 flex items-center gap-4">
+            <li key={i} className="rounded-[12px] border border-[#e7e5e4] bg-[var(--gray-1)] p-6 flex items-center gap-4">
               <Shield className="h-5 w-5 text-[#78716c] flex-shrink-0" />
               <div>
                 <div className="text-[16px] font-medium text-[#0f0e0d]">{b.label}</div>
@@ -493,8 +493,8 @@ function PricingSection() {
               key={p.name}
               className={`rounded-[12px] border p-8 flex flex-col ${
                 p.highlighted
-                  ? "border-[#0f0e0d] bg-white shadow-lg ring-1 ring-[#0f0e0d]"
-                  : "border-[#e7e5e4] bg-white"
+                  ? "border-[#0f0e0d] bg-[var(--gray-1)] shadow-lg ring-1 ring-[#0f0e0d]"
+                  : "border-[#e7e5e4] bg-[var(--gray-1)]"
               }`}
             >
               {p.highlighted && (
@@ -598,7 +598,7 @@ function Footer() {
         <p className="text-[16px] leading-[1.6] text-[#a8a29e] max-w-[500px] mb-8">
           选品调研的操作性工作，已处理。你只需专注需要你的那一半。
         </p>
-        <Link href="/register" className="inline-flex items-center h-[50px] px-[20px] rounded-[8px] bg-[#fafaf9] text-[20px] font-medium text-[#0f0e0d] hover:bg-white transition-colors">
+        <Link href="/register" className="inline-flex items-center h-[50px] px-[20px] rounded-[8px] bg-[#fafaf9] text-[20px] font-medium text-[#0f0e0d] hover:bg-[var(--gray-1)] transition-colors">
           免费开始
         </Link>
       </div>

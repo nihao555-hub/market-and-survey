@@ -168,11 +168,11 @@ export function DailyDataPanel() {
   }, [snapshots]);
 
   return (
-    <section className="mb-4 rounded-2xl border border-hairline bg-white">
-      <div className="flex items-start justify-between gap-3 border-b border-hairline px-5 py-3.5">
+    <section className="mb-4 rounded-2xl border border-[var(--gray-5)] bg-[var(--gray-1)]">
+      <div className="flex items-start justify-between gap-3 border-b border-[var(--gray-5)] px-5 py-3.5">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-ink">实时数据刷新 · 真实数据底子</h2>
-          <p className="mt-0.5 text-xs text-ink-subtle">
+          <h2 className="text-sm font-semibold text-[var(--gray-12)]">实时数据刷新 · 真实数据底子</h2>
+          <p className="mt-0.5 text-xs text-[var(--gray-9)]">
             每 2 小时自动刷新一次：TikTok Shop 实时商品 + 社媒趋势（TikTok/抖音/微博/小红书/快手/B站/X/Lemon8）+ 搜索词/趋势，落库作为选品与调研的底子。
           </p>
         </div>
@@ -200,14 +200,14 @@ export function DailyDataPanel() {
             <StatTile
               label="电商商品级通道"
               value={status?.tier2ChannelOk ? "已就绪" : "未就绪"}
-              tone={status?.tier2ChannelOk ? "text-success" : "text-ink-subtle"}
+              tone={status?.tier2ChannelOk ? "text-success" : "text-[var(--gray-9)]"}
               icon={<ShoppingCart className="h-4 w-4" />}
             />
           </div>
 
           {!status?.tier2ChannelOk && (
-            <div className="mb-4 rounded-lg border border-hairline bg-surface-1 px-3 py-2 text-xs text-ink-subtle">
-              实时电商通道（TikTok Shop）需配置 <span className="font-medium text-ink-muted">TIKHUB_API_KEY</span>；通道未就绪时如实标注，<span className="font-medium text-ink-muted">不编造数据</span>，接入后自动补齐。
+            <div className="mb-4 rounded-lg border border-[var(--gray-5)] bg-[var(--gray-3)] px-3 py-2 text-xs text-[var(--gray-9)]">
+              实时电商通道（TikTok Shop）需配置 <span className="font-medium text-[var(--gray-8)]">TIKHUB_API_KEY</span>；通道未就绪时如实标注，<span className="font-medium text-[var(--gray-8)]">不编造数据</span>，接入后自动补齐。
             </div>
           )}
 
@@ -216,10 +216,10 @@ export function DailyDataPanel() {
             const { option: gtOpt, items: gtItems } = buildGoogleTrendChart(googleSnaps);
             if (gtItems.length === 0) return null;
             return (
-              <section className="mb-4 rounded-[8px] border border-hairline bg-white overflow-hidden">
+              <section className="mb-4 rounded-[8px] border border-[var(--gray-5)] bg-[var(--gray-1)] overflow-hidden">
                 <div className="flex items-center justify-between border-b border-surface-3 px-5 py-3">
-                  <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
-                    <BarChart3 className="h-4 w-4 text-ink-subtle" />
+                  <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--gray-12)]">
+                    <BarChart3 className="h-4 w-4 text-[var(--gray-9)]" />
                     Google Trends 搜索热度走势
                   </h2>
                 </div>
@@ -230,7 +230,7 @@ export function DailyDataPanel() {
                   <div className="flex flex-wrap gap-2">
                     {[...new Map(gtItems.map((it) => [it.keyword, it])).values()].slice(0, 10).map((it) => (
                       <span key={it.keyword} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                        it.direction === "上升" ? "bg-green-50 text-green-600" : it.direction === "下降" ? "bg-red-50 text-red-600" : "bg-surface-2 text-ink-subtle"
+                        it.direction === "上升" ? "bg-green-50 text-green-600" : it.direction === "下降" ? "bg-red-50 text-red-600" : "bg-[var(--gray-4)] text-[var(--gray-9)]"
                       }`}>
                         {it.direction === "上升" ? "↑" : it.direction === "下降" ? "↓" : "→"} {it.keyword}
                       </span>
@@ -251,26 +251,26 @@ export function DailyDataPanel() {
           ) : (
             <div className="space-y-3">
               {groups.map(([term, items]) => (
-                <div key={term} className="rounded-xl border border-hairline bg-white p-4">
-                  <div className="mb-3 text-sm font-semibold text-ink">{term}</div>
+                <div key={term} className="rounded-xl border border-[var(--gray-5)] bg-[var(--gray-1)] p-4">
+                  <div className="mb-3 text-sm font-semibold text-[var(--gray-12)]">{term}</div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {items.map((s) => {
                       const meta = sourceMeta(s.source);
                       const info = statusInfo(s.status);
                       return (
-                        <div key={s.id} className="rounded-lg border border-hairline bg-surface-1 p-3">
+                        <div key={s.id} className="rounded-lg border border-[var(--gray-5)] bg-[var(--gray-3)] p-3">
                           <div className="mb-1 flex items-center justify-between gap-2">
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted">
-                              <span className="text-brand">{meta.icon}</span>{meta.label}
-                              <span className="rounded bg-surface-2 px-1 text-[10px] text-ink-subtle">T{s.tier}</span>
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--gray-8)]">
+                              <span className="text-[var(--gray-12)]">{meta.icon}</span>{meta.label}
+                              <span className="rounded bg-[var(--gray-4)] px-1 text-[10px] text-[var(--gray-9)]">T{s.tier}</span>
                             </span>
                             <StatusBadge status={info.kind} label={info.label} />
                           </div>
-                          <div className="text-xs leading-relaxed text-ink-subtle">{s.summary || "—"}</div>
+                          <div className="text-xs leading-relaxed text-[var(--gray-9)]">{s.summary || "—"}</div>
                           {s.source === "amazon_keywords" && s.realData && Array.isArray(s.payload?.suggestions) && (
                             <div className="mt-2 flex flex-wrap gap-1">
                               {s.payload.suggestions.slice(0, 8).map((k: any, i: number) => (
-                                <span key={i} className="rounded-full bg-brand/10 px-2 py-0.5 text-[11px] text-brand">
+                                <span key={i} className="rounded-full bg-[var(--gray-4)] px-2 py-0.5 text-[11px] text-[var(--gray-12)]">
                                   {k.keyword ?? k}
                                 </span>
                               ))}
@@ -279,7 +279,7 @@ export function DailyDataPanel() {
                           {s.source.startsWith("trend_") && s.realData && Array.isArray(s.payload?.items) && (
                             <div className="mt-2 flex flex-wrap gap-1">
                               {s.payload.items.slice(0, 12).map((it: any, i: number) => (
-                                <span key={i} className="rounded-full bg-brand/10 px-2 py-0.5 text-[11px] text-brand">
+                                <span key={i} className="rounded-full bg-[var(--gray-4)] px-2 py-0.5 text-[11px] text-[var(--gray-12)]">
                                   {it.keyword ?? it}
                                 </span>
                               ))}
@@ -292,21 +292,21 @@ export function DailyDataPanel() {
                                   type="button"
                                   key={i}
                                   onClick={() => setSelectedProduct({ ...p, _source: s.term })}
-                                  className="flex w-full items-center gap-2 rounded-lg border border-hairline bg-white p-1.5 text-left transition hover:border-brand/40"
+                                  className="flex w-full items-center gap-2 rounded-lg border border-[var(--gray-5)] bg-[var(--gray-1)] p-1.5 text-left transition hover:border-[var(--gray-6)]"
                                 >
                                   {p.image ? (
                                     // eslint-disable-next-line @next/next/no-img-element
                                     <img src={p.image} alt="" className="h-9 w-9 flex-shrink-0 rounded object-cover" />
                                   ) : (
-                                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded bg-surface-2">
-                                      <ShoppingCart className="h-4 w-4 text-ink-subtle" />
+                                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded bg-[var(--gray-4)]">
+                                      <ShoppingCart className="h-4 w-4 text-[var(--gray-9)]" />
                                     </div>
                                   )}
                                   <div className="min-w-0 flex-1">
-                                    <div className="truncate text-[11px] font-medium text-ink">{p.title}</div>
-                                    <div className="flex items-center gap-2 text-[10px] text-ink-subtle">
+                                    <div className="truncate text-[11px] font-medium text-[var(--gray-12)]">{p.title}</div>
+                                    <div className="flex items-center gap-2 text-[10px] text-[var(--gray-9)]">
                                       {typeof p.price === "number" && (
-                                        <span className="font-semibold text-brand">{p.currency_symbol || "$"}{p.price}</span>
+                                        <span className="font-semibold text-[var(--gray-12)]">{p.currency_symbol || "$"}{p.price}</span>
                                       )}
                                       {p.rating ? (
                                         <span className="inline-flex items-center gap-0.5">
