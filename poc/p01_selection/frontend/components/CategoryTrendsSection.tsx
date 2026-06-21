@@ -1,8 +1,8 @@
 "use client";
-import React, { useRef, useEffect, useCallback } from "react";
+import React, { useRef, useEffect, useCallback, useState } from "react";
 import {
   TrendingUp, RefreshCw, Package, Flame, BarChart3,
-  Clock, ChevronDown, Music2, Twitter, Citrus, Globe,
+  Clock, ChevronDown, Music2, Twitter, Citrus, Globe, X,
 } from "lucide-react";
 import type { EChartsOption } from "echarts";
 import { fetchDataSnapshots, fetchAllSnapshots, fetchCategorySparklines, fetchDailyRefreshStatus, triggerDailyRefresh, backfillGoogleTrends } from "@/lib/api";
@@ -509,14 +509,100 @@ function fmtSold(n: number): string {
   return String(n);
 }
 
+function CategoryDetailModal({ card, onClose }: { card: CatCardData | null; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!card || !ref.current) return;
+    let disposed = false;
+    import("echarts").then((ec) => {
+      if (disposed || !ref.current) return;
+      const chart = ec.init(ref.current, undefined, { renderer: "canvas" });
+      const dates = card.priceHistory.map((_, i) => `第${i + 1}天`);
+      chart.setOption({
+        backgroundColor: "transparent",
+        tooltip: { trigger: "axis" },
+        legend: { bottom: 0, textStyle: { fontSize: 11, color: "#64748b" } },
+        grid: { left: 50, right: 20, top: 40, bottom: 40, containLabel: true },
+        xAxis: { type: "category", data: dates, axisLabel: { fontSize: 10 } },
+        yAxis: [
+          { type: "value", name: "均价($)", axisLabel: { fontSize: 10 } },
+          { type: "value", name: "商品数", axisLabel: { fontSize: 10 } },
+        ],
+        series: [
+          { name: "均价", type: "line", data: card.priceHistory, smooth: true, itemStyle: { color: "#F97316" }, areaStyle: { opacity: 0.08 } },
+          { name: "商品数", type: "bar", yAxisIndex: 1, data: card.countHistory, itemStyle: { color: "#06B6D4", borderRadius: [3, 3, 0, 0] } },
+          { name: "评分", type: "line", data: card.ratingHistory, smooth: true, itemStyle: { color: "#10B981" } },
+        ],
+      });
+      const ro = new ResizeObserver(() => chart.resize());
+      ro.observe(ref.current!);
+      return () => { ro.disconnect(); };
+    });
+    return () => { disposed = true; };
+  }, [card]);
+
+  if (!card) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="relative w-[90vw] max-w-[720px] max-h-[85vh] overflow-y-auto rounded-xl border border-[var(--gray-5)] bg-[var(--gray-1)] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--gray-4)] bg-[var(--gray-1)] px-5 py-3">
+          <h2 className="text-[15px] font-semibold text-[var(--gray-12)]">{zhCat(card.name)}</h2>
+          <button onClick={onClose} className="rounded-md p-1 hover:bg-[var(--gray-4)] transition-colors">
+            <X className="h-4 w-4 text-[var(--gray-9)]" />
+          </button>
+        </div>
+        <div className="px-5 py-4">
+          <div className="mb-3 flex items-center gap-6 text-[12px] text-[var(--gray-9)]">
+            <span>均价 <b className="text-[var(--gray-12)]">${card.latestAvgPrice}</b></span>
+            <span>商品数 <b className="text-[var(--gray-12)]">{card.latestCount}</b></span>
+            <span>评分 <b className="text-[var(--gray-12)]">{card.latestAvgRating}</b></span>
+          </div>
+          <div ref={ref} className="w-full rounded-lg border border-[var(--gray-4)] bg-white" style={{ height: 280 }} />
+        </div>
+        {card.top5.length > 0 && (
+          <div className="border-t border-[var(--gray-4)] px-5 py-4">
+            <h3 className="mb-3 text-[13px] font-medium text-[var(--gray-12)]">TOP 5 热销商品</h3>
+            <div className="space-y-3">
+              {card.top5.map((p, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-lg border border-[var(--gray-4)] p-3">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--gray-4)] text-[11px] font-bold text-[var(--gray-11)]">{i + 1}</span>
+                  {p.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.image} alt="" className="h-12 w-12 rounded-lg object-cover" />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-[var(--gray-3)]">
+                      <Package className="h-5 w-5 text-[var(--gray-7)]" />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[12px] font-medium text-[var(--gray-12)]">{p.title}</div>
+                    <div className="mt-0.5 flex items-center gap-3 text-[11px] text-[var(--gray-9)]">
+                      <span className="font-semibold text-[var(--orange-9)]">${p.price}</span>
+                      {p.sold > 0 && <span>已售 {fmtSold(p.sold)}</span>}
+                      {p.rating > 0 && <span>★{p.rating}</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function CategoryCards({ latestSnaps, sparkData }: { latestSnaps: DataSnapshot[]; sparkData: CategorySparkData[] }) {
   const cards = React.useMemo(() => buildCatCardsFromSpark(latestSnaps, sparkData), [latestSnaps, sparkData]);
+  const [selectedCard, setSelectedCard] = useState<CatCardData | null>(null);
   if (cards.length === 0) return null;
 
   return (
+    <>
+    <CategoryDetailModal card={selectedCard} onClose={() => setSelectedCard(null)} />
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       {cards.map((card) => (
-        <div key={card.name} className="rounded-[8px] border border-[var(--gray-5)] bg-[var(--gray-1)] overflow-hidden">
+        <div key={card.name} className="rounded-[8px] border border-[var(--gray-5)] bg-[var(--gray-1)] overflow-hidden cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md" onClick={() => setSelectedCard(card)}>
           <div className="border-b border-[var(--gray-4)] px-4 py-3">
             <div className="flex items-center justify-between">
               <h3 className="truncate text-[13px] font-semibold text-[var(--gray-12)]">{zhCat(card.name)}</h3>
@@ -566,6 +652,7 @@ function CategoryCards({ latestSnaps, sparkData }: { latestSnaps: DataSnapshot[]
         </div>
       ))}
     </div>
+    </>
   );
 }
 
