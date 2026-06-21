@@ -217,7 +217,7 @@ export function CategoryTrendTable() {
     let cancelled = false;
     (async () => {
       try {
-        const snaps = await fetchAllSnapshots({ source: "category_rank", limit: 500 });
+        const snaps = await fetchAllSnapshots({ source: "category_rank", limit: 500, summaryOnly: true });
         if (!cancelled) {
           setAllSnaps(snaps);
         }

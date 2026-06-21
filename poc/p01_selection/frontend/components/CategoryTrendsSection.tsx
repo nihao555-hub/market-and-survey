@@ -5,8 +5,8 @@ import {
   Clock, ChevronDown, Music2, Twitter, Citrus, Globe,
 } from "lucide-react";
 import type { EChartsOption } from "echarts";
-import { fetchDataSnapshots, fetchAllSnapshots, fetchDailyRefreshStatus, triggerDailyRefresh, backfillGoogleTrends } from "@/lib/api";
-import type { DataSnapshot } from "@/lib/api";
+import { fetchDataSnapshots, fetchAllSnapshots, fetchCategorySparklines, fetchDailyRefreshStatus, triggerDailyRefresh, backfillGoogleTrends } from "@/lib/api";
+import type { DataSnapshot, CategorySparkData } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // ─── ECharts wrapper (lazy import) ─────────────────────────────────
@@ -473,14 +473,43 @@ function buildCatCards(latestSnaps: DataSnapshot[], historySnaps: DataSnapshot[]
   return cards.sort((a, b) => b.latestCount - a.latestCount);
 }
 
+/** Build cat cards from server-side sparkline data (fast path). */
+function buildCatCardsFromSpark(latestSnaps: DataSnapshot[], sparkData: CategorySparkData[]): CatCardData[] {
+  const sparkMap = new Map(sparkData.map((s) => [s.name, s]));
+  const allNames = new Set([
+    ...sparkData.map((s) => s.name),
+    ...latestSnaps.map((s) => (s.payload?.category_name || s.payload?.category_name_en || "") as string).filter(Boolean),
+  ]);
+  const cards: CatCardData[] = [];
+  for (const name of allNames) {
+    const spark = sparkMap.get(name);
+    const latestSnap = latestSnaps.find((s) => (s.payload?.category_name || s.payload?.category_name_en) === name);
+    const prods = (latestSnap?.payload?.products || []) as Array<{ title?: string; price?: number; sold_count?: number; rating?: number; image?: string }>;
+    const priceHistory = spark?.points.map((p) => p.avgPrice) ?? [];
+    const countHistory = spark?.points.map((p) => p.productCount) ?? [];
+    const ratingHistory = spark?.points.map((p) => p.avgRating) ?? [];
+    const latestStats = latestSnap ? _extractStats(latestSnap) : null;
+    const latestAvgPrice = latestStats?.avgPrice ?? (priceHistory.length ? priceHistory[priceHistory.length - 1] : 0);
+    const latestCount = latestStats?.count ?? (countHistory.length ? countHistory[countHistory.length - 1] : prods.length);
+    const latestAvgRating = latestStats?.avgRating ?? (ratingHistory.length ? ratingHistory[ratingHistory.length - 1] : 0);
+    const top5 = prods
+      .filter((p) => p.title)
+      .sort((a, b) => (b.sold_count ?? 0) - (a.sold_count ?? 0))
+      .slice(0, 5)
+      .map((p) => ({ title: p.title || "", price: p.price || 0, sold: p.sold_count || 0, rating: p.rating || 0, image: p.image }));
+    cards.push({ name, latestAvgPrice, latestCount, latestAvgRating, priceHistory, countHistory, ratingHistory, top5 });
+  }
+  return cards.sort((a, b) => b.latestCount - a.latestCount);
+}
+
 function fmtSold(n: number): string {
   if (n >= 1e4) return `${(n / 1e4).toFixed(1)}万`;
   if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
   return String(n);
 }
 
-function CategoryCards({ latestSnaps, historySnaps }: { latestSnaps: DataSnapshot[]; historySnaps: DataSnapshot[] }) {
-  const cards = React.useMemo(() => buildCatCards(latestSnaps, historySnaps), [latestSnaps, historySnaps]);
+function CategoryCards({ latestSnaps, sparkData }: { latestSnaps: DataSnapshot[]; sparkData: CategorySparkData[] }) {
+  const cards = React.useMemo(() => buildCatCardsFromSpark(latestSnaps, sparkData), [latestSnaps, sparkData]);
   if (cards.length === 0) return null;
 
   return (
@@ -608,6 +637,8 @@ export function CategoryTrendsSection() {
   const [latestCats, setLatestCats] = React.useState<DataSnapshot[]>([]);
   const [latestSocial, setLatestSocial] = React.useState<DataSnapshot[]>([]);
 
+  // Server-side aggregated category sparklines
+  const [catSparks, setCatSparks] = React.useState<CategorySparkData[]>([]);
   // Historical snapshots (for charts)
   const [historyCats, setHistoryCats] = React.useState<DataSnapshot[]>([]);
   const [historySocial, setHistorySocial] = React.useState<DataSnapshot[]>([]);
@@ -618,10 +649,10 @@ export function CategoryTrendsSection() {
   const load = useCallback(async () => {
     try {
       // Fetch social data by individual source for better coverage
-      const [status, catSnaps, catHistory, gSnaps, ...socialResults] = await Promise.all([
+      const [status, catSnaps, sparks, gSnaps, ...socialResults] = await Promise.all([
         fetchDailyRefreshStatus(),
         fetchDataSnapshots({ source: "category_rank", limit: 40 }),
-        fetchAllSnapshots({ source: "category_rank", limit: 2000 }),
+        fetchCategorySparklines(),
         fetchAllSnapshots({ source: "google_trends", limit: 500 }),
         // Fetch each social platform separately
         ...SOCIAL_PLATFORMS.map((p) => fetchAllSnapshots({ source: p.source, limit: 500 })),
@@ -629,7 +660,8 @@ export function CategoryTrendsSection() {
       setLastUpdate(status?.finishedAt ?? null);
       setTierOk(status?.tier2ChannelOk ?? false);
       setLatestCats(catSnaps);
-      setHistoryCats(catHistory);
+      setCatSparks(sparks);
+      setHistoryCats([]);  // no longer needed — using sparklines
       setGoogleSnaps(gSnaps);
       // Merge all social platform snapshots
       const allSocial = (socialResults as DataSnapshot[][]).flat();
@@ -646,15 +678,13 @@ export function CategoryTrendsSection() {
   useEffect(() => {
     if (loading || autoBackfillDone.current || backfilling) return;
     // Check if we have very little history (< 3 days of data)
-    const uniqueDates = new Set([
-      ...historyCats.map((s) => s.capturedAt?.slice(0, 10)),
-      ...historySocial.map((s) => s.capturedAt?.slice(0, 10)),
-    ]);
-    if (uniqueDates.size < 3 && latestCats.length > 0) {
+    const sparkDays = catSparks.length > 0 ? (catSparks[0].points?.length ?? 0) : 0;
+    const socialDates = new Set(historySocial.map((s) => s.capturedAt?.slice(0, 10)));
+    if (sparkDays < 3 && socialDates.size < 3 && latestCats.length > 0) {
       autoBackfillDone.current = true;
       handleBackfillRef.current();
     }
-  }, [loading, historyCats, historySocial, latestCats, backfilling]);
+  }, [loading, catSparks, historySocial, latestCats, backfilling]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -685,8 +715,8 @@ export function CategoryTrendsSection() {
   const socialChartOpt = React.useMemo(() => buildSocialChartOption(socialPoints), [socialPoints]);
   const googleChartOpt = React.useMemo(() => buildGoogleTrendChartOption(googleItems), [googleItems]);
 
-  const hasData = latestCats.length > 0 || latestSocial.length > 0 || googleItems.length > 0 || historyCats.length > 0 || historySocial.length > 0;
-  const hasHistory = socialPoints.length > 1 || googleItems.length > 0 || historyCats.length > 1;
+  const hasData = latestCats.length > 0 || latestSocial.length > 0 || googleItems.length > 0 || catSparks.length > 0 || historySocial.length > 0;
+  const hasHistory = socialPoints.length > 1 || googleItems.length > 0 || catSparks.length > 0;
 
   return (
     <section className="mt-6">
@@ -804,7 +834,7 @@ export function CategoryTrendsSection() {
           {/* Content area */}
           {tab === "category" ? (
             <div className="p-4">
-              <CategoryCards latestSnaps={latestCats} historySnaps={historyCats} />
+              <CategoryCards latestSnaps={latestCats} sparkData={catSparks} />
             </div>
           ) : (
             <>

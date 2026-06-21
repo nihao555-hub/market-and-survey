@@ -233,14 +233,41 @@ export async function fetchAllSnapshots(opts?: {
   term?: string;
   source?: string;
   limit?: number;
+  summaryOnly?: boolean;
 }): Promise<DataSnapshot[]> {
   const d = await gqlRequest<{ allSnapshots: DataSnapshot[] }>(
-    `query($term: String, $source: String, $limit: Int!) {
-       allSnapshots(term: $term, source: $source, limit: $limit) { ${SNAPSHOT_FIELDS} }
+    `query($term: String, $source: String, $limit: Int!, $summaryOnly: Boolean!) {
+       allSnapshots(term: $term, source: $source, limit: $limit, summaryOnly: $summaryOnly) { ${SNAPSHOT_FIELDS} }
      }`,
-    { term: opts?.term ?? null, source: opts?.source ?? null, limit: opts?.limit ?? 500 }
+    {
+      term: opts?.term ?? null,
+      source: opts?.source ?? null,
+      limit: opts?.limit ?? 500,
+      summaryOnly: opts?.summaryOnly ?? false,
+    }
   );
   return d.allSnapshots || [];
+}
+
+export interface SparkPoint {
+  date: string;
+  avgPrice: number;
+  productCount: number;
+  avgRating: number;
+}
+
+export interface CategorySparkData {
+  name: string;
+  categoryId: string;
+  parentCategory: string | null;
+  points: SparkPoint[];
+}
+
+export async function fetchCategorySparklines(): Promise<CategorySparkData[]> {
+  const d = await gqlRequest<{ categorySparklines: CategorySparkData[] }>(
+    `query { categorySparklines { name categoryId parentCategory points { date avgPrice productCount avgRating } } }`
+  );
+  return d.categorySparklines || [];
 }
 
 export async function triggerDailyRefresh(): Promise<boolean> {

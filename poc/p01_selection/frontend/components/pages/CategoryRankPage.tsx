@@ -6,7 +6,8 @@ import {
 } from "lucide-react";
 import {
   fetchDailyRefreshStatus, fetchDataSnapshots, fetchAllSnapshots,
-  type DataSnapshot, type RefreshStatus,
+  fetchCategorySparklines,
+  type DataSnapshot, type RefreshStatus, type CategorySparkData,
 } from "@/lib/api";
 import {
   PageContainer, PageHeader, StatTile, Button, EmptyState, Skeleton, FilterTabs,
@@ -139,18 +140,65 @@ function buildPerCatCards(latestSnaps: DataSnapshot[], historySnaps: DataSnapsho
   return cards.sort((a, b) => b.latestCount - a.latestCount);
 }
 
+/** Build cards from pre-aggregated sparkline data (server-side). Much faster than raw snapshots. */
+function buildPerCatCardsFromSpark(latestSnaps: DataSnapshot[], sparkData: CategorySparkData[]): CatCardData[] {
+  const cards: CatCardData[] = [];
+  const sparkMap = new Map(sparkData.map((s) => [s.name, s]));
+
+  // Build from sparkData (covers all categories including backfill-only ones)
+  const allNames = new Set([
+    ...sparkData.map((s) => s.name),
+    ...latestSnaps.map((s) => (s.payload?.category_name || s.payload?.category_name_en || "") as string).filter(Boolean),
+  ]);
+
+  for (const name of allNames) {
+    const spark = sparkMap.get(name);
+    const latestSnap = latestSnaps.find((s) => (s.payload?.category_name || s.payload?.category_name_en) === name);
+    const prods = (latestSnap?.payload?.products || []) as ShopProduct[];
+
+    const priceHistory = spark?.points.map((p) => p.avgPrice) ?? [];
+    const countHistory = spark?.points.map((p) => p.productCount) ?? [];
+    const ratingHistory = spark?.points.map((p) => p.avgRating) ?? [];
+
+    const latestStats = latestSnap ? _extractStats(latestSnap) : null;
+    const latestAvgPrice = latestStats?.avgPrice ?? (priceHistory.length ? priceHistory[priceHistory.length - 1] : 0);
+    const latestCount = latestStats?.count ?? (countHistory.length ? countHistory[countHistory.length - 1] : prods.length);
+    const latestAvgRating = latestStats?.avgRating ?? (ratingHistory.length ? ratingHistory[ratingHistory.length - 1] : 0);
+
+    const top5 = prods
+      .filter((p) => p.title)
+      .sort((a, b) => (b.sold_count ?? 0) - (a.sold_count ?? 0))
+      .slice(0, 5)
+      .map((p) => ({
+        title: p.title || "",
+        price: p.price || 0,
+        sold: p.sold_count || 0,
+        rating: p.rating || 0,
+        image: p.image ?? undefined,
+      }));
+
+    cards.push({
+      name,
+      catId: spark?.categoryId || (latestSnap?.payload?.category_id as string) || "",
+      latestAvgPrice, latestCount, latestAvgRating,
+      priceHistory, countHistory, ratingHistory, top5,
+    });
+  }
+  return cards.sort((a, b) => b.latestCount - a.latestCount);
+}
+
 function fmtSold(n: number): string {
   if (n >= 1e4) return `${(n / 1e4).toFixed(1)}万`;
   if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
   return String(n);
 }
 
-function PerCategoryCards({ latestSnaps, historySnaps, onSelectCat }: {
+function PerCategoryCards({ latestSnaps, sparkData, onSelectCat }: {
   latestSnaps: DataSnapshot[];
-  historySnaps: DataSnapshot[];
+  sparkData: CategorySparkData[];
   onSelectCat: (id: string) => void;
 }) {
-  const cards = React.useMemo(() => buildPerCatCards(latestSnaps, historySnaps), [latestSnaps, historySnaps]);
+  const cards = React.useMemo(() => buildPerCatCardsFromSpark(latestSnaps, sparkData), [latestSnaps, sparkData]);
   if (cards.length === 0) return null;
 
   return (
@@ -444,6 +492,7 @@ export function CategoryRankPage() {
   const [query, setQuery] = React.useState("");
   const [selectedProduct, setSelectedProduct] = React.useState<ProductForModal | null>(null);
   const [catHistory, setCatHistory] = React.useState<DataSnapshot[]>([]);
+  const [sparkData, setSparkData] = React.useState<CategorySparkData[]>([]);
 
   const q = query.trim().toLowerCase();
 
@@ -454,19 +503,20 @@ export function CategoryRankPage() {
   const reload = React.useCallback(async () => {
     setReloading(true);
     try {
-      const [st, catSnaps, hotSnaps, htSnaps, catHist] = await Promise.all([
+      const [st, catSnaps, hotSnaps, htSnaps, sparks] = await Promise.all([
         fetchDailyRefreshStatus(),
         fetchDataSnapshots({ source: "category_rank", limit: 300 }),
         fetchDataSnapshots({ term: HOT_SELLING_TERM, limit: 1 }),
         fetchDataSnapshots({ term: HASHTAG_TREND_TERM, limit: 1 }),
-        fetchAllSnapshots({ source: "category_rank", limit: 10000 }),
+        fetchCategorySparklines(),
       ]);
       setStatus(st);
       const okCats = catSnaps.filter((s) => s.realData && ((s.payload?.products?.length ?? 0) > 0 || typeof s.payload?.product_count === "number"));
       setCats(okCats);
       setHot(hotSnaps[0] ?? null);
       setHashtagSnap(htSnaps[0] ?? null);
-      setCatHistory(catHist);
+      setSparkData(sparks);
+      setCatHistory([]);  // no longer needed for sparklines
       setActiveCat((prev) => prev ?? okCats[0]?.payload?.category_id ?? null);
     } catch { /* 静默 */ }
     finally { setLoading(false); setReloading(false); }
@@ -553,7 +603,7 @@ export function CategoryRankPage() {
           {/* ═══ Per-Category Trend Cards (hero section) ═══ */}
           <PerCategoryCards
             latestSnaps={cats}
-            historySnaps={catHistory}
+            sparkData={sparkData}
             onSelectCat={(id) => { setActiveCat(id); setTab("category"); }}
           />
 
