@@ -2067,111 +2067,148 @@ def tool_pick_platforms_for_market(markets: list[str], only_verified: bool = Fal
     """
     根据用户指定的目标市场/国家，自动推荐合适的电商平台清单。
     
-    markets 可以是国家代码（US/UK/DE/JP/MX/RU/IN/AE 等）或地区（North America/Europe/SEA）。
-    例如 markets=['US','UK'] → 推荐 amazon, walmart, bestbuy, amazon_uk 等。
+    markets 可以是国家代码（US/UK/DE/JP/MX/RU/IN/AE/TH/VN/PH 等 35+ 国家）
+    或大洲（North America/Europe/Southeast Asia/Middle East/Africa）。
+    例如 markets=['US','JP','DE'] → 推荐 amazon, walmart, amazon_jp, rakuten, amazon_de, otto 等。
     
-    only_verified 默认 False（推荐全部相关平台让 LLM 真试一次，untested 平台跑过会自动登记结果）。
-    设 True 时只返回实测可抓的平台（保守模式）。
+    支持中文输入：如 markets=['美国','日本'] 也可以。
     
-    include_global 默认 None（auto）：当本地平台够用（≥3 个 verified）时不加全球电商；
-    当本地平台 verified 数 <3 时，自动加 temu/aliexpress/alibaba 作为跨境补充并明确标注"补充数据源"。
+    only_verified 默认 False（推荐全部含 scraperapi 可达的平台）。
+    设 True 时只返回 verified + partial 的平台（保守模式）。
     
-    用户严格地区限制策略：
-    - 用户指定俄罗斯 → 只返回 yandex_market/wildberries（俄罗斯本地）
-    - 如果本地都 blocked/数量不够 → 报告里必须明确写"本地平台 X 个 blocked, 用 Y/Z 全球跨境补充"
-    - 不混淆"本地数据"和"全球对标数据"
+    include_global 默认 None（auto）：当本地平台够用（≥3 个 verified/scraperapi）时不加全球电商。
     """
     logger.info(f"🔧 pick_platforms_for_market({markets}, only_verified={only_verified})")
     
-    # 国家 → 地区映射
-    country_to_region = {
-        "US": "US", "USA": "US", "AMERICA": "US", "美国": "US",
-        "CA": "US", "CANADA": "US", "加拿大": "US",
-        "UK": "UK", "GB": "UK", "ENGLAND": "UK", "英国": "UK",
-        "DE": "EU", "GERMANY": "EU", "德国": "EU",
-        "FR": "EU", "FRANCE": "EU", "法国": "EU",
-        "IT": "EU", "ITALY": "EU", "意大利": "EU",
-        "ES": "EU", "SPAIN": "EU", "西班牙": "EU",
-        "NL": "EU", "NETHERLANDS": "EU", "荷兰": "EU",
-        "EUROPE": "EU", "EU": "EU", "欧洲": "EU",
-        "JP": "JP", "JAPAN": "JP", "日本": "JP",
-        "KR": "KR", "KOREA": "KR", "韩国": "KR",
-        "SG": "SEA", "SINGAPORE": "SEA", "新加坡": "SEA",
-        "MY": "SEA", "MALAYSIA": "SEA", "马来西亚": "SEA",
-        "ID": "SEA", "INDONESIA": "SEA", "印尼": "SEA",
-        "TH": "SEA", "THAILAND": "SEA", "泰国": "SEA",
-        "VN": "SEA", "VIETNAM": "SEA", "越南": "SEA",
-        "PH": "SEA", "PHILIPPINES": "SEA", "菲律宾": "SEA",
-        "SEA": "SEA", "SOUTHEAST ASIA": "SEA", "东南亚": "SEA",
-        "MX": "LATAM", "MEXICO": "LATAM", "墨西哥": "LATAM",
-        "BR": "LATAM", "BRAZIL": "LATAM", "巴西": "LATAM",
-        "AR": "LATAM", "ARGENTINA": "LATAM", "阿根廷": "LATAM",
-        "LATAM": "LATAM", "拉美": "LATAM",
-        "TR": "TR", "TURKEY": "TR", "土耳其": "TR",
-        "RU": "RU", "RUSSIA": "RU", "俄罗斯": "RU",
-        "IN": "IN", "INDIA": "IN", "印度": "IN",
-        "AE": "AE", "UAE": "AE", "阿联酋": "AE", "迪拜": "AE",
-        "SA": "AE", "SAUDI": "AE", "沙特": "AE",
-        "AU": "AU", "AUSTRALIA": "AU", "澳大利亚": "AU", "澳洲": "AU",
-        "NZ": "AU", "NEW ZEALAND": "AU", "新西兰": "AU",
-        "CN": "CN", "CHINA": "CN", "中国": "CN", "中國": "CN",
+    from modules.platforms import COUNTRY_PLATFORMS, COUNTRY_NAMES
+    
+    # 国家名/别名 → 标准国家代码映射
+    country_aliases = {
+        "USA": "US", "AMERICA": "US", "美国": "US",
+        "CANADA": "CA", "加拿大": "CA",
+        "GB": "UK", "ENGLAND": "UK", "英国": "UK",
+        "GERMANY": "DE", "德国": "DE",
+        "FRANCE": "FR", "法国": "FR",
+        "ITALY": "IT", "意大利": "IT",
+        "SPAIN": "ES", "西班牙": "ES",
+        "NETHERLANDS": "NL", "荷兰": "NL",
+        "POLAND": "PL", "波兰": "PL",
+        "SWEDEN": "SE", "瑞典": "SE",
+        "ROMANIA": "RO", "罗马尼亚": "RO",
+        "JAPAN": "JP", "日本": "JP",
+        "KOREA": "KR", "韩国": "KR",
+        "SINGAPORE": "SG", "新加坡": "SG",
+        "MALAYSIA": "MY", "马来西亚": "MY",
+        "INDONESIA": "ID", "印尼": "ID",
+        "THAILAND": "TH", "泰国": "TH",
+        "VIETNAM": "VN", "越南": "VN",
+        "PHILIPPINES": "PH", "菲律宾": "PH",
+        "MEXICO": "MX", "墨西哥": "MX",
+        "BRAZIL": "BR", "巴西": "BR",
+        "ARGENTINA": "AR", "阿根廷": "AR",
+        "COLOMBIA": "CO", "哥伦比亚": "CO",
+        "CHILE": "CL", "智利": "CL",
+        "TURKEY": "TR", "土耳其": "TR",
+        "RUSSIA": "RU", "俄罗斯": "RU",
+        "KAZAKHSTAN": "KZ", "哈萨克斯坦": "KZ",
+        "INDIA": "IN", "印度": "IN",
+        "PAKISTAN": "PK", "巴基斯坦": "PK",
+        "BANGLADESH": "BD", "孟加拉": "BD",
+        "UAE": "AE", "阿联酋": "AE", "迪拜": "AE",
+        "SAUDI": "SA", "SAUDI ARABIA": "SA", "沙特": "SA",
+        "AUSTRALIA": "AU", "澳大利亚": "AU", "澳洲": "AU",
+        "NEW ZEALAND": "NZ", "新西兰": "NZ",
+        "NIGERIA": "NG", "尼日利亚": "NG",
+        "KENYA": "KE", "肯尼亚": "KE",
+        "EGYPT": "EG", "埃及": "EG",
+        "GHANA": "GH", "加纳": "GH",
+        "SOUTH AFRICA": "ZA", "南非": "ZA",
+        "CHINA": "CN", "中国": "CN", "中國": "CN",
         "GLOBAL": "Global", "全球": "Global",
-        # 大洲（展开为多个子地区）
-        "NORTH AMERICA": "North America", "北美": "North America", "北美洲": "North America",
-        "SOUTH AMERICA": "South America", "南美": "South America", "南美洲": "South America",
-        "EUROPE_CONT": "Europe",
-        "ASIA": "Asia", "亚洲": "Asia",
-        "MIDDLE EAST": "Middle East", "中东": "Middle East",
-        "OCEANIA": "Oceania", "大洋洲": "Oceania",
     }
     
-    region_keys = set()
+    # 大洲别名 → 大洲名
+    continent_aliases = {
+        "NORTH AMERICA": "North America", "北美": "North America", "北美洲": "North America",
+        "SOUTH AMERICA": "South America", "南美": "South America", "南美洲": "South America", "拉美": "South America",
+        "EUROPE": "Europe", "欧洲": "Europe", "EU": "Europe",
+        "RUSSIA & CIS": "Russia & CIS", "俄罗斯独联体": "Russia & CIS",
+        "EAST ASIA": "East Asia", "东亚": "East Asia",
+        "SOUTHEAST ASIA": "Southeast Asia", "东南亚": "Southeast Asia", "SEA": "Southeast Asia",
+        "SOUTH ASIA": "South Asia", "南亚": "South Asia",
+        "MIDDLE EAST": "Middle East", "中东": "Middle East",
+        "OCEANIA": "Oceania", "大洋洲": "Oceania",
+        "AFRICA": "Africa", "非洲": "Africa",
+        "ASIA": "East Asia",  # 默认映射
+    }
+    
+    # 解析用户输入 → 国家代码列表
+    country_codes = set()
     for m in markets:
         m_upper = m.upper().strip()
-        region = country_to_region.get(m_upper, m_upper)
-        # 大洲 → 展开为多个子地区
-        if region in CONTINENTS:
-            for sub in CONTINENTS[region]:
-                region_keys.add(sub)
-        elif region in REGIONS:
-            region_keys.add(region)
+        # 直接是国家代码？
+        if m_upper in COUNTRY_PLATFORMS:
+            country_codes.add(m_upper)
+        # 国家别名？
+        elif m_upper in country_aliases:
+            country_codes.add(country_aliases[m_upper])
+        # 中文名？
+        elif m.strip() in country_aliases:
+            country_codes.add(country_aliases[m.strip()])
+        # 大洲名？→ 展开
+        elif m_upper in continent_aliases:
+            continent = continent_aliases[m_upper]
+            for code in CONTINENTS.get(continent, []):
+                country_codes.add(code)
+        elif m.strip() in continent_aliases:
+            continent = continent_aliases[m.strip()]
+            for code in CONTINENTS.get(continent, []):
+                country_codes.add(code)
     
-    if not region_keys:
+    if not country_codes:
         return {"error": f"无法识别市场 {markets}",
-                "available_markets": list(country_to_region.keys()),
-                "available_regions": list(REGIONS.keys())}
+                "hint": "请使用国家代码（如 US/JP/DE）或中文名（如 美国/日本/德国）或大洲名（如 东南亚/欧洲）",
+                "available_countries": list(COUNTRY_PLATFORMS.keys()),
+                "available_continents": list(CONTINENTS.keys())}
     
-    # 收集这些地区的平台 — 严格本地优先
+    # 收集这些国家的平台
     local_selected = {}
     local_blocked = {}
     
-    for region in region_keys:
-        for plat_key in REGIONS.get(region, []):
+    for code in country_codes:
+        for plat_key in COUNTRY_PLATFORMS.get(code, []):
             if plat_key in PLATFORMS:
                 p = PLATFORMS[plat_key]
-                if p.get("status") == "blocked":
+                status = p.get("status", "untested")
+                if status == "blocked":
                     local_blocked[plat_key] = {
                         "key": plat_key, "name": p["name"], "region": p["region"],
+                        "country": code,
+                        "country_name": COUNTRY_NAMES.get(code, code),
                         "blocker": p.get("blocker", "未知反爬"),
                     }
                     continue
-                if only_verified and p.get("status") not in ("verified", "partial"):
+                if only_verified and status not in ("verified", "partial"):
                     continue
                 local_selected[plat_key] = {
                     "key": plat_key, "name": p["name"], "region": p["region"],
-                    "status": p["status"], "search_url_template": p["search_url"],
+                    "country": code,
+                    "country_name": COUNTRY_NAMES.get(code, code),
+                    "status": status, "search_url_template": p["search_url"],
                     "scope": "local",
+                    "scraperapi_available": plat_key in PLATFORM_SCRAPERAPI_CONFIG,
                 }
     
     # 决定是否加全球跨境补充
-    local_verified_count = sum(1 for v in local_selected.values() if v["status"] == "verified")
+    local_reachable_count = sum(1 for v in local_selected.values()
+                                 if v["status"] in ("verified", "partial", "scraperapi"))
     auto_include_global = (include_global is True) or (
-        include_global is None and local_verified_count < 3
+        include_global is None and local_reachable_count < 3
     )
     
     global_selected = {}
     if auto_include_global:
-        for k in REGIONS.get("Global", []):
+        for k in COUNTRY_PLATFORMS.get("Global", []):
             if k in PLATFORMS and k not in local_selected:
                 p = PLATFORMS[k]
                 if only_verified and p.get("status") not in ("verified", "partial"):
@@ -2180,6 +2217,7 @@ def tool_pick_platforms_for_market(markets: list[str], only_verified: bool = Fal
                     "key": k, "name": p["name"], "region": p["region"],
                     "status": p["status"], "search_url_template": p["search_url"],
                     "scope": "global_supplement",
+                    "scraperapi_available": k in PLATFORM_SCRAPERAPI_CONFIG,
                 }
     
     selected = {**local_selected, **global_selected}
@@ -2191,35 +2229,35 @@ def tool_pick_platforms_for_market(markets: list[str], only_verified: bool = Fal
             f"⚠️ 该地区有 {len(local_blocked)} 个本地平台被反爬挡："
             + ", ".join([f"{v['name']}({v['blocker'][:30]})" for v in local_blocked.values()])
         )
-    if local_verified_count == 0:
+    if local_reachable_count == 0:
         warnings.append(
-            "❌ 本地完全没有 verified 平台！本次调研只能侧面通过全球跨境平台。"
+            "❌ 本地完全没有可达平台！本次调研只能通过全球跨境平台。"
             "报告中必须明确标注'本地平台数据缺失，X个blocked'。"
         )
-    elif local_verified_count < 3:
+    elif local_reachable_count < 3:
         warnings.append(
-            f"⚠️ 本地仅 {local_verified_count} 个 verified 平台，已自动补充全球跨境作为对标数据。"
-            "**注意：报告中本地数据和跨境对标数据必须分开写**，不能混为一谈。"
+            f"⚠️ 本地仅 {local_reachable_count} 个可达平台，已自动补充全球跨境作为对标数据。"
         )
     
     return {
         "input_markets": markets,
-        "matched_regions": list(region_keys),
+        "matched_countries": list(country_codes),
+        "matched_country_names": [COUNTRY_NAMES.get(c, c) for c in country_codes],
         "platform_count": len(selected),
         "local_count": len(local_selected),
-        "local_verified_count": local_verified_count,
+        "local_reachable_count": local_reachable_count,
         "local_blocked_count": len(local_blocked),
         "global_supplement_count": len(global_selected),
         "platforms": list(selected.values()),
         "platform_keys": list(selected.keys()),
         "local_blocked": list(local_blocked.values()),
         "warnings": warnings,
-        "next_step": (f"调用 search_multi_platform(platforms={list(selected.keys())}, "
-                       f"keyword=...) 真抓多平台数据。"),
+        "next_step": (f"调用 search_global_platforms(keyword=..., regions={list(country_codes)}) "
+                       f"对这 {len(selected)} 个平台一键搜索。"),
         "_data_source_disclosure": (
             "📋 报告中数据来源声明（必须照实写）：\n"
-            f"- 本地平台（{local_verified_count} verified）: {[k for k, v in local_selected.items() if v['status']=='verified']}\n"
-            f"- 本地 blocked（{len(local_blocked)} 个，需付费打码服务）: {list(local_blocked.keys())}\n"
+            f"- 可达平台（{local_reachable_count} 个）: {list(local_selected.keys())}\n"
+            f"- 本地 blocked（{len(local_blocked)} 个）: {list(local_blocked.keys())}\n"
             f"- 全球跨境补充（{len(global_selected)} 个）: {list(global_selected.keys())}\n"
         ),
     }
@@ -2532,36 +2570,50 @@ def tool_search_global_platforms(keyword: str, regions: list[str] = None,
     """全球主流电商平台一键搜索 — 自动选择最佳抓取策略。
     
     对 verified 平台：走 xray 代理（免费、快）
-    对 blocked 平台：自动回落到 ScraperAPI（需配 key，有免费额度）
+    对 scraperapi/blocked 平台：自动回落到 ScraperAPI（需配 key，有免费额度）
     
-    regions 可选：US/UK/EU/JP/KR/SEA/LATAM/TR/RU/IN/AE/AU/CN/Global
-    不传则搜全部 verified + ScraperAPI 可覆盖的 blocked 平台。
+    regions 支持 35+ 国家代码（US/UK/DE/JP/KR/SG/MY/TH/VN/PH/ID/MX/BR/AR/CO/CL/
+    TR/RU/KZ/IN/PK/AE/SA/AU/NZ/NG/KE/EG/ZA/CN 等）。
+    也支持大洲名（North America/Europe/Southeast Asia/Middle East/Africa 等）。
+    
+    不传 regions 则搜全部 verified + ScraperAPI 可覆盖的平台。
     """
     logger.info(f"🔧 search_global_platforms({keyword}, regions={regions})")
+    
+    from modules.platforms import COUNTRY_PLATFORMS
     
     # 确定要搜的平台
     target_platforms = []
     if regions:
         for r in regions:
-            r = r.upper()
-            if r in REGIONS:
-                target_platforms.extend(REGIONS[r])
-            elif r in CONTINENTS:
-                for sub_r in CONTINENTS[r]:
-                    target_platforms.extend(REGIONS.get(sub_r, []))
+            r_upper = r.upper().strip()
+            # 直接是国家代码
+            if r_upper in COUNTRY_PLATFORMS:
+                target_platforms.extend(COUNTRY_PLATFORMS[r_upper])
+            # 大洲名
+            elif r_upper in {c.upper(): c for c in CONTINENTS}:
+                continent = next((v for k, v in {c.upper(): c for c in CONTINENTS}.items() if k == r_upper), None)
+                if continent:
+                    for code in CONTINENTS[continent]:
+                        target_platforms.extend(COUNTRY_PLATFORMS.get(code, []))
+            # 兼容旧的 REGIONS key
+            elif r_upper in REGIONS:
+                target_platforms.extend(REGIONS[r_upper])
     else:
-        # 默认：所有 verified + ScraperAPI 支持的 blocked
+        # 默认：所有 verified + ScraperAPI 支持的平台
         for k, v in PLATFORMS.items():
-            if v.get("status") == "verified":
+            if v.get("status") in ("verified", "partial"):
                 target_platforms.append(k)
-            elif use_scraperapi_for_blocked and k in PLATFORM_SCRAPERAPI_CONFIG:
+            elif v.get("status") == "scraperapi" and scraperapi_available():
+                target_platforms.append(k)
+            elif v.get("status") == "blocked" and use_scraperapi_for_blocked and k in PLATFORM_SCRAPERAPI_CONFIG:
                 target_platforms.append(k)
     
     # 去重
     seen = set()
     target_platforms = [p for p in target_platforms if not (p in seen or seen.add(p))]
     
-    # 分类：verified 走本地代理，blocked 走 ScraperAPI
+    # 分类：verified 走本地代理，scraperapi/blocked 走 ScraperAPI
     local_platforms = []
     scraperapi_platforms = []
     skipped = []
@@ -2571,13 +2623,13 @@ def tool_search_global_platforms(keyword: str, regions: list[str] = None,
         status = p.get("status", "untested")
         if status == "verified" or status == "partial":
             local_platforms.append(plat)
-        elif status == "blocked" and use_scraperapi_for_blocked and scraperapi_available():
+        elif status in ("scraperapi", "blocked") and use_scraperapi_for_blocked and scraperapi_available():
             if plat in PLATFORM_SCRAPERAPI_CONFIG:
                 scraperapi_platforms.append(plat)
             else:
-                skipped.append({"platform": plat, "reason": "blocked, no ScraperAPI config"})
-        elif status == "blocked":
-            skipped.append({"platform": plat, "reason": "blocked, SCRAPERAPI_KEY not set"})
+                skipped.append({"platform": plat, "reason": "no ScraperAPI config"})
+        elif status in ("scraperapi", "blocked"):
+            skipped.append({"platform": plat, "reason": "SCRAPERAPI_KEY not set"})
         else:
             local_platforms.append(plat)
     
@@ -2589,8 +2641,8 @@ def tool_search_global_platforms(keyword: str, regions: list[str] = None,
                                                    limit_per_platform=limit_per_platform)
         results.update(local_result.get("results", {}))
     
-    # 2. ScraperAPI 平台（顺序，省额度）
-    for plat in scraperapi_platforms[:5]:  # 限制最多 5 个 ScraperAPI 请求（省额度）
+    # 2. ScraperAPI 平台（顺序，省额度 — 限 8 个）
+    for plat in scraperapi_platforms[:8]:
         try:
             r = tool_scraperapi_search(plat, keyword, limit_per_platform)
             results[plat] = {
@@ -2945,17 +2997,17 @@ TOOLS_SCHEMA = [
         }, "required": ["claims"]}}},
     {"type": "function", "function": {
         "name": "list_platforms",
-        "description": "列出全部 29 个全球电商平台（含 verified/untested/blocked 状态）。region 可选 US/UK/EU/JP/KR/SEA/LATAM/TR/Global/CN_B2B 来按地区筛选。Agent 选平台前先调用看清单。",
+        "description": "列出全部 80+ 个全球电商平台（含 verified/scraperapi/blocked 状态），覆盖 35 个国家/地区。region 可选国家代码（US/UK/DE/JP/KR/SG/TH/VN/BR/RU 等）来按国家筛选。Agent 选平台前先调用看清单。",
         "parameters": {"type": "object", "properties": {
-            "region": {"type": "string"}
+            "region": {"type": "string", "description": "国家代码，如 US/JP/DE/TH/VN 等"}
         }}}},
     {"type": "function", "function": {
         "name": "pick_platforms_for_market",
-        "description": "**用户指定地区/国家时必用此工具**。输入用户的目标市场列表（如 ['US','UK','日本']），自动推荐合适的电商平台清单。支持国家代码（US/UK/DE/JP/MX/SG…）和中文（美国/英国/欧洲/东南亚…）。返回的 platform_keys 直接传给 search_multi_platform。",
+        "description": "**用户指定地区/国家时必用此工具**。输入目标市场列表（如 ['US','JP','TH','DE']），自动推荐该国主流电商平台（80+ 平台覆盖 35 国）。支持国家代码（US/UK/DE/JP/MX/SG/TH/VN/PH/ID/KR/RU/TR/AE/SA/BR/AR/CO/CL/PL/NL/SE/AU/NZ/NG/KE/EG/ZA/IN/PK/BD/KZ/RO）和中文（美国/泰国/越南/菲律宾…）以及大洲名（东南亚/欧洲/非洲/中东…）。返回的 platform_keys 直接传给 search_global_platforms。",
         "parameters": {"type": "object", "properties": {
             "markets": {"type": "array", "items": {"type": "string"},
-                         "description": "市场列表，如 ['US','UK','日本'] 或 ['North America','SEA']"},
-            "only_verified": {"type": "boolean", "description": "默认 true 只返回实测可抓的平台。"}
+                         "description": "市场/国家列表，如 ['US','TH','DE'] 或 ['东南亚','欧洲'] 或 ['美国','泰国','越南']"},
+            "only_verified": {"type": "boolean", "description": "默认 false 返回所有可达平台（含 scraperapi）；设 true 只返回 verified 的。"}
         }, "required": ["markets"]}}},
     {"type": "function", "function": {
         "name": "capture_evidence",
@@ -3125,13 +3177,13 @@ TOOLS_SCHEMA = [
         "parameters": {"type": "object", "properties": {}}}},
     {"type": "function", "function": {
         "name": "search_global_platforms",
-        "description": "**全球全平台一键搜索（智能策略）**：自动选择最佳路径——verified 平台走免费 xray 代理，blocked 平台走 ScraperAPI（有免费额度）。覆盖全球所有主流电商：北美(Amazon/Walmart/BestBuy/Target)、欧洲(Amazon UK/DE/FR/Otto/Cdiscount)、东南亚(Shopee/Lazada/Tokopedia)、拉美(MercadoLibre MX/BR)、俄罗斯(Ozon/Wildberries/Yandex)、中东(Amazon AE/Noon)、大洋洲(Amazon AU)、韩国(Coupang)、土耳其(Trendyol)、印度(Flipkart)。可按 regions 限定地区。",
+        "description": "**全球 80+ 平台一键搜索（智能策略）**：自动选择最佳路径——verified 平台走免费 xray 代理，scraperapi/blocked 平台走 ScraperAPI（5000 credits）。覆盖 35 个国家/地区全球所有主流电商。regions 支持国家代码多选（US/JP/DE/TH/VN/PH/ID/KR/RU/TR/AE/SA/BR/AR/CO/CL/PL/NL/AU/NZ/NG/KE/EG/ZA/IN 等）。",
         "parameters": {"type": "object", "properties": {
             "keyword": {"type": "string", "description": "搜索关键词"},
             "regions": {"type": "array", "items": {"type": "string"},
-                        "description": "地区过滤：US/UK/EU/JP/KR/SEA/LATAM/TR/RU/IN/AE/AU/CN/Global。不传则全球搜索"},
+                        "description": "国家代码多选：US/JP/DE/TH/VN/PH/ID/KR/RU/TR/AE/SA/BR/AR/AU/NZ/NG/IN 等。不传则搜全球所有可达平台"},
             "use_scraperapi_for_blocked": {"type": "boolean", "default": True,
-                                            "description": "是否对 blocked 平台自动使用 ScraperAPI"},
+                                            "description": "是否对 scraperapi/blocked 平台使用 ScraperAPI"},
             "limit_per_platform": {"type": "integer", "default": 15}
         }, "required": ["keyword"]}}},
 ]
