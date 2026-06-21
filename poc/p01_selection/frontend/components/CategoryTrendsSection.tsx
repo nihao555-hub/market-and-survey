@@ -2,8 +2,7 @@
 import React, { useRef, useEffect, useCallback } from "react";
 import {
   TrendingUp, RefreshCw, Package, Flame, BarChart3,
-  Clock, ChevronDown, Music2, Sparkles, MessageCircle,
-  BookOpen, Video, Tv, Twitter, Citrus, Globe,
+  Clock, ChevronDown, Music2, Twitter, Citrus, Globe,
 } from "lucide-react";
 import type { EChartsOption } from "echarts";
 import { fetchDataSnapshots, fetchAllSnapshots, fetchDailyRefreshStatus, triggerDailyRefresh, backfillGoogleTrends } from "@/lib/api";
@@ -54,11 +53,6 @@ const SOCIAL_TREND_TERM = "🔥 实时社媒趋势";
 
 const SOCIAL_PLATFORMS: { source: string; label: string; icon: React.ReactNode; color: string }[] = [
   { source: "trend_tiktok", label: "TikTok", icon: <Music2 className="h-3 w-3" />, color: "#ec4899" },
-  { source: "trend_douyin", label: "抖音", icon: <Sparkles className="h-3 w-3" />, color: "#f43f5e" },
-  { source: "trend_weibo", label: "微博", icon: <MessageCircle className="h-3 w-3" />, color: "#f97316" },
-  { source: "trend_xiaohongshu", label: "小红书", icon: <BookOpen className="h-3 w-3" />, color: "#ef4444" },
-  { source: "trend_kuaishou", label: "快手", icon: <Video className="h-3 w-3" />, color: "#f59e0b" },
-  { source: "trend_bilibili", label: "B站", icon: <Tv className="h-3 w-3" />, color: "#0ea5e9" },
   { source: "trend_twitter", label: "X", icon: <Twitter className="h-3 w-3" />, color: "#3b82f6" },
   { source: "trend_lemon8", label: "Lemon8", icon: <Citrus className="h-3 w-3" />, color: "#84cc16" },
 ];

@@ -2,8 +2,7 @@
 import React, { useRef, useEffect } from "react";
 import {
   Database, ShoppingCart, Star, Store, Flame, Hash,
-  TrendingUp, Package, Music2, Sparkles, MessageCircle,
-  BookOpen, Video, Tv, Twitter, Citrus, BarChart3,
+  TrendingUp, Package, Music2, Twitter, Citrus, BarChart3,
 } from "lucide-react";
 import type { EChartsOption } from "echarts";
 import { fetchDataSnapshots, fetchAllSnapshots, type DataSnapshot } from "@/lib/api";
@@ -68,14 +67,9 @@ const HOT_SELLING_TERM = "\u{1f6d2} \u5b9e\u65f6\u70ed\u9500\u699c";
 const HASHTAG_TREND_TERM = "\u{1f3f7}\ufe0f \u70ed\u95e8\u8bdd\u9898\u699c";
 const SOCIAL_TREND_TERM = "\u{1f525} \u5b9e\u65f6\u793e\u5a92\u8d8b\u52bf";
 
-/* ─── 平台元数据 ─── */
+/* ─── 平台元数据（面向海外，只保留国际平台） ─── */
 const PLATFORM_META: Record<string, { label: string; icon: React.ReactNode }> = {
   trend_tiktok: { label: "TikTok", icon: <Music2 className="h-3 w-3" /> },
-  trend_douyin: { label: "\u6296\u97f3", icon: <Sparkles className="h-3 w-3" /> },
-  trend_weibo: { label: "\u5fae\u535a", icon: <MessageCircle className="h-3 w-3" /> },
-  trend_xiaohongshu: { label: "\u5c0f\u7ea2\u4e66", icon: <BookOpen className="h-3 w-3" /> },
-  trend_kuaishou: { label: "\u5feb\u624b", icon: <Video className="h-3 w-3" /> },
-  trend_bilibili: { label: "B\u7ad9", icon: <Tv className="h-3 w-3" /> },
   trend_twitter: { label: "X", icon: <Twitter className="h-3 w-3" /> },
   trend_lemon8: { label: "Lemon8", icon: <Citrus className="h-3 w-3" /> },
 };
@@ -252,9 +246,7 @@ function buildOpportunityQuadrant(catSnaps: DataSnapshot[], trendSnaps: DataSnap
 function buildTrendSocialChart(trendSnaps: DataSnapshot[]): EChartsOption {
   const platformData: { name: string; value: number; color: string }[] = [];
   const platformColors: Record<string, string> = {
-    trend_tiktok: "#ec4899", trend_douyin: "#f43f5e", trend_weibo: "#f97316",
-    trend_xiaohongshu: "#ef4444", trend_kuaishou: "#f59e0b", trend_bilibili: "#0ea5e9",
-    trend_twitter: "#3b82f6", trend_lemon8: "#84cc16",
+    trend_tiktok: "#ec4899", trend_twitter: "#3b82f6", trend_lemon8: "#84cc16",
   };
   for (const s of trendSnaps) {
     const meta = PLATFORM_META[s.source];
