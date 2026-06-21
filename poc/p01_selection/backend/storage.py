@@ -515,15 +515,19 @@ def set_config(key: str, value) -> None:
 # ─────────── 数据快照（每日定时刷新落库）───────────
 def save_snapshot(*, tenant_id: str, run_id: str, term: str, source: str,
                   geo: str = "US", tier: int = 1, status: str = "ok",
-                  real_data: bool = False, summary: str = "", payload=None) -> str:
-    """落一条数据快照，返回快照 id。"""
+                  real_data: bool = False, summary: str = "", payload=None,
+                  captured_at: Optional[datetime] = None) -> str:
+    """落一条数据快照，返回快照 id。captured_at 可传历史时间戳用于回填。"""
     sid = str(uuid.uuid4())
     with SessionLocal() as s:
-        s.add(DataSnapshot(
+        snap = DataSnapshot(
             id=sid, tenant_id=tenant_id, run_id=run_id, term=term, source=source,
             geo=geo, tier=tier, status=status, real_data=bool(real_data),
             summary=summary or "", payload=payload if payload is not None else {},
-        ))
+        )
+        if captured_at is not None:
+            snap.captured_at = captured_at
+        s.add(snap)
         s.commit()
     return sid
 
@@ -558,13 +562,16 @@ def list_latest_snapshots(tenant_id: str = "dev_tenant", *,
 
 
 def list_all_snapshots(tenant_id: str = "dev_tenant", *,
+                       term: Optional[str] = None,
                        source: Optional[str] = None,
-                       limit: int = 500) -> list[DataSnapshot]:
+                       limit: int = 2000) -> list[DataSnapshot]:
     """列出所有刷新批次的快照（跨 run_id），按时间倒序，用于展示历史趋势。"""
     with SessionLocal() as s:
         q = (s.query(DataSnapshot)
              .filter(DataSnapshot.tenant_id == tenant_id,
                      DataSnapshot.real_data == True))
+        if term:
+            q = q.filter(DataSnapshot.term == term)
         if source:
             q = q.filter(DataSnapshot.source == source)
         return list(q.order_by(DataSnapshot.captured_at.desc()).limit(limit).all())

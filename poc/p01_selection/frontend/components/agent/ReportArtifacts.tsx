@@ -28,13 +28,13 @@ export function ReportArtifacts({ artifacts }: { artifacts: Artifacts }) {
   if (available.length === 0) return null;
 
   return (
-    <div className="my-3 rounded-xl border border-hairline bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-ink">
-        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-brand/10 text-brand">
+    <div className="my-3 rounded-xl border border-[var(--gray-5)] bg-[var(--gray-1)] p-4 shadow-sm">
+      <div className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-[var(--gray-12)]">
+        <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[var(--gray-4)] text-[var(--gray-12)]">
           <Package className="h-3.5 w-3.5" />
         </span>
         报告产物
-        <span className="text-xs font-normal text-ink-subtle">· 多版本可选</span>
+        <span className="text-xs font-normal text-[var(--gray-9)]">· 多版本可选</span>
       </div>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {available.map((it) => (
@@ -44,31 +44,31 @@ export function ReportArtifacts({ artifacts }: { artifacts: Artifacts }) {
             className={
               "group flex items-start gap-2.5 rounded-lg border p-2.5 text-left transition-all " +
               (it.primary
-                ? "border-brand bg-brand text-white hover:bg-brand-hover"
-                : "border-hairline bg-white text-ink-muted hover:border-brand/40 hover:bg-brand/5")
+                ? "border-[var(--gray-12)] bg-[var(--gray-12)] text-white hover:bg-[var(--gray-11)]"
+                : "border-[var(--gray-5)] bg-[var(--gray-1)] text-[var(--gray-8)] hover:border-[var(--gray-6)] hover:bg-[var(--gray-3)]")
             }
           >
             <span
               className={
-                "mt-0.5 flex-shrink-0 " + (it.primary ? "text-white" : "text-brand")
+                "mt-0.5 flex-shrink-0 " + (it.primary ? "text-white" : "text-[var(--gray-12)]")
               }
             >
               {it.icon}
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-1 text-sm font-medium">
-                <span className={it.primary ? "text-white" : "text-ink"}>{it.label}</span>
+                <span className={it.primary ? "text-white" : "text-[var(--gray-12)]"}>{it.label}</span>
                 <ArrowUpRight
                   className={
                     "h-3 w-3 flex-shrink-0 opacity-0 transition-opacity group-hover:opacity-100 " +
-                    (it.primary ? "text-white" : "text-brand")
+                    (it.primary ? "text-white" : "text-[var(--gray-12)]")
                   }
                 />
               </span>
               <span
                 className={
                   "mt-0.5 block truncate text-[11px] " +
-                  (it.primary ? "text-white/80" : "text-ink-subtle")
+                  (it.primary ? "text-white/80" : "text-[var(--gray-9)]")
                 }
               >
                 {it.desc}

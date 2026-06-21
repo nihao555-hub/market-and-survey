@@ -37,8 +37,8 @@ function Row({ title, desc, children }: { title: string; desc?: string; children
   return (
     <div className="flex items-center justify-between gap-4 py-3.5">
       <div className="min-w-0">
-        <div className="text-sm font-medium text-ink">{title}</div>
-        {desc && <div className="mt-0.5 text-xs text-ink-subtle">{desc}</div>}
+        <div className="text-sm font-medium text-[var(--gray-12)]">{title}</div>
+        {desc && <div className="mt-0.5 text-xs text-[var(--gray-9)]">{desc}</div>}
       </div>
       <div className="flex-shrink-0">{children}</div>
     </div>
@@ -135,17 +135,17 @@ export function SettingsPage() {
                 <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
                   <input
                     value={name} onChange={(e) => setName(e.target.value)} placeholder="昵称"
-                    className="rounded-lg border border-hairline bg-surface-1 px-3 py-1.5 text-sm text-ink outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/15"
+                    className="rounded-lg border border-[var(--gray-5)] bg-[var(--gray-3)] px-3 py-1.5 text-sm text-[var(--gray-12)] outline-none focus:border-[var(--gray-8)]/40 focus:ring-2 focus:ring-brand/15"
                   />
                   <input
                     value={email} onChange={(e) => setEmail(e.target.value)} placeholder="邮箱"
-                    className="flex-1 rounded-lg border border-hairline bg-surface-1 px-3 py-1.5 text-sm text-ink outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/15"
+                    className="flex-1 rounded-lg border border-[var(--gray-5)] bg-[var(--gray-3)] px-3 py-1.5 text-sm text-[var(--gray-12)] outline-none focus:border-[var(--gray-8)]/40 focus:ring-2 focus:ring-brand/15"
                   />
                 </div>
               ) : (
                 <div className="min-w-0 flex-1">
-                  <div className="text-sm font-semibold text-ink">{settings?.displayName}</div>
-                  <div className="text-xs text-ink-subtle">{settings?.email} · {settings?.plan}</div>
+                  <div className="text-sm font-semibold text-[var(--gray-12)]">{settings?.displayName}</div>
+                  <div className="text-xs text-[var(--gray-9)]">{settings?.email} · {settings?.plan}</div>
                 </div>
               )}
               {editing ? (
@@ -162,14 +162,14 @@ export function SettingsPage() {
           <Panel title="默认调研偏好" bodyClassName="px-5 py-1">
             <div className="divide-y divide-hairline">
               <Row title="默认分析模型" desc="Flash 更快，Pro 推理更深、用于最终报告">
-                <div className="flex items-center gap-1 rounded-lg bg-surface-1 p-1">
+                <div className="flex items-center gap-1 rounded-lg bg-[var(--gray-3)] p-1">
                   {(["flash", "pro"] as const).map((m) => (
                     <button
                       key={m}
                       onClick={() => setModel(m)}
                       className={cn(
                         "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-                        model === m ? "bg-white text-brand shadow-sm" : "text-ink-subtle hover:text-ink"
+                        model === m ? "bg-[var(--gray-1)] text-[var(--gray-12)] shadow-sm" : "text-[var(--gray-9)] hover:text-[var(--gray-12)]"
                       )}
                     >
                       {m === "flash" ? <Zap className="h-3.5 w-3.5" /> : <Gauge className="h-3.5 w-3.5" />}
@@ -181,7 +181,7 @@ export function SettingsPage() {
               <Row title="默认目标市场" desc="新建任务时预选的市场">
                 <select
                   value={market} onChange={(e) => setMarket(e.target.value)}
-                  className="rounded-lg border border-hairline bg-surface-1 px-3 py-1.5 text-xs text-ink-muted outline-none focus:border-brand/40"
+                  className="rounded-lg border border-[var(--gray-5)] bg-[var(--gray-3)] px-3 py-1.5 text-xs text-[var(--gray-8)] outline-none focus:border-[var(--gray-8)]/40"
                 >
                   {MARKETS.map((mk) => <option key={mk} value={mk}>{mk} · {MARKET_NAMES[mk]}</option>)}
                 </select>
@@ -189,7 +189,7 @@ export function SettingsPage() {
               <Row title="默认产品定位" desc="影响成本与利润测算基准">
                 <select
                   value={positioning} onChange={(e) => setPositioning(e.target.value)}
-                  className="rounded-lg border border-hairline bg-surface-1 px-3 py-1.5 text-xs text-ink-muted outline-none focus:border-brand/40"
+                  className="rounded-lg border border-[var(--gray-5)] bg-[var(--gray-3)] px-3 py-1.5 text-xs text-[var(--gray-8)] outline-none focus:border-[var(--gray-8)]/40"
                 >
                   {POSITIONINGS.map((p) => <option key={p} value={p}>{p}</option>)}
                 </select>
@@ -201,10 +201,10 @@ export function SettingsPage() {
             <div className="divide-y divide-hairline">
               <div className="py-3.5">
                 <div className="mb-2 flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-brand" />
+                  <Globe className="h-4 w-4 text-[var(--gray-12)]" />
                   <div>
-                    <div className="text-sm font-medium text-ink">目标国家（多选）</div>
-                    <div className="mt-0.5 text-xs text-ink-subtle">每日自动刷新时会对每个勾选的国家采集热销榜、品类榜单、话题趋势等数据</div>
+                    <div className="text-sm font-medium text-[var(--gray-12)]">目标国家（多选）</div>
+                    <div className="mt-0.5 text-xs text-[var(--gray-9)]">每日自动刷新时会对每个勾选的国家采集热销榜、品类榜单、话题趋势等数据</div>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
@@ -217,8 +217,8 @@ export function SettingsPage() {
                         className={cn(
                           "rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-all",
                           selected
-                            ? "border-brand bg-brand/10 text-brand shadow-sm"
-                            : "border-hairline bg-surface-1 text-ink-subtle hover:border-brand/30 hover:text-ink"
+                            ? "border-[var(--gray-12)] bg-[var(--gray-4)] text-[var(--gray-12)] shadow-sm"
+                            : "border-[var(--gray-5)] bg-[var(--gray-3)] text-[var(--gray-9)] hover:border-[var(--gray-6)] hover:text-[var(--gray-12)]"
                         )}
                       >
                         {code} · {COUNTRY_NAMES[code] || code}
@@ -229,11 +229,11 @@ export function SettingsPage() {
               </div>
               <Row title="定时刷新时间" desc="每天自动触发数据刷新的时间（每 2 小时一次，包含此时刻）">
                 <div className="flex items-center gap-2">
-                  <Clock className="h-3.5 w-3.5 text-ink-subtle" />
+                  <Clock className="h-3.5 w-3.5 text-[var(--gray-9)]" />
                   <select
                     value={settings?.refreshHourUtc ?? 16}
                     onChange={(e) => patch({ refreshHourUtc: Number(e.target.value) })}
-                    className="rounded-lg border border-hairline bg-surface-1 px-3 py-1.5 text-xs text-ink-muted outline-none focus:border-brand/40"
+                    className="rounded-lg border border-[var(--gray-5)] bg-[var(--gray-3)] px-3 py-1.5 text-xs text-[var(--gray-8)] outline-none focus:border-[var(--gray-8)]/40"
                   >
                     {REFRESH_HOURS.map((h) => (
                       <option key={h.utc} value={h.utc}>{h.label}</option>
@@ -258,8 +258,8 @@ export function SettingsPage() {
           <Panel title="数据真实性">
             <div className="flex items-start gap-3 rounded-xl bg-success/5 p-3">
               <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-success" />
-              <div className="text-xs leading-relaxed text-ink-muted">
-                已启用<span className="font-medium text-ink">「零幻觉铁律」</span>：候选品的 ASIN / 价格 / 销量必须来自真实获取数据并通过校验，
+              <div className="text-xs leading-relaxed text-[var(--gray-8)]">
+                已启用<span className="font-medium text-[var(--gray-12)]">「零幻觉铁律」</span>：候选品的 ASIN / 价格 / 销量必须来自真实获取数据并通过校验，
                 成本来自 1688 实价，无法获取的数据会被诚实标注而非编造。该策略为强制开启，保障调研结论可追溯。
               </div>
             </div>

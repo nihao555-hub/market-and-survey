@@ -554,14 +554,9 @@ def lemon8_hot_keywords(limit: int = 30) -> list[dict]:
     return out[:limit]
 
 
-# 平台注册表：name → (中文标签, fetcher)。逐个用便宜调用实测可用后才登记。
+# 平台注册表：name → (中文标签, fetcher)。面向海外市场，只保留国际平台。
 TREND_SOURCES: dict[str, tuple[str, Any]] = {
     "tiktok": ("TikTok 趋势搜索词", tiktok_trending_searchwords),
-    "douyin": ("抖音热榜", douyin_hot_search),
-    "weibo": ("微博热搜", weibo_hot_search),
-    "xiaohongshu": ("小红书热词", xhs_trending),
-    "kuaishou": ("快手热榜", kuaishou_hot_list),
-    "bilibili": ("B站热搜", bilibili_hot_search),
     "twitter": ("X/Twitter 趋势", twitter_trending),
     "lemon8": ("Lemon8 热词", lemon8_hot_keywords),
 }
@@ -585,6 +580,119 @@ def social_trends(platforms: Optional[list[str]] = None, limit: int = 20) -> dic
             logger.warning(f"tikhub social_trends {plat} 失败: {e}")
             out[plat] = {"ok": False, "label": label, "error": str(e)[:200], "items": []}
     return out
+
+
+# ─────────────────────── 新增 API：搜索联想 / 店铺商品 / 达人带货 ───────────────────────
+def shop_search_suggestions(keyword: str, region: str = "US", limit: int = 10) -> list[dict]:
+    """TikTok Shop 搜索联想词（买家输入时的热门补全建议）。用于关键词扩展和选品发散。"""
+    d = _get("/api/v1/tiktok/shop/web/fetch_search_word_suggestion_v2",
+             {"search_word": keyword, "region": region})
+    inner = ((d or {}).get("data") or {}).get("data") or {}
+    items = inner.get("data") if isinstance(inner.get("data"), list) else []
+    out: list[dict] = []
+    for it in items[:limit]:
+        if not isinstance(it, dict):
+            continue
+        word = it.get("search_word") or it.get("word") or ""
+        if word:
+            out.append({"keyword": word.strip(), "raw": it})
+    return out
+
+
+def shop_seller_products(seller_id: str, region: str = "US", limit: int = 30) -> list[dict]:
+    """获取某 TikTok Shop 店铺的所有在售商品。用于竞品店铺分析。"""
+    d = _get("/api/v1/tiktok/shop/web/fetch_seller_products_list_v2",
+             {"seller_id": seller_id, "region": region})
+    node: Any = d
+    for k in ("data", "data", "data"):
+        node = node.get(k) if isinstance(node, dict) else None
+    prods = (node or {}).get("products") or [] if isinstance(node, dict) else []
+    return [_normalize_product(p) for p in prods[:limit]]
+
+
+def shop_product_detail(product_id: str, region: str = "US") -> dict:
+    """获取 TikTok Shop 单个商品的详细信息（含完整 SKU / 描述 / 图片列表）。"""
+    d = _get("/api/v1/tiktok/shop/web/fetch_product_detail_v2",
+             {"product_id": product_id, "region": region})
+    node: Any = d
+    for k in ("data", "data", "data"):
+        node = node.get(k) if isinstance(node, dict) else None
+    if isinstance(node, dict):
+        return _normalize_product(node)
+    return {}
+
+
+def creator_showcase_products(unique_id: str, limit: int = 30) -> list[dict]:
+    """获取 TikTok 达人展示橱窗中的带货商品列表。用于达人选品侦察。"""
+    d = _get("/api/v1/tiktok/app/v3/fetch_creator_showcase_product_list",
+             {"unique_id": unique_id, "count": str(limit)})
+    node: Any = d
+    for k in ("data", "data"):
+        node = node.get(k) if isinstance(node, dict) else None
+    prods = (node or {}).get("products") or [] if isinstance(node, dict) else []
+    out: list[dict] = []
+    for p in prods[:limit]:
+        if not isinstance(p, dict):
+            continue
+        out.append({
+            "product_id": p.get("product_id"),
+            "title": (p.get("title") or "").strip(),
+            "price": _num(p.get("price") or (p.get("price_info") or {}).get("sale_price")),
+            "image": _first_img(p.get("image")),
+            "url": _product_url(p.get("seo_url"), p.get("product_id")),
+            "commission_rate": p.get("commission_rate"),
+        })
+    return out
+
+
+def instagram_search_hashtags(query: str, limit: int = 10) -> list[dict]:
+    """Instagram 话题搜索（跨平台验证趋势热度）。"""
+    d = _get("/api/v1/instagram/v3/search_hashtags", {"query": query})
+    items = ((d or {}).get("data") or {}).get("items") or []
+    out: list[dict] = []
+    for it in items[:limit]:
+        if not isinstance(it, dict):
+            continue
+        hashtag = it.get("hashtag") or {}
+        out.append({
+            "name": hashtag.get("name") if isinstance(hashtag, dict) else it.get("name"),
+            "media_count": hashtag.get("media_count") if isinstance(hashtag, dict) else it.get("media_count"),
+            "search_subtitle": it.get("search_result_subtitle"),
+        })
+    return [h for h in out if h.get("name")]
+
+
+def douyin_brand_hot_search(limit: int = 20) -> list[dict]:
+    """抖音品牌热搜榜（品牌在抖音的热度排行，中国市场风向标）。"""
+    d = _get("/api/v1/douyin/app/v3/fetch_brand_hot_search_list")
+    items = (((d or {}).get("data") or {}).get("data") or {}).get("brand_list") or []
+    out: list[dict] = []
+    for it in items[:limit]:
+        if not isinstance(it, dict):
+            continue
+        out.append({
+            "brand_name": it.get("brand_name") or it.get("word"),
+            "heat": it.get("hot_value"),
+            "rank": it.get("position"),
+        })
+    return [b for b in out if b.get("brand_name")]
+
+
+def kuaishou_shopping_top(limit: int = 20) -> list[dict]:
+    """快手电商排行榜（带货商品热度排行）。"""
+    d = _get("/api/v1/kuaishou/app/fetch_shopping_top_list")
+    items = ((d or {}).get("data") or {}).get("items") or []
+    out: list[dict] = []
+    for it in items[:limit]:
+        if not isinstance(it, dict):
+            continue
+        out.append({
+            "title": it.get("title") or it.get("name"),
+            "price": _num(it.get("price")),
+            "sales": it.get("sales") or it.get("sold_count"),
+            "rank": it.get("rank"),
+        })
+    return [p for p in out if p.get("title")]
 
 
 if __name__ == "__main__":

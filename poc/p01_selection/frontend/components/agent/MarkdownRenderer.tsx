@@ -47,7 +47,7 @@ export const MarkdownRenderer = React.memo(function MarkdownRenderer({
 }) {
   const clean = React.useMemo(() => stripControlMarkup(text), [text]);
   return (
-    <div className="markdown-body text-[15px] leading-relaxed text-gray-800">
+    <div className="markdown-body text-[15px] leading-relaxed text-[var(--gray-12)]">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
@@ -92,7 +92,7 @@ function ReportImage({ src, alt }: { src: string; alt: string }) {
   const [failed, setFailed] = React.useState(false);
   if (failed) {
     return (
-      <span className="my-2 flex items-center gap-2 rounded-lg border border-dashed border-hairline bg-surface-1 px-3 py-2 text-xs text-ink-subtle">
+      <span className="my-2 flex items-center gap-2 rounded-lg border border-dashed border-[var(--gray-5)] bg-[var(--gray-3)] px-3 py-2 text-xs text-[var(--gray-9)]">
         图片暂不可用{alt ? `：${alt}` : ""}
       </span>
     );
@@ -105,9 +105,9 @@ function ReportImage({ src, alt }: { src: string; alt: string }) {
         alt={alt}
         loading="lazy"
         onError={() => setFailed(true)}
-        className="max-h-[420px] w-auto max-w-full rounded-lg border border-hairline object-contain"
+        className="max-h-[420px] w-auto max-w-full rounded-lg border border-[var(--gray-5)] object-contain"
       />
-      {alt && <figcaption className="mt-1 text-xs text-ink-subtle">{alt}</figcaption>}
+      {alt && <figcaption className="mt-1 text-xs text-[var(--gray-9)]">{alt}</figcaption>}
     </figure>
   );
 }

@@ -15,7 +15,7 @@ export function Flag({ iso, size = 16, className }: { iso: string; size?: number
     return (
       <span
         className={cn(
-          "inline-flex items-center justify-center rounded-full bg-surface-2 text-[8px] font-medium uppercase text-ink-subtle",
+          "inline-flex items-center justify-center rounded-full bg-[var(--gray-4)] text-[8px] font-medium uppercase text-[var(--gray-9)]",
           className
         )}
         style={{ width: size, height: size }}

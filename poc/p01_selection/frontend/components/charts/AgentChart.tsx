@@ -48,7 +48,7 @@ function AgentChartInner({ option, height = 320, className = "" }: AgentChartPro
   return (
     <div
       ref={chartRef}
-      className={`w-full rounded-xl border border-slate-200 bg-white ${className}`}
+      className={`w-full rounded-xl border border-[var(--gray-5)] bg-[var(--gray-1)] ${className}`}
       style={{ height }}
     />
   );

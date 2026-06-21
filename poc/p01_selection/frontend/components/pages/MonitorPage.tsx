@@ -64,18 +64,18 @@ export function MonitorPage() {
       {/* Current plan status */}
       <Panel title="当前订阅" bodyClassName="p-5">
         <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand/10">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--gray-4)]">
             {currentPlan === "free" ? (
-              <Zap className="h-6 w-6 text-brand" />
+              <Zap className="h-6 w-6 text-[var(--gray-12)]" />
             ) : (
               <Crown className="h-6 w-6 text-amber-500" />
             )}
           </div>
           <div>
-            <div className="text-base font-semibold text-ink">
+            <div className="text-base font-semibold text-[var(--gray-12)]">
               {currentPlan === "free" ? "免费版" : currentPlan === "pro" ? "专业版" : "企业版"}
             </div>
-            <div className="text-sm text-ink-subtle">
+            <div className="text-sm text-[var(--gray-9)]">
               {currentPlan === "free"
                 ? "每月 5 次 AI 调研，升级解锁更多功能"
                 : currentPlan === "pro"
@@ -93,15 +93,15 @@ export function MonitorPage() {
             key={plan.id}
             className={`rounded-2xl border p-6 transition-all ${
               plan.highlight
-                ? "border-brand bg-brand/5 shadow-md shadow-brand/10"
-                : "border-hairline bg-white"
+                ? "border-[var(--gray-12)] bg-[var(--gray-3)] shadow-md shadow-brand/10"
+                : "border-[var(--gray-5)] bg-[var(--gray-1)]"
             } ${currentPlan === plan.id ? "ring-2 ring-brand/30" : ""}`}
           >
             <div className="mb-4">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-ink">{plan.name}</span>
+                <span className="text-sm font-semibold text-[var(--gray-12)]">{plan.name}</span>
                 {currentPlan === plan.id && (
-                  <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-medium text-brand">
+                  <span className="rounded-full bg-[var(--gray-4)] px-2 py-0.5 text-[10px] font-medium text-[var(--gray-12)]">
                     当前
                   </span>
                 )}
@@ -112,14 +112,14 @@ export function MonitorPage() {
                 )}
               </div>
               <div className="mt-2 flex items-baseline gap-1">
-                <span className="text-3xl font-bold text-ink">{plan.price}</span>
-                <span className="text-sm text-ink-subtle">{plan.period}</span>
+                <span className="text-3xl font-bold text-[var(--gray-12)]">{plan.price}</span>
+                <span className="text-sm text-[var(--gray-9)]">{plan.period}</span>
               </div>
             </div>
 
             <ul className="mb-6 space-y-2">
               {plan.features.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-sm text-ink-subtle">
+                <li key={f} className="flex items-start gap-2 text-sm text-[var(--gray-9)]">
                   <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-emerald-500" />
                   {f}
                 </li>
@@ -174,15 +174,15 @@ function UsageStat({ label, used, total }: { label: string; used: number; total:
   const isUnlimited = total === -1;
   const pct = isUnlimited ? 0 : total > 0 ? Math.min((used / total) * 100, 100) : 0;
   return (
-    <div className="rounded-xl border border-hairline bg-surface-1 p-4">
-      <div className="text-xs text-ink-subtle">{label}</div>
-      <div className="mt-1 text-lg font-semibold text-ink">
+    <div className="rounded-xl border border-[var(--gray-5)] bg-[var(--gray-3)] p-4">
+      <div className="text-xs text-[var(--gray-9)]">{label}</div>
+      <div className="mt-1 text-lg font-semibold text-[var(--gray-12)]">
         {used} / {isUnlimited ? "∞" : total}
       </div>
       {!isUnlimited && (
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2">
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--gray-4)]">
           <div
-            className={`h-full rounded-full transition-all ${pct > 80 ? "bg-amber-500" : "bg-brand"}`}
+            className={`h-full rounded-full transition-all ${pct > 80 ? "bg-amber-500" : "bg-[var(--gray-12)]"}`}
             style={{ width: `${pct}%` }}
           />
         </div>

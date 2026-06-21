@@ -2,11 +2,13 @@
 import React from "react";
 import {
   LayoutList, RefreshCw, Clock, ShoppingCart, Star, Store, Flame, Hash,
-  TrendingUp, Package, Users, Search, X,
+  TrendingUp, Package, Users, Search, X, Filter, ArrowUpDown, ChevronDown,
 } from "lucide-react";
+import { zhCat, matchCategory } from "@/lib/category-i18n";
 import {
-  fetchDailyRefreshStatus, fetchDataSnapshots,
-  type DataSnapshot, type RefreshStatus,
+  fetchDailyRefreshStatus, fetchDataSnapshots, fetchAllSnapshots,
+  fetchCategorySparklines,
+  type DataSnapshot, type RefreshStatus, type CategorySparkData,
 } from "@/lib/api";
 import {
   PageContainer, PageHeader, StatTile, Button, EmptyState, Skeleton, FilterTabs,
@@ -15,31 +17,406 @@ import { cn } from "@/lib/utils";
 import { CategoryTrendTable } from "./CategoryTrendTable";
 import { ProductDetailModal, type ProductForModal } from "./ProductDetailModal";
 
+// (CatChart + buildCatTrendChart removed — replaced by PerCategoryCards below)
+
+// ─── Per-category sparkline (SVG) ───
+function CatSparkline({ values }: { values: number[] }) {
+  if (values.length < 2) return null;
+  const max = Math.max(...values), min = Math.min(...values);
+  const span = max - min || 1;
+  const W = 100, H = 28;
+  const pts = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * W;
+    const y = H - ((v - min) / span) * (H - 4) - 2;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const rising = values[values.length - 1] >= values[0];
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-7 w-[100px]" preserveAspectRatio="none">
+      <polyline points={pts.join(" ")} fill="none" stroke={rising ? "#10b981" : "#f43f5e"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+interface CatCardData {
+  name: string;
+  catId: string;
+  latestAvgPrice: number;
+  latestCount: number;
+  latestAvgRating: number;
+  priceHistory: number[];
+  countHistory: number[];
+  ratingHistory: number[];
+  top5: Array<{ title: string; price: number; sold: number; rating: number; image?: string }>;
+}
+
+/** Extract stats from a single snapshot — handles both live (products[]) and backfill (avg_price/product_count/avg_rating) */
+function _extractStats(s: DataSnapshot): { avgPrice: number; count: number; avgRating: number } | null {
+  const p = s.payload;
+  if (!p) return null;
+  if (typeof p.avg_price === "number" || typeof p.product_count === "number") {
+    return {
+      avgPrice: (p.avg_price as number) || 0,
+      count: (p.product_count as number) || 0,
+      avgRating: (p.avg_rating as number) || 0,
+    };
+  }
+  const prods = (p.products || []) as ShopProduct[];
+  if (prods.length === 0) return null;
+  const prices = prods.map((pr) => pr.price).filter((v): v is number => typeof v === "number" && v > 0);
+  const ratings = prods.map((pr) => pr.rating).filter((v): v is number => typeof v === "number" && v > 0);
+  return {
+    avgPrice: prices.length ? +(prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2) : 0,
+    count: prods.length,
+    avgRating: ratings.length ? +(ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : 0,
+  };
+}
+
+function buildPerCatCards(latestSnaps: DataSnapshot[], historySnaps: DataSnapshot[]): CatCardData[] {
+  // Group history by day for backfill aggregation
+  const byRun = new Map<string, DataSnapshot[]>();
+  for (const s of historySnaps) {
+    const key = s.capturedAt?.slice(0, 10) || s.id;
+    if (!byRun.has(key)) byRun.set(key, []);
+    byRun.get(key)!.push(s);
+  }
+  const entries = [...byRun.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+
+  // Collect all category names from both latest and history
+  const catNames = new Map<string, string>();
+  for (const s of [...latestSnaps, ...historySnaps]) {
+    const name = (s.payload?.category_name || s.payload?.category_name_en || "") as string;
+    const catId = (s.payload?.category_id || "") as string;
+    if (name && !catNames.has(name)) catNames.set(name, catId);
+  }
+
+  const cards: CatCardData[] = [];
+  for (const [name, catId] of catNames) {
+    // Find latest snapshot with products array for Top 5
+    const latestSnap = latestSnaps.find((s) => (s.payload?.category_name || s.payload?.category_name_en) === name);
+    const prods = (latestSnap?.payload?.products || []) as ShopProduct[];
+
+    const latestStats = latestSnap ? _extractStats(latestSnap) : null;
+    let latestAvgPrice = latestStats?.avgPrice ?? 0;
+    let latestCount = latestStats?.count ?? prods.length;
+    let latestAvgRating = latestStats?.avgRating ?? 0;
+
+    const priceHistory: number[] = [];
+    const countHistory: number[] = [];
+    const ratingHistory: number[] = [];
+    for (const [, snaps] of entries) {
+      const s = snaps.find((s2) => (s2.payload?.category_name || s2.payload?.category_name_en) === name);
+      if (!s) continue;
+      const stats = _extractStats(s);
+      if (!stats) continue;
+      priceHistory.push(stats.avgPrice);
+      countHistory.push(stats.count);
+      ratingHistory.push(stats.avgRating);
+    }
+
+    if (!latestStats && priceHistory.length > 0) {
+      latestAvgPrice = priceHistory[priceHistory.length - 1];
+      latestCount = countHistory[countHistory.length - 1];
+      latestAvgRating = ratingHistory[ratingHistory.length - 1];
+    }
+
+    const top5 = prods
+      .filter((p) => p.title)
+      .sort((a, b) => (b.sold_count ?? 0) - (a.sold_count ?? 0))
+      .slice(0, 5)
+      .map((p) => ({
+        title: p.title || "",
+        price: p.price || 0,
+        sold: p.sold_count || 0,
+        rating: p.rating || 0,
+        image: p.image ?? undefined,
+      }));
+
+    cards.push({
+      name, catId,
+      latestAvgPrice, latestCount, latestAvgRating,
+      priceHistory, countHistory, ratingHistory, top5,
+    });
+  }
+  return cards.sort((a, b) => b.latestCount - a.latestCount);
+}
+
+/** Build cards from pre-aggregated sparkline data (server-side). Much faster than raw snapshots. */
+function buildPerCatCardsFromSpark(latestSnaps: DataSnapshot[], sparkData: CategorySparkData[]): CatCardData[] {
+  const cards: CatCardData[] = [];
+  const sparkMap = new Map(sparkData.map((s) => [s.name, s]));
+
+  // Build from sparkData (covers all categories including backfill-only ones)
+  const allNames = new Set([
+    ...sparkData.map((s) => s.name),
+    ...latestSnaps.map((s) => (s.payload?.category_name || s.payload?.category_name_en || "") as string).filter(Boolean),
+  ]);
+
+  for (const name of allNames) {
+    const spark = sparkMap.get(name);
+    const latestSnap = latestSnaps.find((s) => (s.payload?.category_name || s.payload?.category_name_en) === name);
+    const prods = (latestSnap?.payload?.products || []) as ShopProduct[];
+
+    const priceHistory = spark?.points.map((p) => p.avgPrice) ?? [];
+    const countHistory = spark?.points.map((p) => p.productCount) ?? [];
+    const ratingHistory = spark?.points.map((p) => p.avgRating) ?? [];
+
+    const latestStats = latestSnap ? _extractStats(latestSnap) : null;
+    const latestAvgPrice = latestStats?.avgPrice ?? (priceHistory.length ? priceHistory[priceHistory.length - 1] : 0);
+    const latestCount = latestStats?.count ?? (countHistory.length ? countHistory[countHistory.length - 1] : prods.length);
+    const latestAvgRating = latestStats?.avgRating ?? (ratingHistory.length ? ratingHistory[ratingHistory.length - 1] : 0);
+
+    const top5 = prods
+      .filter((p) => p.title)
+      .sort((a, b) => (b.sold_count ?? 0) - (a.sold_count ?? 0))
+      .slice(0, 5)
+      .map((p) => ({
+        title: p.title || "",
+        price: p.price || 0,
+        sold: p.sold_count || 0,
+        rating: p.rating || 0,
+        image: p.image ?? undefined,
+      }));
+
+    cards.push({
+      name,
+      catId: spark?.categoryId || (latestSnap?.payload?.category_id as string) || "",
+      latestAvgPrice, latestCount, latestAvgRating,
+      priceHistory, countHistory, ratingHistory, top5,
+    });
+  }
+  return cards.sort((a, b) => b.latestCount - a.latestCount);
+}
+
+function fmtSold(n: number): string {
+  if (n >= 1e4) return `${(n / 1e4).toFixed(1)}万`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+  return String(n);
+}
+
+type CatSortKey = "count" | "price" | "rating" | "name";
+
+function PerCategoryCards({ latestSnaps, sparkData, onSelectCat }: {
+  latestSnaps: DataSnapshot[];
+  sparkData: CategorySparkData[];
+  onSelectCat: (id: string) => void;
+}) {
+  const cards = React.useMemo(() => buildPerCatCardsFromSpark(latestSnaps, sparkData), [latestSnaps, sparkData]);
+  const [catSearch, setCatSearch] = React.useState("");
+  const [sortKey, setSortKey] = React.useState<CatSortKey>("count");
+  const [viewMode, setViewMode] = React.useState<"card" | "table">("card");
+
+  const filtered = React.useMemo(() => {
+    let list = cards.filter((c) => matchCategory(c.name, catSearch));
+    const sorters: Record<CatSortKey, (a: CatCardData, b: CatCardData) => number> = {
+      count: (a, b) => b.latestCount - a.latestCount,
+      price: (a, b) => b.latestAvgPrice - a.latestAvgPrice,
+      rating: (a, b) => b.latestAvgRating - a.latestAvgRating,
+      name: (a, b) => zhCat(a.name).localeCompare(zhCat(b.name), "zh-CN"),
+    };
+    list.sort(sorters[sortKey]);
+    return list;
+  }, [cards, catSearch, sortKey]);
+
+  if (cards.length === 0) return null;
+
+  return (
+    <section className="mb-6">
+      {/* Twenty CRM style header bar */}
+      <div className="mb-4 rounded-lg border border-[var(--gray-5)] bg-[var(--gray-2)] p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-[var(--gray-9)]" />
+            <h2 className="text-sm font-semibold text-[var(--gray-12)]">品类趋势</h2>
+            <span className="rounded-[4px] bg-[var(--gray-4)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--gray-9)]">
+              {filtered.length} / {cards.length}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Search input */}
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--gray-7)]" />
+              <input
+                value={catSearch}
+                onChange={(e) => setCatSearch(e.target.value)}
+                placeholder="搜索品类（中文/英文）…"
+                className="w-48 rounded-md border border-[var(--gray-5)] bg-[var(--gray-1)] py-1.5 pl-7 pr-7 text-xs text-[var(--gray-12)] outline-none transition-all focus:w-64 focus:border-[var(--gray-8)]/40 focus:ring-2 focus:ring-brand/15"
+              />
+              {catSearch && (
+                <button onClick={() => setCatSearch("")} className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-[var(--gray-7)] hover:text-[var(--gray-12)]">
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+            {/* Sort dropdown */}
+            <div className="relative">
+              <select
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value as CatSortKey)}
+                className="appearance-none rounded-md border border-[var(--gray-5)] bg-[var(--gray-1)] py-1.5 pl-2 pr-6 text-xs text-[var(--gray-11)] outline-none hover:border-[var(--gray-6)]"
+              >
+                <option value="count">按商品数</option>
+                <option value="price">按均价</option>
+                <option value="rating">按评分</option>
+                <option value="name">按名称</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-[var(--gray-7)]" />
+            </div>
+            {/* View toggle */}
+            <div className="flex rounded-md border border-[var(--gray-5)] bg-[var(--gray-1)]">
+              <button
+                onClick={() => setViewMode("card")}
+                className={cn("rounded-l-md px-2 py-1.5 text-xs transition-colors", viewMode === "card" ? "bg-[var(--gray-4)] text-[var(--gray-12)]" : "text-[var(--gray-8)] hover:text-[var(--gray-12)]")}
+                title="卡片视图"
+              >
+                <LayoutList className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode("table")}
+                className={cn("rounded-r-md px-2 py-1.5 text-xs transition-colors", viewMode === "table" ? "bg-[var(--gray-4)] text-[var(--gray-12)]" : "text-[var(--gray-8)] hover:text-[var(--gray-12)]")}
+                title="表格视图"
+              >
+                <Filter className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {filtered.length === 0 && catSearch ? (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-[var(--gray-5)] py-12 text-center">
+          <Search className="mb-2 h-6 w-6 text-[var(--gray-7)]" />
+          <p className="text-sm text-[var(--gray-9)]">没有匹配「{catSearch}」的品类</p>
+          <p className="mt-1 text-xs text-[var(--gray-7)]">试试其他中文或英文关键词</p>
+        </div>
+      ) : viewMode === "table" ? (
+        /* Twenty CRM style table view */
+        <div className="overflow-hidden rounded-lg border border-[var(--gray-5)]">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-[var(--gray-5)] bg-[var(--gray-3)] text-[11px] uppercase tracking-wider text-[var(--gray-8)]">
+                  <th className="px-3 py-2.5 font-medium">品类名称</th>
+                  <th className="px-3 py-2.5 font-medium text-right">商品数</th>
+                  <th className="px-3 py-2.5 font-medium text-right">均价</th>
+                  <th className="px-3 py-2.5 font-medium text-right">均评分</th>
+                  <th className="px-3 py-2.5 font-medium">均价趋势</th>
+                  <th className="px-3 py-2.5 font-medium">评分趋势</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((card) => (
+                  <tr
+                    key={card.catId || card.name}
+                    className="border-b border-[var(--gray-4)] last:border-0 cursor-pointer transition-colors hover:bg-[var(--gray-3)]/50"
+                    onClick={() => onSelectCat(card.catId)}
+                  >
+                    <td className="px-3 py-2.5">
+                      <div className="font-medium text-[var(--gray-12)]">{zhCat(card.name)}</div>
+                      <div className="text-[10px] text-[var(--gray-7)]">{card.name}</div>
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-[var(--gray-11)]">{card.latestCount}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-[var(--gray-11)]">${card.latestAvgPrice}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-[var(--gray-11)]">{card.latestAvgRating}</td>
+                    <td className="px-3 py-2.5"><CatSparkline values={card.priceHistory} /></td>
+                    <td className="px-3 py-2.5"><CatSparkline values={card.ratingHistory} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        /* Card grid view */
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((card) => (
+            <button
+              key={card.catId || card.name}
+              type="button"
+              onClick={() => onSelectCat(card.catId)}
+              className="rounded-lg border border-[var(--gray-5)] bg-[var(--gray-1)] overflow-hidden text-left transition-all hover:-translate-y-0.5 hover:border-[var(--gray-6)] hover:shadow-md"
+            >
+              <div className="border-b border-[var(--gray-4)] px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="truncate text-[13px] font-semibold text-[var(--gray-12)]">{zhCat(card.name)}</h3>
+                  <span className="flex-shrink-0 rounded-[4px] bg-[var(--gray-4)] px-1.5 py-0.5 text-[10px] text-[var(--gray-9)]">{card.latestCount} 商品</span>
+                </div>
+                <div className="mt-0.5 text-[10px] text-[var(--gray-7)]">{card.name}</div>
+                <div className="mt-2 flex items-center gap-4 text-[11px] text-[var(--gray-9)]">
+                  <div className="flex items-center gap-1.5">
+                    <span>均价</span>
+                    <span className="font-medium text-[var(--gray-12)]">${card.latestAvgPrice}</span>
+                    <CatSparkline values={card.priceHistory} />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span>评分</span>
+                    <span className="font-medium text-[var(--gray-12)]">{card.latestAvgRating}</span>
+                    <CatSparkline values={card.ratingHistory} />
+                  </div>
+                </div>
+              </div>
+              {card.top5.length > 0 && (
+                <div className="px-4 py-2">
+                  <div className="mb-1.5 text-[10px] font-medium text-[var(--gray-7)]">TOP 5 热销</div>
+                  <div className="space-y-1.5">
+                    {card.top5.map((p, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded text-[10px] font-bold text-[var(--gray-9)]">{i + 1}</span>
+                        {p.image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.image} alt="" className="h-7 w-7 flex-shrink-0 rounded object-cover" />
+                        ) : (
+                          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded bg-[var(--gray-4)]">
+                            <Package className="h-3 w-3 text-[var(--gray-7)]" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-[11px] text-[var(--gray-12)]">{p.title}</div>
+                        </div>
+                        <div className="flex flex-shrink-0 items-center gap-2 text-[10px] text-[var(--gray-9)]">
+                          <span className="font-medium">${p.price}</span>
+                          {p.sold > 0 && <span>已售 {fmtSold(p.sold)}</span>}
+                          {p.rating > 0 && <span>★{p.rating}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 /** 品类总览表：聚合所有品类的关键指标 */
 function CategoryOverviewTable({ cats, onSelectCat }: { cats: DataSnapshot[]; onSelectCat: (id: string) => void }) {
   if (cats.length === 0) return null;
   const rows = cats.map((c) => {
+    const stats = _extractStats(c);
     const prods: ShopProduct[] = c.payload?.products ?? [];
     const prices = prods.map((p) => p.price).filter((v): v is number => typeof v === "number" && v > 0);
-    const ratings = prods.map((p) => p.rating).filter((v): v is number => typeof v === "number" && v > 0);
     return {
       id: c.payload?.category_id as string,
       name: (c.payload?.category_name ?? c.payload?.category_name_en ?? "—") as string,
-      count: prods.length,
+      parentCat: (c.payload?.parent_category ?? null) as string | null,
+      count: stats?.count ?? prods.length,
       priceMin: prices.length ? Math.min(...prices) : null,
       priceMax: prices.length ? Math.max(...prices) : null,
-      avgPrice: prices.length ? +(prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2) : null,
-      avgRating: ratings.length ? +(ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : null,
+      avgPrice: stats?.avgPrice ?? null,
+      avgRating: stats?.avgRating ?? null,
       topProduct: prods[0] ?? null,
     };
   });
   return (
-    <div className="mb-5 overflow-hidden rounded-xl border border-hairline">
-      <div className="bg-surface-1 px-4 py-2.5 text-xs font-semibold text-ink-muted">品类总览（{rows.length} 个品类）</div>
+    <div className="mb-5 overflow-hidden rounded-xl border border-[var(--gray-5)]">
+      <div className="bg-[var(--gray-3)] px-4 py-2.5 text-xs font-semibold text-[var(--gray-8)]">品类总览（{rows.length} 个品类）</div>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead>
-            <tr className="border-b border-hairline bg-surface-1/50 text-[11px] text-ink-subtle">
+            <tr className="border-b border-[var(--gray-5)] bg-[var(--gray-3)]/50 text-[11px] text-[var(--gray-9)]">
               <th className="px-3 py-2 font-medium">品类</th>
               <th className="px-3 py-2 font-medium text-right">商品数</th>
               <th className="px-3 py-2 font-medium text-right">价格区间</th>
@@ -52,17 +429,20 @@ function CategoryOverviewTable({ cats, onSelectCat }: { cats: DataSnapshot[]; on
             {rows.map((r) => (
               <tr
                 key={r.id}
-                className="border-b border-hairline last:border-0 hover:bg-surface-1/30 cursor-pointer transition-colors"
+                className="border-b border-[var(--gray-5)] last:border-0 hover:bg-[var(--gray-3)]/30 cursor-pointer transition-colors"
                 onClick={() => onSelectCat(r.id)}
               >
-                <td className="px-3 py-2 font-medium text-ink">{r.name}</td>
-                <td className="px-3 py-2 text-right text-ink-subtle">{r.count}</td>
-                <td className="px-3 py-2 text-right text-ink-subtle">
+                <td className="px-3 py-2 font-medium text-[var(--gray-12)]">
+                  <div>{zhCat(r.name)}</div>
+                  {r.parentCat && <div className="text-[10px] text-[var(--gray-7)]">{zhCat(r.parentCat)}</div>}
+                </td>
+                <td className="px-3 py-2 text-right text-[var(--gray-9)]">{r.count}</td>
+                <td className="px-3 py-2 text-right text-[var(--gray-9)]">
                   {r.priceMin !== null ? `$${r.priceMin}–$${r.priceMax}` : "—"}
                 </td>
-                <td className="px-3 py-2 text-right text-ink-subtle">{r.avgPrice !== null ? `$${r.avgPrice}` : "—"}</td>
-                <td className="px-3 py-2 text-right text-ink-subtle">{r.avgRating ?? "—"}</td>
-                <td className="px-3 py-2 max-w-[180px] truncate text-ink-subtle">{r.topProduct?.title ?? "—"}</td>
+                <td className="px-3 py-2 text-right text-[var(--gray-9)]">{r.avgPrice !== null ? `$${r.avgPrice}` : "—"}</td>
+                <td className="px-3 py-2 text-right text-[var(--gray-9)]">{r.avgRating ?? "—"}</td>
+                <td className="px-3 py-2 max-w-[180px] truncate text-[var(--gray-9)]">{r.topProduct?.title ?? "—"}</td>
               </tr>
             ))}
           </tbody>
@@ -124,9 +504,9 @@ function fmtTime(iso?: string | null): string {
 }
 function rankBadge(i: number): string {
   if (i === 0) return "bg-amber-400 text-white";
-  if (i === 1) return "bg-slate-400 text-white";
+  if (i === 1) return "bg-[var(--gray-8)] text-white";
   if (i === 2) return "bg-amber-700 text-white";
-  return "bg-white/90 text-ink";
+  return "bg-[var(--gray-1)]/90 text-[var(--gray-12)]";
 }
 function matchProduct(p: ShopProduct, q: string): boolean {
   if (!q) return true;
@@ -141,15 +521,15 @@ function ProductCard({ p, rank, catTag, onClick }: { p: ShopProduct; rank: numbe
     <button
       type="button"
       onClick={onClick}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-hairline bg-white text-left transition-all hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md"
+      className="group flex flex-col overflow-hidden rounded-2xl border border-[var(--gray-5)] bg-[var(--gray-1)] text-left transition-all hover:-translate-y-0.5 hover:border-[var(--gray-6)] hover:shadow-md"
     >
-      <div className="relative aspect-square w-full overflow-hidden bg-surface-2">
+      <div className="relative aspect-square w-full overflow-hidden bg-[var(--gray-4)]">
         {p.image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={p.image} alt="" loading="lazy"
                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-ink-tertiary">
+          <div className="flex h-full w-full items-center justify-center text-[var(--gray-7)]">
             <ShoppingCart className="h-8 w-8" />
           </div>
         )}
@@ -167,29 +547,29 @@ function ProductCard({ p, rank, catTag, onClick }: { p: ShopProduct; rank: numbe
       </div>
       <div className="flex flex-1 flex-col p-3">
         {catTag && (
-          <span className="mb-1.5 inline-flex w-fit items-center gap-0.5 rounded bg-brand/10 px-1.5 py-0.5 text-[10px] font-medium text-brand">
+          <span className="mb-1.5 inline-flex w-fit items-center gap-0.5 rounded bg-[var(--gray-4)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--gray-12)]">
             <Package className="h-2.5 w-2.5" />{catTag}
           </span>
         )}
-        <div className="line-clamp-2 min-h-[32px] text-[12px] font-medium leading-tight text-ink">{p.title}</div>
+        <div className="line-clamp-2 min-h-[32px] text-[12px] font-medium leading-tight text-[var(--gray-12)]">{p.title}</div>
         <div className="mt-2 flex items-baseline gap-1.5">
-          <span className="text-sm font-semibold text-ink">{sym}{p.price}</span>
+          <span className="text-sm font-semibold text-[var(--gray-12)]">{sym}{p.price}</span>
           {p.original_price ? (
-            <span className="text-[11px] text-ink-tertiary line-through">{sym}{p.original_price}</span>
+            <span className="text-[11px] text-[var(--gray-7)] line-through">{sym}{p.original_price}</span>
           ) : null}
         </div>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-ink-subtle">
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11px] text-[var(--gray-9)]">
           <span className="inline-flex items-center gap-0.5">
             <ShoppingCart className="h-3 w-3" /> 已售 {fmtInt(p.sold_count)}
           </span>
           {p.rating ? (
             <span className="inline-flex items-center gap-0.5">
               <Star className="h-3 w-3 fill-current text-amber-500" />{p.rating}
-              {p.review_count ? <span className="text-ink-tertiary">({fmtInt(p.review_count)})</span> : null}
+              {p.review_count ? <span className="text-[var(--gray-7)]">({fmtInt(p.review_count)})</span> : null}
             </span>
           ) : null}
         </div>
-        <div className="mt-2 flex items-center gap-1 border-t border-hairline pt-2 text-[11px] text-ink-muted">
+        <div className="mt-2 flex items-center gap-1 border-t border-[var(--gray-5)] pt-2 text-[11px] text-[var(--gray-8)]">
           {p.shop_logo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={p.shop_logo} alt="" className="h-4 w-4 flex-shrink-0 rounded-full object-cover" />
@@ -236,6 +616,9 @@ export function CategoryRankPage() {
   const [activeCat, setActiveCat] = React.useState<string | null>(null);
   const [query, setQuery] = React.useState("");
   const [selectedProduct, setSelectedProduct] = React.useState<ProductForModal | null>(null);
+  const [catHistory, setCatHistory] = React.useState<DataSnapshot[]>([]);
+  const [sparkData, setSparkData] = React.useState<CategorySparkData[]>([]);
+
   const q = query.trim().toLowerCase();
 
   const openProduct = (p: ShopProduct, opts?: { category?: string; source?: string }) => {
@@ -245,17 +628,20 @@ export function CategoryRankPage() {
   const reload = React.useCallback(async () => {
     setReloading(true);
     try {
-      const [st, catSnaps, hotSnaps, htSnaps] = await Promise.all([
+      const [st, catSnaps, hotSnaps, htSnaps, sparks] = await Promise.all([
         fetchDailyRefreshStatus(),
-        fetchDataSnapshots({ source: "category_rank", limit: 40 }),
+        fetchDataSnapshots({ source: "category_rank", limit: 300 }),
         fetchDataSnapshots({ term: HOT_SELLING_TERM, limit: 1 }),
         fetchDataSnapshots({ term: HASHTAG_TREND_TERM, limit: 1 }),
+        fetchCategorySparklines(),
       ]);
       setStatus(st);
-      const okCats = catSnaps.filter((s) => s.realData && (s.payload?.products?.length ?? 0) > 0);
+      const okCats = catSnaps.filter((s) => s.realData && ((s.payload?.products?.length ?? 0) > 0 || typeof s.payload?.product_count === "number"));
       setCats(okCats);
       setHot(hotSnaps[0] ?? null);
       setHashtagSnap(htSnaps[0] ?? null);
+      setSparkData(sparks);
+      setCatHistory([]);  // no longer needed for sparklines
       setActiveCat((prev) => prev ?? okCats[0]?.payload?.category_id ?? null);
     } catch { /* 静默 */ }
     finally { setLoading(false); setReloading(false); }
@@ -292,6 +678,8 @@ export function CategoryRankPage() {
   const hashtagsFiltered = searching
     ? hashtags.filter((h) => (h.hashtag ?? "").toLowerCase().includes(q))
     : hashtags;
+
+
 
   const channelOk = status?.tier2ChannelOk ?? false;
   const hasAny = cats.length > 0 || hotProducts.length > 0 || hashtags.length > 0;
@@ -332,10 +720,17 @@ export function CategoryRankPage() {
           </div>
 
           {!channelOk && (
-            <div className="mb-5 rounded-lg border border-hairline bg-surface-1 px-3 py-2 text-xs text-ink-subtle">
-              榜单通道（TikHub）需配置 <span className="font-medium text-ink-muted">TIKHUB_API_KEY</span>；通道未就绪时如实标注，<span className="font-medium text-ink-muted">不编造数据</span>，接入后自动补齐。
+            <div className="mb-5 rounded-lg border border-[var(--gray-5)] bg-[var(--gray-3)] px-3 py-2 text-xs text-[var(--gray-9)]">
+              榜单通道（TikHub）需配置 <span className="font-medium text-[var(--gray-8)]">TIKHUB_API_KEY</span>；通道未就绪时如实标注，<span className="font-medium text-[var(--gray-8)]">不编造数据</span>，接入后自动补齐。
             </div>
           )}
+
+          {/* ═══ Per-Category Trend Cards (hero section) ═══ */}
+          <PerCategoryCards
+            latestSnaps={cats}
+            sparkData={sparkData}
+            onSelectCat={(id) => { setActiveCat(id); setTab("category"); }}
+          />
 
           {!hasAny ? (
             <EmptyState
@@ -358,17 +753,17 @@ export function CategoryRankPage() {
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <FilterTabs tabs={tabs} value={tab} onChange={setTab} />
                 <div className="relative w-full sm:w-64">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-tertiary" />
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--gray-7)]" />
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="搜商品 / 店铺 / 话题…"
-                    className="w-full rounded-lg border border-hairline bg-surface-1 py-1.5 pl-8 pr-8 text-sm text-ink outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/15"
+                    placeholder="搜品类 / 商品 / 店铺 / 话题…"
+                    className="w-full rounded-lg border border-[var(--gray-5)] bg-[var(--gray-3)] py-1.5 pl-8 pr-8 text-sm text-[var(--gray-12)] outline-none focus:border-[var(--gray-8)]/40 focus:ring-2 focus:ring-brand/15"
                   />
                   {query && (
                     <button
                       onClick={() => setQuery("")}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-ink-tertiary hover:bg-surface-2 hover:text-ink"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-[var(--gray-7)] hover:bg-[var(--gray-4)] hover:text-[var(--gray-12)]"
                       title="清空"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -387,9 +782,9 @@ export function CategoryRankPage() {
                     <EmptyState icon={<Search className="h-6 w-6" />} title={`全部品类中没有匹配「${query.trim()}」的商品`} hint="换个关键词，或清空搜索看完整榜单。" />
                   ) : (
                     <>
-                      <div className="mb-3 flex items-center gap-2 text-xs text-ink-subtle">
-                        <Search className="h-3.5 w-3.5 text-brand" />
-                        在全部 {cats.length} 个品类中搜「<span className="font-medium text-ink-muted">{query.trim()}</span>」· 命中 {crossCatHits.length} 个商品
+                      <div className="mb-3 flex items-center gap-2 text-xs text-[var(--gray-9)]">
+                        <Search className="h-3.5 w-3.5 text-[var(--gray-12)]" />
+                        在全部 {cats.length} 个品类中搜「<span className="font-medium text-[var(--gray-8)]">{query.trim()}</span>」· 命中 {crossCatHits.length} 个商品
                       </div>
                       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
                         {crossCatHits.map(({ p, cat }, i) => (
@@ -411,12 +806,12 @@ export function CategoryRankPage() {
                             className={cn(
                               "rounded-full border px-3 py-1.5 text-xs transition-colors",
                               active
-                                ? "border-brand/30 bg-brand/10 font-medium text-brand"
-                                : "border-hairline bg-white text-ink-muted hover:bg-surface-1 hover:text-ink",
+                                ? "border-[var(--gray-12)]/30 bg-[var(--gray-4)] font-medium text-[var(--gray-12)]"
+                                : "border-[var(--gray-5)] bg-[var(--gray-1)] text-[var(--gray-8)] hover:bg-[var(--gray-3)] hover:text-[var(--gray-12)]",
                             )}
                           >
-                            {c.payload?.category_name}
-                            <span className={cn("ml-1.5 text-[10px]", active ? "text-brand/70" : "text-ink-tertiary")}>
+                            {zhCat((c.payload?.category_name ?? "") as string)}
+                            <span className={cn("ml-1.5 text-[10px]", active ? "text-[var(--gray-12)]/70" : "text-[var(--gray-7)]")}>
                               {c.payload?.products?.length ?? 0}
                             </span>
                           </button>
@@ -424,9 +819,9 @@ export function CategoryRankPage() {
                       })}
                     </div>
                     {activeCatSnap && (
-                      <div className="mb-3 flex items-center gap-2 text-xs text-ink-subtle">
-                        <TrendingUp className="h-3.5 w-3.5 text-brand" />
-                        <span className="font-medium text-ink-muted">{activeCatSnap.payload?.category_name}</span>
+                      <div className="mb-3 flex items-center gap-2 text-xs text-[var(--gray-9)]">
+                        <TrendingUp className="h-3.5 w-3.5 text-[var(--gray-12)]" />
+                        <span className="font-medium text-[var(--gray-8)]">{zhCat((activeCatSnap.payload?.category_name ?? "") as string)}</span>
                         · 实时 Top {activeCatProducts.length}
                         {activeCatSnap.payload?.stats?.weighted_avg_rating
                           ? ` · 加权均分 ${activeCatSnap.payload.stats.weighted_avg_rating}` : ""}
@@ -448,8 +843,8 @@ export function CategoryRankPage() {
                 ) : (
                   <>
                     {searching && (
-                      <div className="mb-3 flex items-center gap-2 text-xs text-ink-subtle">
-                        <Search className="h-3.5 w-3.5 text-brand" />
+                      <div className="mb-3 flex items-center gap-2 text-xs text-[var(--gray-9)]">
+                        <Search className="h-3.5 w-3.5 text-[var(--gray-12)]" />
                         命中 {hotFiltered.length} / {hotProducts.length} 个热销商品
                       </div>
                     )}
@@ -469,17 +864,17 @@ export function CategoryRankPage() {
                 ) : (
                   <div className="grid gap-3 sm:grid-cols-2">
                     {hashtagsFiltered.map((h, i) => (
-                      <div key={h.hashtag ?? i} className="rounded-2xl border border-hairline bg-white p-4">
+                      <div key={h.hashtag ?? i} className="rounded-2xl border border-[var(--gray-5)] bg-[var(--gray-1)] p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 text-sm font-semibold text-ink">
-                              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded text-[11px] font-bold text-brand">
+                            <div className="flex items-center gap-1.5 text-sm font-semibold text-[var(--gray-12)]">
+                              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded text-[11px] font-bold text-[var(--gray-12)]">
                                 {i + 1}
                               </span>
-                              <Hash className="h-3.5 w-3.5 flex-shrink-0 text-brand" />
+                              <Hash className="h-3.5 w-3.5 flex-shrink-0 text-[var(--gray-12)]" />
                               <span className="truncate">{h.hashtag}</span>
                             </div>
-                            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-subtle">
+                            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[var(--gray-9)]">
                               <span className="inline-flex items-center gap-0.5">
                                 <TrendingUp className="h-3 w-3" /> 浏览 {fmtInt(h.views)}
                               </span>
@@ -489,16 +884,16 @@ export function CategoryRankPage() {
                           <Sparkline curve={h.popularity_curve ?? []} />
                         </div>
                         {Array.isArray(h.top_creators) && h.top_creators.length > 0 && (
-                          <div className="mt-3 flex items-center gap-2 border-t border-hairline pt-2.5">
-                            <Users className="h-3.5 w-3.5 flex-shrink-0 text-ink-tertiary" />
+                          <div className="mt-3 flex items-center gap-2 border-t border-[var(--gray-5)] pt-2.5">
+                            <Users className="h-3.5 w-3.5 flex-shrink-0 text-[var(--gray-7)]" />
                             <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                               {h.top_creators.slice(0, 4).map((c, ci) => (
-                                <span key={ci} className="inline-flex items-center gap-1 rounded-full bg-surface-1 py-0.5 pl-0.5 pr-2 text-[11px] text-ink-muted">
+                                <span key={ci} className="inline-flex items-center gap-1 rounded-full bg-[var(--gray-3)] py-0.5 pl-0.5 pr-2 text-[11px] text-[var(--gray-8)]">
                                   {c.avatar ? (
                                     // eslint-disable-next-line @next/next/no-img-element
                                     <img src={c.avatar} alt="" className="h-4 w-4 rounded-full object-cover" />
                                   ) : (
-                                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-surface-2"><Users className="h-2.5 w-2.5" /></span>
+                                    <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[var(--gray-4)]"><Users className="h-2.5 w-2.5" /></span>
                                   )}
                                   <span className="max-w-[88px] truncate">{c.nickname || "—"}</span>
                                 </span>

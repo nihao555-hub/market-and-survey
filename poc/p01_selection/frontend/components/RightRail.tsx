@@ -19,13 +19,13 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-hairline bg-white p-4">
+    <div className="rounded-[8px] border border-[var(--gray-5)] bg-[var(--gray-1)] p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-ink">{title}</h3>
+        <h3 className="text-[13px] font-semibold text-[var(--gray-12)]">{title}</h3>
         {action && (
           <button
             onClick={onAction}
-            className="inline-flex items-center gap-0.5 text-[11px] text-brand hover:underline"
+            className="inline-flex items-center gap-0.5 text-[11px] text-[var(--gray-9)] hover:text-[var(--gray-12)] transition-colors"
           >
             {action}
             <ChevronRight className="h-3 w-3" />
@@ -47,10 +47,10 @@ export function RightRail() {
   const completed = threads.filter((t) => !t.activeStreamId).length;
 
   const stats = [
-    { label: "累计调研", value: threads.length, tone: "text-ink" },
-    { label: "进行中", value: running.length, tone: "text-brand" },
-    { label: "已完成", value: completed, tone: "text-success" },
-    { label: "收藏", value: favorites.length, tone: "text-amber-600" },
+    { label: "累计调研", value: threads.length, tone: "text-[var(--gray-12)]" },
+    { label: "进行中", value: running.length, tone: "text-[var(--gray-11)]" },
+    { label: "已完成", value: completed, tone: "text-green-700" },
+    { label: "收藏", value: favorites.length, tone: "text-[var(--gray-11)]" },
   ];
 
   const Row = ({
@@ -69,47 +69,45 @@ export function RightRail() {
     return (
       <button
         onClick={() => setActiveId(id)}
-        className="flex w-full items-center gap-2.5 rounded-lg px-1.5 py-2 text-left transition-colors hover:bg-surface-1"
+        className="flex w-full items-center gap-2.5 rounded-[4px] px-1.5 py-2 text-left transition-colors hover:bg-[var(--bg-transparent-light)]"
       >
         {iso ? (
           <Flag iso={iso} size={16} />
         ) : (
-          <span className="h-4 w-4 flex-shrink-0 rounded-full bg-surface-3" />
+          <span className="h-4 w-4 flex-shrink-0 rounded-full bg-[var(--gray-5)]" />
         )}
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium text-ink">{name}</div>
-          <div className="text-[11px] text-ink-subtle">{formatDate(updatedAt)}</div>
+          <div className="truncate text-[13px] font-medium text-[var(--gray-12)]">{name}</div>
+          <div className="text-[11px] text-[var(--gray-9)]">{formatDate(updatedAt)}</div>
         </div>
         {isRunning ? (
-          <Loader2 className="h-3.5 w-3.5 flex-shrink-0 animate-spin text-brand" />
+          <Loader2 className="h-3.5 w-3.5 flex-shrink-0 animate-spin text-[var(--gray-8)]" />
         ) : (
-          <Star className="h-3.5 w-3.5 flex-shrink-0 fill-amber-400 text-amber-400" />
+          <Star className="h-3.5 w-3.5 flex-shrink-0 fill-[var(--gray-6)] text-[var(--gray-6)]" />
         )}
       </button>
     );
   };
 
   return (
-    <aside className="hidden w-80 flex-shrink-0 overflow-y-auto border-l border-hairline bg-surface-1 px-4 py-6 xl:block">
+    <aside className="hidden w-72 flex-shrink-0 overflow-y-auto border-l border-[var(--gray-5)] bg-[var(--gray-3)] px-4 py-5 xl:block">
       <div className="space-y-4">
-        {/* 调研概览（真实统计） */}
         <SectionCard title="调研概览">
           <div className="grid grid-cols-2 gap-2.5">
             {stats.map((s) => (
-              <div key={s.label} className="rounded-xl border border-hairline bg-surface-1 px-3 py-2.5">
+              <div key={s.label} className="rounded-[4px] border border-[var(--gray-5)] bg-[var(--gray-3)] px-3 py-2.5">
                 <div className={`text-xl font-semibold leading-none ${s.tone}`}>{s.value}</div>
-                <div className="mt-1.5 text-[11px] text-ink-subtle">{s.label}</div>
+                <div className="mt-1.5 text-[11px] text-[var(--gray-9)]">{s.label}</div>
               </div>
             ))}
           </div>
         </SectionCard>
 
-        {/* 进行中（真实运行任务） */}
         <SectionCard title="进行中">
           {running.length === 0 ? (
             <div className="flex flex-col items-center py-5 text-center">
-              <Activity className="h-5 w-5 text-ink-tertiary" />
-              <div className="mt-2 text-[11px] text-ink-subtle">暂无进行中的调研</div>
+              <Activity className="h-5 w-5 text-[var(--gray-8)]" />
+              <div className="mt-2 text-[11px] text-[var(--gray-9)]">暂无进行中的调研</div>
             </div>
           ) : (
             <div className="space-y-0.5">
@@ -120,7 +118,6 @@ export function RightRail() {
           )}
         </SectionCard>
 
-        {/* 收藏报告（真实收藏） */}
         <SectionCard
           title="收藏报告"
           action={favorites.length > 0 ? "全部收藏" : undefined}
@@ -128,8 +125,8 @@ export function RightRail() {
         >
           {favorites.length === 0 ? (
             <div className="flex flex-col items-center py-5 text-center">
-              <Inbox className="h-5 w-5 text-ink-tertiary" />
-              <div className="mt-2 text-[11px] text-ink-subtle">暂无收藏报告</div>
+              <Inbox className="h-5 w-5 text-[var(--gray-8)]" />
+              <div className="mt-2 text-[11px] text-[var(--gray-9)]">暂无收藏报告</div>
             </div>
           ) : (
             <div className="space-y-0.5">

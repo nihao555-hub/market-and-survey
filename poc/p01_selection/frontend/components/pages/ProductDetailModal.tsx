@@ -53,13 +53,13 @@ export function ProductDetailModal({ product, onClose }: Props) {
 
       {/* panel */}
       <div
-        className="relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-hairline bg-white shadow-xl"
+        className="relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-[var(--gray-5)] bg-[var(--gray-1)] shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* close */}
         <button
           onClick={onClose}
-          className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-white/80 text-ink-muted shadow-sm hover:bg-surface-2 hover:text-ink"
+          className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--gray-1)]/80 text-[var(--gray-8)] shadow-sm hover:bg-[var(--gray-4)] hover:text-[var(--gray-12)]"
         >
           <X className="h-4 w-4" />
         </button>
@@ -75,7 +75,7 @@ export function ProductDetailModal({ product, onClose }: Props) {
               className="aspect-square w-full object-cover"
             />
           ) : (
-            <div className="flex aspect-square w-full items-center justify-center bg-surface-2 text-ink-tertiary">
+            <div className="flex aspect-square w-full items-center justify-center bg-[var(--gray-4)] text-[var(--gray-7)]">
               <ShoppingCart className="h-12 w-12" />
             </div>
           )}
@@ -84,12 +84,12 @@ export function ProductDetailModal({ product, onClose }: Props) {
             {/* tags */}
             <div className="flex flex-wrap gap-1.5">
               {product._category && (
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-brand/10 px-2 py-0.5 text-[11px] font-medium text-brand">
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-[var(--gray-4)] px-2 py-0.5 text-[11px] font-medium text-[var(--gray-12)]">
                   <Package className="h-3 w-3" />{product._category}
                 </span>
               )}
               {product._source && (
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-ink-subtle">
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-[var(--gray-4)] px-2 py-0.5 text-[11px] text-[var(--gray-9)]">
                   <Tag className="h-3 w-3" />{product._source}
                 </span>
               )}
@@ -101,23 +101,23 @@ export function ProductDetailModal({ product, onClose }: Props) {
             </div>
 
             {/* title */}
-            <h3 className="text-sm font-semibold leading-snug text-ink">{product.title || "—"}</h3>
+            <h3 className="text-sm font-semibold leading-snug text-[var(--gray-12)]">{product.title || "—"}</h3>
 
             {/* price */}
             <div className="flex items-baseline gap-2">
-              <span className="text-xl font-bold text-ink">{sym}{product.price ?? "—"}</span>
+              <span className="text-xl font-bold text-[var(--gray-12)]">{sym}{product.price ?? "—"}</span>
               {product.original_price ? (
-                <span className="text-sm text-ink-tertiary line-through">{sym}{product.original_price}</span>
+                <span className="text-sm text-[var(--gray-7)] line-through">{sym}{product.original_price}</span>
               ) : null}
             </div>
 
             {/* GMV estimate */}
             {gmv && gmv > 0 && (
-              <div className="rounded-lg bg-brand/5 px-3 py-2">
-                <div className="flex items-center gap-1.5 text-xs text-ink-subtle">
-                  <TrendingUp className="h-3.5 w-3.5 text-brand" /> 估算销售额
+              <div className="rounded-lg bg-[var(--gray-3)] px-3 py-2">
+                <div className="flex items-center gap-1.5 text-xs text-[var(--gray-9)]">
+                  <TrendingUp className="h-3.5 w-3.5 text-[var(--gray-12)]" /> 估算销售额
                 </div>
-                <div className="mt-0.5 text-base font-bold text-brand">
+                <div className="mt-0.5 text-base font-bold text-[var(--gray-12)]">
                   {sym}{gmv >= 1e4 ? `${(gmv / 1e4).toFixed(1)}万` : gmv.toLocaleString("en-US", { maximumFractionDigits: 0 })}
                 </div>
               </div>
@@ -134,36 +134,36 @@ export function ProductDetailModal({ product, onClose }: Props) {
             {Array.isArray(product.marketing_labels) && product.marketing_labels.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {product.marketing_labels.filter(Boolean).map((l) => (
-                  <span key={l} className="rounded-full bg-surface-2 px-2.5 py-0.5 text-[11px] text-ink-subtle">{l}</span>
+                  <span key={l} className="rounded-full bg-[var(--gray-4)] px-2.5 py-0.5 text-[11px] text-[var(--gray-9)]">{l}</span>
                 ))}
               </div>
             )}
 
             {/* shop */}
-            <div className="flex items-center gap-2 rounded-lg border border-hairline p-3">
+            <div className="flex items-center gap-2 rounded-lg border border-[var(--gray-5)] p-3">
               {product.shop_logo ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={product.shop_logo} alt="" className="h-8 w-8 rounded-full object-cover" />
               ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-2">
-                  <Store className="h-4 w-4 text-ink-tertiary" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--gray-4)]">
+                  <Store className="h-4 w-4 text-[var(--gray-7)]" />
                 </div>
               )}
-              <span className="min-w-0 truncate text-sm text-ink">{product.shop_name || "未知店铺"}</span>
+              <span className="min-w-0 truncate text-sm text-[var(--gray-12)]">{product.shop_name || "未知店铺"}</span>
             </div>
           </div>
         </div>
 
         {/* footer: external link */}
         {product.url && (
-          <div className="border-t border-hairline p-4">
+          <div className="border-t border-[var(--gray-5)] p-4">
             <a
               href={product.url}
               target="_blank"
               rel="noreferrer"
               className={cn(
                 "flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-medium transition-colors",
-                "bg-brand/10 text-brand hover:bg-brand/20",
+                "bg-[var(--gray-4)] text-[var(--gray-12)] hover:bg-[var(--gray-5)]",
               )}
             >
               <ExternalLink className="h-4 w-4" />
@@ -178,10 +178,10 @@ export function ProductDetailModal({ product, onClose }: Props) {
 
 function MetricBox({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-lg border border-hairline p-2.5">
-      <div className="flex items-center gap-1.5 text-[11px] text-ink-subtle">{icon}{label}</div>
-      <div className="mt-0.5 text-sm font-semibold text-ink">{value}</div>
-      {sub && <div className="text-[10px] text-ink-tertiary">{sub}</div>}
+    <div className="rounded-lg border border-[var(--gray-5)] p-2.5">
+      <div className="flex items-center gap-1.5 text-[11px] text-[var(--gray-9)]">{icon}{label}</div>
+      <div className="mt-0.5 text-sm font-semibold text-[var(--gray-12)]">{value}</div>
+      {sub && <div className="text-[10px] text-[var(--gray-7)]">{sub}</div>}
     </div>
   );
 }

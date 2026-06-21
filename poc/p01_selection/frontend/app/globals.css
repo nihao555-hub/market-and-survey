@@ -2,63 +2,81 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── 设计系统 token（设计稿② Design Tokens v1.0）──
-   主色 orange #F97316、slate 中性阶、语义色、8pt 间距、5 档阴影。
-   shadcn / ai-elements 用 HSL CSS 变量驱动；品牌/旧 token 用 hex 兼容现有组件。*/
+/* Enterprise B2B design tokens — neutral palette, restrained accents */
 @layer base {
   :root {
-    --background: 210 40% 98%;        /* #F8FAFC 页面底 */
-    --foreground: 222.2 47.4% 11.2%;  /* #0F172A slate-900 */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%;
     --card: 0 0% 100%;
-    --card-foreground: 222.2 47.4% 11.2%;
+    --card-foreground: 0 0% 9%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 47.4% 11.2%;
-    --primary: 24.6 95% 53.1%;        /* #F97316 orange-500 */
+    --popover-foreground: 0 0% 9%;
+    --primary: 0 0% 9%;               /* neutral-900 as primary */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96.1%;       /* #F1F5F9 slate-100 */
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;  /* #64748B slate-500 */
-    --accent: 210 40% 96.1%;          /* shadcn 弱化底色（非品牌色） */
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;     /* #EF4444 */
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;      /* #E2E8F0 slate-200 */
-    --input: 214.3 31.8% 91.4%;
-    --ring: 24.6 95% 53.1%;           /* orange 聚焦环 */
-    --radius: 0.75rem;                /* 12px 卡片圆角基准 */
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 9%;
+    --radius: 0.5rem;
 
-    --chart-1: 25 95% 53%;    /* orange #F97316 */
-    --chart-2: 189 94% 43%;   /* cyan #06B6D4 */
-    --chart-3: 330 81% 60%;   /* pink #EC4899 */
-    --chart-4: 38 92% 50%;    /* amber #F59E0B */
-    --chart-5: 160 84% 39%;   /* emerald #10B981 */
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
 
-    /* ── 品牌主色（shimmer / markdown 链接等用） ── */
-    --brand: #F97316;
-    --brand-hover: #EA580C;
-    --brand-ring: rgba(249, 115, 22, 0.35);
+    --brand: #333333;
+    --brand-hover: #1a1a1a;
+    --brand-ring: rgba(51, 51, 51, 0.15);
 
-    /* ── 兼容旧组件的中性/语义 token（重映射到设计稿② slate） ── */
-    --canvas: #ffffff;
-    --surface-1: #f8fafc;
-    --surface-2: #f1f5f9;
-    --surface-3: #e2e8f0;
-    --surface-4: #cbd5e1;
-    --hairline: #e2e8f0;
-    --hairline-strong: #cbd5e1;
-    --hairline-tertiary: #94a3b8;
-    --ink: #0f172a;
-    --ink-muted: #475569;
-    --ink-subtle: #64748b;
-    --ink-tertiary: #94a3b8;
-    --success: #10b981;
-    --danger: #ef4444;
-    --warning: #f59e0b;
+    /* Twenty CRM gray scale (display-p3 approximated to sRGB hex) */
+    --gray-1: #ffffff;
+    --gray-2: #fcfcfc;
+    --gray-3: #f9f9f9;
+    --gray-4: #f1f1f1;
+    --gray-5: #ebebeb;
+    --gray-6: #d6d6d6;
+    --gray-7: #cccccc;
+    --gray-8: #b3b3b3;
+    --gray-9: #999999;
+    --gray-10: #838383;
+    --gray-11: #666666;
+    --gray-12: #333333;
 
-    /* shimmer 渐变（orange） */
-    --font-color-light: #fed7aa;
-    --font-color-primary: #f97316;
+    --canvas: var(--gray-1);
+    --surface-1: var(--gray-2);
+    --surface-2: var(--gray-3);
+    --surface-3: var(--gray-4);
+    --surface-4: var(--gray-5);
+    --hairline: var(--gray-5);
+    --hairline-strong: var(--gray-6);
+    --hairline-tertiary: var(--gray-8);
+    --ink: var(--gray-12);
+    --ink-muted: var(--gray-11);
+    --ink-subtle: var(--gray-9);
+    --ink-tertiary: var(--gray-8);
+    --success: #16a34a;
+    --danger: #dc2626;
+    --warning: #d97706;
+
+    --font-color-primary: var(--gray-12);
+    --font-color-secondary: var(--gray-11);
+    --font-color-tertiary: var(--gray-9);
+    --font-color-light: var(--gray-8);
+    --font-color-extralight: var(--gray-7);
+
+    --bg-transparent-light: rgba(0,0,0,0.04);
+    --bg-transparent-lighter: rgba(0,0,0,0.02);
+    --border-light: var(--gray-4);
+    --border-medium: var(--gray-5);
+    --border-strong: var(--gray-6);
   }
 }
 
@@ -80,19 +98,16 @@
   }
 }
 
-/* 标题字距（设计稿② Typography：H1-H4 行高 140%） */
-h1, .display-xl { letter-spacing: -0.02em; font-weight: 600; }
-h2, .display-lg { letter-spacing: -0.018em; font-weight: 600; }
-h3, .display-md { letter-spacing: -0.012em; font-weight: 600; }
+/* Typography — taito.ai style: light headings (400), tight tracking */
 .eyebrow { letter-spacing: 0.04em; font-weight: 500; text-transform: uppercase; font-size: 12px; color: var(--ink-subtle); }
 
-/* ShimmeringText —— 进行中文案水波光效（orange） */
+/* ShimmeringText —— Twenty CRM style shimmer */
 .shimmering-text {
   background: linear-gradient(
     90deg,
-    var(--font-color-light),
-    var(--font-color-primary),
-    var(--font-color-light)
+    var(--gray-8),
+    var(--gray-12),
+    var(--gray-8)
   );
   background-size: 200% 100%;
   -webkit-background-clip: text;
@@ -197,3 +212,15 @@ textarea::-webkit-scrollbar-thumb:hover, .scroll-area::-webkit-scrollbar-thumb:h
 
 /* Geist font family alias */
 .font-geist { font-family: Inter, -apple-system, "PingFang SC", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif; }
+
+/* Logo marquee animation — taito.ai style */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee { animation: none; }
+}

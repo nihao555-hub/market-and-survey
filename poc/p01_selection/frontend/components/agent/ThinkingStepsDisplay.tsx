@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { ChevronDown, Brain, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Brain, Loader2, Cpu, Clock, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Task, TaskContent, TaskTrigger } from "@/components/ai-elements/task";
 import {
@@ -13,18 +13,12 @@ import { ToolStepRenderer } from "./ToolStepRenderer";
 import { isThinkingStepActive } from "@/lib/thinking-steps";
 import type { UIMessagePart, ToolPart } from "@/lib/agent-types";
 
-/** reasoning 折叠的中文文案 */
 const zhThinkingMessage = (isStreaming: boolean, duration?: number) => {
   if (isStreaming || duration === 0) return <ShimmeringText>正在思考…</ShimmeringText>;
   if (duration === undefined) return <span>已完成思考</span>;
   return <span>已思考 {duration} 秒</span>;
 };
 
-/**
- * 思考步骤聚合区（steering §3）：用 ai-elements 的 Task 作为「任务树」外壳，
- * 内部 reasoning 用标准 Reasoning 折叠、工具用 ToolStepRenderer 折叠卡片。
- * 流结束 + 答案已开始 → 自动折叠为「X 个分析步骤」。
- */
 export function ThinkingStepsDisplay({
   parts,
   isLastMessageStreaming,
@@ -36,73 +30,102 @@ export function ThinkingStepsDisplay({
 }) {
   const isThinking = parts.some((p) => isThinkingStepActive(p, isLastMessageStreaming));
 
-  // 自动展开/折叠规则（steering §3.4）
   const autoExpanded = isThinking || !hasAssistantTextResponseStarted;
   const [manualOverride, setManualOverride] = React.useState<boolean | null>(null);
   const expanded = manualOverride ?? autoExpanded;
 
-  const stepCount = parts.filter((p) => p.type.startsWith("tool-")).length;
+  const toolParts = parts.filter((p) => p.type.startsWith("tool-"));
+  const stepCount = toolParts.length;
+  const completedCount = toolParts.filter((p) => {
+    const tp = p as ToolPart;
+    return tp.output !== undefined || !!tp.errorText;
+  }).length;
+  const errorCount = toolParts.filter((p) => !!(p as ToolPart).errorText).length;
 
   return (
     <Task
       open={expanded}
       onOpenChange={(o) => setManualOverride(o)}
-      className="my-2 rounded-lg border border-hairline bg-surface-1 px-3 py-2"
+      className="my-2 overflow-hidden rounded-lg border border-[var(--gray-5)] bg-[var(--gray-1)]"
     >
+      {/* Twenty CRM Summary Card header */}
       <TaskTrigger title="">
-        <div className="flex w-full cursor-pointer items-center gap-2 text-sm text-ink-muted transition-colors hover:text-ink">
-          {isThinking ? (
-            <Loader2 className="h-4 w-4 text-brand animate-spin" />
-          ) : (
-            <Brain className="h-4 w-4 text-ink-subtle" />
-          )}
-          {isThinking ? (
-            <ShimmeringText>正在分析…</ShimmeringText>
-          ) : (
-            <span>{stepCount > 0 ? `${stepCount} 个分析步骤` : "分析过程"}</span>
-          )}
-          <ChevronDown
-            className={cn(
-              "ml-auto h-4 w-4 text-ink-subtle transition-transform",
-              expanded && "rotate-180"
+        <div className="flex w-full cursor-pointer items-center gap-3 p-3 transition-colors hover:bg-[var(--gray-3)]/50">
+          <div className="flex items-center gap-2 text-sm font-medium text-[var(--gray-12)]">
+            {isThinking ? (
+              <Loader2 className="h-4 w-4 animate-spin text-[var(--gray-9)]" />
+            ) : (
+              <Brain className="h-4 w-4 text-[var(--gray-9)]" />
             )}
-          />
+            {isThinking ? (
+              <ShimmeringText>AI 调研进行中</ShimmeringText>
+            ) : (
+              <span>AI 调研运行</span>
+            )}
+          </div>
+
+          {/* Twenty CRM metrics row */}
+          <div className="ml-auto flex items-center gap-3">
+            <div className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-[var(--gray-8)]">
+              <Wrench className="h-3 w-3" />
+              <span>工具调用</span>
+              <span className="ml-0.5 font-semibold text-[var(--gray-12)]">{stepCount}</span>
+            </div>
+            {stepCount > 0 && (
+              <div className="flex items-center gap-1 text-[11px] text-[var(--gray-8)]">
+                <Cpu className="h-3 w-3" />
+                <span>{completedCount}/{stepCount}</span>
+              </div>
+            )}
+            {errorCount > 0 && (
+              <span className="rounded-[3px] bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-600">
+                {errorCount} 错误
+              </span>
+            )}
+            {expanded ? (
+              <ChevronUp className="h-4 w-4 text-[var(--gray-8)]" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-[var(--gray-8)]" />
+            )}
+          </div>
         </div>
       </TaskTrigger>
       <TaskContent>
-        {parts.map((part, i) => {
-          if (part.type === "reasoning") {
-            const text = (part as { text?: string }).text || "";
-            const streaming = (part as { state?: string }).state === "streaming";
-            if (!text) return null;
-            return (
-              <Reasoning
-                key={i}
-                className="mb-0"
-                isStreaming={streaming}
-                defaultOpen={streaming}
-              >
-                <ReasoningTrigger
-                  getThinkingMessage={zhThinkingMessage}
-                  className="text-ink-subtle"
+        <div className="border-t border-[var(--gray-4)] px-3 py-2 space-y-1">
+          {parts.map((part, i) => {
+            if (part.type === "reasoning") {
+              const text = (part as { text?: string }).text || "";
+              const streaming = (part as { state?: string }).state === "streaming";
+              if (!text) return null;
+              return (
+                <Reasoning
+                  key={i}
+                  className="mb-0"
+                  isStreaming={streaming}
+                  defaultOpen={streaming}
+                >
+                  <ReasoningTrigger
+                    getThinkingMessage={zhThinkingMessage}
+                    className="text-[var(--gray-9)]"
+                  />
+                  <ReasoningContent className="!mt-1 rounded-md border border-[var(--gray-4)] bg-[var(--gray-2)] p-3 text-[13px] leading-relaxed text-[var(--gray-11)] whitespace-pre-wrap">
+                    {text}
+                  </ReasoningContent>
+                </Reasoning>
+              );
+            }
+            if (part.type.startsWith("tool-")) {
+              return (
+                <ToolStepRenderer
+                  key={i}
+                  part={part as ToolPart}
+                  isStreaming={isLastMessageStreaming}
                 />
-                <ReasoningContent className="!mt-2 text-ink-subtle">
-                  {text}
-                </ReasoningContent>
-              </Reasoning>
-            );
-          }
-          if (part.type.startsWith("tool-")) {
-            return (
-              <ToolStepRenderer
-                key={i}
-                part={part as ToolPart}
-                isStreaming={isLastMessageStreaming}
-              />
-            );
-          }
-          return null;
-        })}
+              );
+            }
+            return null;
+          })}
+        </div>
       </TaskContent>
     </Task>
   );

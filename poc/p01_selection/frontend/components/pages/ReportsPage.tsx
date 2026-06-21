@@ -54,32 +54,32 @@ export function ReportsPage() {
             return (
               <div
                 key={t.id}
-                className="group flex flex-col rounded-2xl border border-hairline bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-sm"
+                className="group flex flex-col rounded-2xl border border-[var(--gray-5)] bg-[var(--gray-1)] p-5 transition-all hover:-translate-y-0.5 hover:border-[var(--gray-6)] hover:shadow-sm"
               >
                 <div className="flex items-start justify-between">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/10 text-brand">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--gray-4)] text-[var(--gray-12)]">
                     <FileText className="h-5 w-5" />
                   </span>
                   <button
                     onClick={() => onFav(t.id)}
                     title={t.isFavorite ? "取消收藏" : "收藏"}
                     className={cn(
-                      "rounded p-1.5 transition-colors hover:bg-surface-2",
-                      t.isFavorite ? "text-brand" : "text-ink-subtle hover:text-ink"
+                      "rounded p-1.5 transition-colors hover:bg-[var(--gray-4)]",
+                      t.isFavorite ? "text-[var(--gray-12)]" : "text-[var(--gray-9)] hover:text-[var(--gray-12)]"
                     )}
                   >
                     <Star className={cn("h-4 w-4", t.isFavorite && "fill-current")} />
                   </button>
                 </div>
                 <button onClick={() => setActiveId(t.id)} className="mt-3 text-left">
-                  <div className="line-clamp-1 text-sm font-semibold text-ink">{name}</div>
-                  <div className="mt-1 text-xs text-ink-subtle">{market}</div>
+                  <div className="line-clamp-1 text-sm font-semibold text-[var(--gray-12)]">{name}</div>
+                  <div className="mt-1 text-xs text-[var(--gray-9)]">{market}</div>
                 </button>
-                <div className="mt-4 flex items-center justify-between border-t border-hairline pt-3 text-[11px] text-ink-tertiary">
+                <div className="mt-4 flex items-center justify-between border-t border-[var(--gray-5)] pt-3 text-[11px] text-[var(--gray-7)]">
                   <span>{formatDate(t.updatedAt)}</span>
                   <button
                     onClick={() => setActiveId(t.id)}
-                    className="inline-flex items-center gap-0.5 text-brand opacity-0 transition-opacity group-hover:opacity-100"
+                    className="inline-flex items-center gap-0.5 text-[var(--gray-12)] opacity-0 transition-opacity group-hover:opacity-100"
                   >
                     查看报告 <ArrowRight className="h-3.5 w-3.5" />
                   </button>

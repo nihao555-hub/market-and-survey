@@ -7,6 +7,7 @@ import {
 import { fetchAllSnapshots, type DataSnapshot } from "@/lib/api";
 import { Panel, Skeleton, EmptyState, FilterTabs } from "./primitives";
 import { cn } from "@/lib/utils";
+import { zhCat } from "@/lib/category-i18n";
 
 interface CategoryDayStats {
   date: string;
@@ -53,10 +54,10 @@ function fmtPrice(n: number | null, sym = "$"): string {
 
 function TrendArrow({ current, previous }: { current: number | null; previous: number | null }) {
   if (current === null || previous === null || !isFinite(current) || !isFinite(previous)) {
-    return <Minus className="h-3 w-3 text-ink-tertiary" />;
+    return <Minus className="h-3 w-3 text-[var(--gray-7)]" />;
   }
   const diff = current - previous;
-  if (Math.abs(diff) < 0.01) return <Minus className="h-3 w-3 text-ink-tertiary" />;
+  if (Math.abs(diff) < 0.01) return <Minus className="h-3 w-3 text-[var(--gray-7)]" />;
   if (diff > 0) return <TrendingUp className="h-3 w-3 text-emerald-500" />;
   return <TrendingDown className="h-3 w-3 text-rose-500" />;
 }
@@ -75,7 +76,7 @@ interface SparklineProps {
 
 function Sparkline({ data, labels, width = 280, height = 100, color = "#f97316", fillColor, unit = "", title }: SparklineProps) {
   const valid = data.map((v, i) => v !== null && isFinite(v!) ? { v: v!, i } : null).filter(Boolean) as { v: number; i: number }[];
-  if (valid.length < 1) return <div className="flex h-20 items-center justify-center text-[11px] text-ink-subtle">暂无数据</div>;
+  if (valid.length < 1) return <div className="flex h-20 items-center justify-center text-[11px] text-[var(--gray-9)]">暂无数据</div>;
 
   const minV = Math.min(...valid.map((p) => p.v));
   const maxV = Math.max(...valid.map((p) => p.v));
@@ -100,9 +101,9 @@ function Sparkline({ data, labels, width = 280, height = 100, color = "#f97316",
   const fill = fillColor || color;
 
   return (
-    <div className="rounded-lg border border-hairline bg-white p-2">
+    <div className="rounded-lg border border-[var(--gray-5)] bg-[var(--gray-1)] p-2">
       {title && (
-        <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-ink">
+        <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-[var(--gray-12)]">
           {title}
           {valid.length >= 2 && (() => {
             const first = valid[0].v;
@@ -217,7 +218,7 @@ export function CategoryTrendTable() {
     let cancelled = false;
     (async () => {
       try {
-        const snaps = await fetchAllSnapshots({ source: "category_rank", limit: 500 });
+        const snaps = await fetchAllSnapshots({ source: "category_rank", limit: 500, summaryOnly: true });
         if (!cancelled) {
           setAllSnaps(snaps);
         }
@@ -283,7 +284,7 @@ export function CategoryTrendTable() {
   return (
     <Panel title={"\u54c1\u7c7b\u8d8b\u52bf\u5206\u6790"} bodyClassName="p-0">
       {/* Category selector */}
-      <div className="border-b border-hairline px-4 py-3">
+      <div className="border-b border-[var(--gray-5)] px-4 py-3">
         <div className="flex flex-wrap gap-1.5">
           {trends.map((t) => {
             const active = t.categoryId === selectedTrend?.categoryId;
@@ -294,12 +295,12 @@ export function CategoryTrendTable() {
                 className={cn(
                   "rounded-full border px-2.5 py-1 text-[11px] transition-colors",
                   active
-                    ? "border-brand/30 bg-brand/10 font-medium text-brand"
-                    : "border-hairline bg-white text-ink-muted hover:bg-surface-1 hover:text-ink",
+                    ? "border-[var(--gray-12)]/30 bg-[var(--gray-4)] font-medium text-[var(--gray-12)]"
+                    : "border-[var(--gray-5)] bg-[var(--gray-1)] text-[var(--gray-8)] hover:bg-[var(--gray-3)] hover:text-[var(--gray-12)]",
                 )}
               >
-                {t.categoryName}
-                <span className={cn("ml-1 text-[10px]", active ? "text-brand/70" : "text-ink-tertiary")}>
+                {zhCat(t.categoryName)}
+                <span className={cn("ml-1 text-[10px]", active ? "text-[var(--gray-12)]/70" : "text-[var(--gray-7)]")}>
                   {t.days.length}d
                 </span>
               </button>
@@ -311,16 +312,16 @@ export function CategoryTrendTable() {
       {/* Trend table */}
       {selectedTrend && (
         <div className="p-4">
-          <div className="mb-3 flex items-center gap-2 text-xs text-ink-subtle">
-            <BarChart3 className="h-3.5 w-3.5 text-brand" />
-            <span className="font-medium text-ink">{selectedTrend.categoryName}</span>
+          <div className="mb-3 flex items-center gap-2 text-xs text-[var(--gray-9)]">
+            <BarChart3 className="h-3.5 w-3.5 text-[var(--gray-12)]" />
+            <span className="font-medium text-[var(--gray-12)]">{zhCat(selectedTrend.categoryName)}</span>
             <span>{"\u00b7"} {"\u8fd1"} {selectedTrend.days.length} {"\u6b21\u6570\u636e\u5feb\u7167"}</span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-surface-1 text-[11px] uppercase tracking-wide text-ink-subtle">
+                <tr className="bg-[var(--gray-3)] text-[11px] uppercase tracking-wide text-[var(--gray-9)]">
                   <th className="px-3 py-2.5 pl-4 text-left font-medium">
                     <span className="inline-flex items-center gap-1">
                       <Calendar className="h-3 w-3" />{"\u65e5\u671f"}
@@ -355,45 +356,45 @@ export function CategoryTrendTable() {
                   const prev = idx < selectedTrend.days.length - 1 ? selectedTrend.days[idx + 1] : null;
                   return (
                     <tr key={day.date} className={cn(
-                      "border-t border-hairline transition-colors hover:bg-surface-1",
-                      idx === 0 && "bg-brand/[0.03]",
+                      "border-t border-[var(--gray-5)] transition-colors hover:bg-[var(--gray-3)]",
+                      idx === 0 && "bg-[var(--gray-12)]/[0.03]",
                     )}>
                       <td className="px-3 py-2.5 pl-4">
-                        <div className="text-xs font-medium text-ink">
+                        <div className="text-xs font-medium text-[var(--gray-12)]">
                           {fmtFullDate(day.date)}
                           {idx === 0 && (
-                            <span className="ml-1.5 rounded bg-brand/10 px-1 py-0.5 text-[9px] font-semibold text-brand">
+                            <span className="ml-1.5 rounded bg-[var(--gray-4)] px-1 py-0.5 text-[9px] font-semibold text-[var(--gray-12)]">
                               {"\u6700\u65b0"}
                             </span>
                           )}
                         </div>
                       </td>
                       <td className="px-3 py-2.5 text-right">
-                        <span className="text-xs font-medium text-ink">{day.productCount}</span>
+                        <span className="text-xs font-medium text-[var(--gray-12)]">{day.productCount}</span>
                         <DeltaBadge current={day.productCount} previous={prev?.productCount ?? null} />
                       </td>
                       <td className="px-3 py-2.5 text-right">
-                        <span className="text-xs font-medium text-ink">{fmtPrice(day.avgPrice)}</span>
+                        <span className="text-xs font-medium text-[var(--gray-12)]">{fmtPrice(day.avgPrice)}</span>
                         <DeltaBadge current={day.avgPrice} previous={prev?.avgPrice ?? null} />
                       </td>
-                      <td className="px-3 py-2.5 text-right text-[11px] text-ink-subtle">
+                      <td className="px-3 py-2.5 text-right text-[11px] text-[var(--gray-9)]">
                         {day.minPrice !== null && day.maxPrice !== null
                           ? `${fmtPrice(day.minPrice)} - ${fmtPrice(day.maxPrice)}`
                           : "\u2014"}
                       </td>
                       <td className="px-3 py-2.5 text-right">
                         {day.avgRating !== null ? (
-                          <span className="inline-flex items-center gap-0.5 text-xs text-ink">
+                          <span className="inline-flex items-center gap-0.5 text-xs text-[var(--gray-12)]">
                             <Star className="h-3 w-3 fill-current text-amber-500" />
                             {day.avgRating}
                             <DeltaBadge current={day.avgRating} previous={prev?.avgRating ?? null} />
                           </span>
                         ) : (
-                          <span className="text-xs text-ink-subtle">{"\u2014"}</span>
+                          <span className="text-xs text-[var(--gray-9)]">{"\u2014"}</span>
                         )}
                       </td>
                       <td className="px-3 py-2.5 text-right">
-                        <span className="text-xs font-medium text-ink">{fmtNum(day.totalSold)}</span>
+                        <span className="text-xs font-medium text-[var(--gray-12)]">{fmtNum(day.totalSold)}</span>
                         <DeltaBadge current={day.totalSold} previous={prev?.totalSold ?? null} />
                       </td>
                       <td className="px-3 py-2.5 text-center">
@@ -440,7 +441,7 @@ export function CategoryTrendTable() {
             const latest = selectedTrend.days[0];
             const oldest = selectedTrend.days[selectedTrend.days.length - 1];
             return (
-              <div className="mt-3 flex flex-wrap gap-3 rounded-lg bg-surface-1 px-3 py-2 text-[11px] text-ink-subtle">
+              <div className="mt-3 flex flex-wrap gap-3 rounded-lg bg-[var(--gray-3)] px-3 py-2 text-[11px] text-[var(--gray-9)]">
                 <span>{"\u5468\u671f"}: {selectedTrend.days.length} {"\u6b21\u5feb\u7167"}</span>
                 {latest.avgPrice !== null && oldest.avgPrice !== null && (
                   <span className="inline-flex items-center gap-1">

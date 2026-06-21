@@ -19,7 +19,7 @@ const Textarea = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <textarea
     className={cn(
-      "flex w-full resize-none rounded-md border-none bg-transparent px-3 py-2.5 text-base text-ink placeholder:text-ink-subtle focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px]",
+      "flex w-full resize-none rounded-md border-none bg-transparent px-3 py-2.5 text-base text-[var(--gray-12)] placeholder:text-[var(--gray-9)] focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px]",
       className
     )}
     ref={ref}
@@ -41,7 +41,7 @@ const TooltipContent = React.forwardRef<
     ref={ref}
     sideOffset={sideOffset}
     className={cn(
-      "z-50 overflow-hidden rounded-md border border-hairline bg-white px-3 py-1.5 text-sm text-ink shadow-md",
+      "z-50 overflow-hidden rounded-md border border-[var(--gray-5)] bg-[var(--gray-1)] px-3 py-1.5 text-sm text-[var(--gray-12)] shadow-md",
       className
     )}
     {...props}
@@ -106,8 +106,8 @@ function ParamSettingsBar() {
         className={cn(
           "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-xs transition-colors",
           open
-            ? "border-brand/40 bg-brand/10 text-brand"
-            : "border-hairline bg-white text-ink-muted hover:border-hairline-strong hover:text-ink"
+            ? "border-[var(--gray-12)]/40 bg-[var(--gray-4)] text-[var(--gray-12)]"
+            : "border-[var(--gray-5)] bg-[var(--gray-1)] text-[var(--gray-8)] hover:border-[var(--gray-5)]-strong hover:text-[var(--gray-12)]"
         )}
       >
         <SlidersHorizontal className="h-3.5 w-3.5" />
@@ -118,13 +118,13 @@ function ParamSettingsBar() {
               <Flag key={c} iso={marketIso(c)} size={15} className="ring-1 ring-white" />
             ))}
             {params.markets.length > 4 && (
-              <span className="ml-1 text-[11px] text-ink-subtle">+{params.markets.length - 4}</span>
+              <span className="ml-1 text-[11px] text-[var(--gray-9)]">+{params.markets.length - 4}</span>
             )}
           </span>
         ) : (
-          <span className="text-ink-subtle">选择市场</span>
+          <span className="text-[var(--gray-9)]">选择市场</span>
         )}
-        <span className="text-ink-subtle">·</span>
+        <span className="text-[var(--gray-9)]">·</span>
         <span>{params.positioning}</span>
       </button>
 
@@ -135,13 +135,13 @@ function ParamSettingsBar() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 6, scale: 0.98 }}
             transition={{ duration: 0.15 }}
-            className="absolute bottom-full left-0 z-50 mb-2 max-h-[60vh] w-[380px] overflow-y-auto rounded-xl border border-hairline bg-white p-3 shadow-[0_8px_28px_rgba(26,29,33,0.12)]"
+            className="absolute bottom-full left-0 z-50 mb-2 max-h-[60vh] w-[380px] overflow-y-auto rounded-xl border border-[var(--gray-5)] bg-[var(--gray-1)] p-3 shadow-[0_8px_28px_rgba(26,29,33,0.12)]"
           >
-            <div className="mb-1.5 text-[11px] font-medium text-ink-subtle">目标市场（可多选，默认美国）</div>
+            <div className="mb-1.5 text-[11px] font-medium text-[var(--gray-9)]">目标市场（可多选，默认美国）</div>
             <div className="space-y-2.5">
               {marketsByContinent().map((group) => (
                 <div key={group.region}>
-                  <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-ink-tertiary">
+                  <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-[var(--gray-7)]">
                     {group.region}
                   </div>
                   <div className="flex flex-wrap gap-1.5">
@@ -155,8 +155,8 @@ function ParamSettingsBar() {
                           className={cn(
                             "inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs transition-colors",
                             active
-                              ? "border-brand bg-brand text-white"
-                              : "border-hairline bg-white text-ink-muted hover:border-hairline-strong"
+                              ? "border-[var(--gray-12)] bg-[var(--gray-12)] text-white"
+                              : "border-[var(--gray-5)] bg-[var(--gray-1)] text-[var(--gray-8)] hover:border-[var(--gray-5)]-strong"
                           )}
                         >
                           <Flag iso={m.iso} size={15} />
@@ -169,7 +169,7 @@ function ParamSettingsBar() {
               ))}
             </div>
 
-            <div className="mb-1.5 mt-3 text-[11px] font-medium text-ink-subtle">商家定位</div>
+            <div className="mb-1.5 mt-3 text-[11px] font-medium text-[var(--gray-9)]">商家定位</div>
             <div className="flex flex-wrap gap-1.5">
               {POSITIONINGS.map((p) => (
                 <button
@@ -179,8 +179,8 @@ function ParamSettingsBar() {
                   className={cn(
                     "inline-flex items-center rounded-lg border px-2 py-1 text-xs transition-colors",
                     params.positioning === p
-                      ? "border-brand bg-brand text-white"
-                      : "border-hairline bg-white text-ink-muted hover:border-hairline-strong"
+                      ? "border-[var(--gray-12)] bg-[var(--gray-12)] text-white"
+                      : "border-[var(--gray-5)] bg-[var(--gray-1)] text-[var(--gray-8)] hover:border-[var(--gray-5)]-strong"
                   )}
                 >
                   {p}
@@ -242,7 +242,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, PromptInputBoxPro
         <div
           ref={ref}
           className={cn(
-            "rounded-3xl border border-hairline bg-white p-2 shadow-[0_2px_16px_rgba(26,29,33,0.06)] transition-all duration-300 focus-within:border-hairline-strong focus-within:shadow-[0_2px_20px_rgba(99,102,241,0.12)]",
+            "rounded-3xl border border-[var(--gray-5)] bg-[var(--gray-1)] p-2 shadow-[0_2px_16px_rgba(26,29,33,0.06)] transition-all duration-300 focus-within:border-[var(--gray-5)]-strong focus-within:shadow-[0_2px_20px_rgba(99,102,241,0.12)]",
             className
           )}
         >
@@ -267,7 +267,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, PromptInputBoxPro
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-ink-subtle transition-colors hover:bg-surface-2 hover:text-ink-muted"
+                    className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-[var(--gray-9)] transition-colors hover:bg-[var(--gray-4)] hover:text-[var(--gray-8)]"
                     disabled
                   >
                     <Paperclip className="h-5 w-5" />
@@ -279,7 +279,7 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, PromptInputBoxPro
               {/* 联网（恒开，仅展示真实数据来源） */}
               <button
                 type="button"
-                className="flex h-8 items-center gap-1 rounded-full border border-brand/30 bg-brand/10 px-2 py-1 text-brand"
+                className="flex h-8 items-center gap-1 rounded-full border border-[var(--gray-12)]/30 bg-[var(--gray-4)] px-2 py-1 text-[var(--gray-12)]"
               >
                 <Globe className="h-4 w-4" />
                 <span className="text-xs">实时联网</span>
@@ -294,8 +294,8 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, PromptInputBoxPro
                 className={cn(
                   "flex h-8 items-center gap-1 rounded-full border px-2 py-1 transition-all",
                   deep
-                    ? "border-brand bg-brand/10 text-brand"
-                    : "border-transparent bg-transparent text-ink-subtle hover:text-ink-muted"
+                    ? "border-[var(--gray-12)] bg-[var(--gray-4)] text-[var(--gray-12)]"
+                    : "border-transparent bg-transparent text-[var(--gray-9)] hover:text-[var(--gray-8)]"
                 )}
               >
                 <div className="flex h-5 w-5 items-center justify-center">
@@ -338,10 +338,10 @@ export const PromptInputBox = React.forwardRef<HTMLDivElement, PromptInputBoxPro
                   className={cn(
                     "flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200 active:scale-95",
                     isLoading
-                      ? "bg-surface-2 text-ink-muted hover:bg-hairline-strong hover:text-ink"
+                      ? "bg-[var(--gray-4)] text-[var(--gray-8)] hover:bg-hairline-strong hover:text-[var(--gray-12)]"
                       : hasContent
-                      ? "bg-brand text-white hover:bg-brand-hover"
-                      : "bg-surface-2 text-ink-subtle"
+                      ? "bg-[var(--gray-12)] text-white hover:bg-[var(--gray-11)]"
+                      : "bg-[var(--gray-4)] text-[var(--gray-9)]"
                   )}
                 >
                   {isLoading ? (
