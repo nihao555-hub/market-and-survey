@@ -21,7 +21,7 @@ PLATFORMS = {
     # ══════════════════════════════════════════════════════════════════════
     "amazon": {
         "name": "Amazon US", "region": "US", "needs_proxy": "US",
-        "search_url": "https://www.amazon.com/s?k={kw}",
+        "search_url": "https://www.amazon.com/s?k={kw}&s=exact-aware-popularity-rank",
         "card_sel": "div[data-component-type='s-search-result']",
         "title_sel": "h2 span", "price_sel": "span.a-price span.a-offscreen",
         "rating_sel": "span.a-icon-alt", "asin_in_url": True,
@@ -29,7 +29,7 @@ PLATFORMS = {
     },
     "amazon_ca": {
         "name": "Amazon CA", "region": "CA", "needs_proxy": "CA",
-        "search_url": "https://www.amazon.ca/s?k={kw}",
+        "search_url": "https://www.amazon.ca/s?k={kw}&s=exact-aware-popularity-rank",
         "card_sel": "div[data-component-type='s-search-result']",
         "title_sel": "h2 span", "price_sel": "span.a-price span.a-offscreen",
         "rating_sel": "span.a-icon-alt", "asin_in_url": True,
@@ -176,7 +176,7 @@ PLATFORMS = {
     },
     "amazon_br": {
         "name": "Amazon BR", "region": "BR", "needs_proxy": "BR",
-        "search_url": "https://www.amazon.com.br/s?k={kw}",
+        "search_url": "https://www.amazon.com.br/s?k={kw}&s=exact-aware-popularity-rank",
         "card_sel": "div[data-component-type='s-search-result']",
         "title_sel": "h2 span", "price_sel": "span.a-price span.a-offscreen",
         "rating_sel": "span.a-icon-alt", "asin_in_url": True,
@@ -184,7 +184,7 @@ PLATFORMS = {
     },
     "amazon_mx": {
         "name": "Amazon MX", "region": "MX", "needs_proxy": "MX",
-        "search_url": "https://www.amazon.com.mx/s?k={kw}",
+        "search_url": "https://www.amazon.com.mx/s?k={kw}&s=exact-aware-popularity-rank",
         "card_sel": "div[data-component-type='s-search-result']",
         "title_sel": "h2 span", "price_sel": "span.a-price span.a-offscreen",
         "rating_sel": "span.a-icon-alt", "asin_in_url": True,
@@ -204,7 +204,7 @@ PLATFORMS = {
     # ══════════════════════════════════════════════════════════════════════
     "amazon_uk": {
         "name": "Amazon UK", "region": "UK", "needs_proxy": "UK",
-        "search_url": "https://www.amazon.co.uk/s?k={kw}",
+        "search_url": "https://www.amazon.co.uk/s?k={kw}&s=exact-aware-popularity-rank",
         "card_sel": "div[data-component-type='s-search-result']",
         "title_sel": "h2 span", "price_sel": "span.a-price span.a-offscreen",
         "rating_sel": "span.a-icon-alt", "asin_in_url": True,
@@ -212,7 +212,7 @@ PLATFORMS = {
     },
     "amazon_de": {
         "name": "Amazon DE", "region": "DE", "needs_proxy": "DE",
-        "search_url": "https://www.amazon.de/s?k={kw}",
+        "search_url": "https://www.amazon.de/s?k={kw}&s=exact-aware-popularity-rank",
         "card_sel": "div[data-component-type='s-search-result']",
         "title_sel": "h2 span", "price_sel": "span.a-price span.a-offscreen",
         "rating_sel": "span.a-icon-alt", "asin_in_url": True,
@@ -220,7 +220,7 @@ PLATFORMS = {
     },
     "amazon_fr": {
         "name": "Amazon FR", "region": "FR", "needs_proxy": "FR",
-        "search_url": "https://www.amazon.fr/s?k={kw}",
+        "search_url": "https://www.amazon.fr/s?k={kw}&s=exact-aware-popularity-rank",
         "card_sel": "div[data-component-type='s-search-result']",
         "title_sel": "h2 span", "price_sel": "span.a-price span.a-offscreen",
         "rating_sel": "span.a-icon-alt", "asin_in_url": True,
@@ -228,7 +228,7 @@ PLATFORMS = {
     },
     "amazon_it": {
         "name": "Amazon IT", "region": "IT", "needs_proxy": "IT",
-        "search_url": "https://www.amazon.it/s?k={kw}",
+        "search_url": "https://www.amazon.it/s?k={kw}&s=exact-aware-popularity-rank",
         "card_sel": "div[data-component-type='s-search-result']",
         "title_sel": "h2 span", "price_sel": "span.a-price span.a-offscreen",
         "rating_sel": "span.a-icon-alt", "asin_in_url": True,
@@ -236,7 +236,7 @@ PLATFORMS = {
     },
     "amazon_es": {
         "name": "Amazon ES", "region": "ES", "needs_proxy": "ES",
-        "search_url": "https://www.amazon.es/s?k={kw}",
+        "search_url": "https://www.amazon.es/s?k={kw}&s=exact-aware-popularity-rank",
         "card_sel": "div[data-component-type='s-search-result']",
         "title_sel": "h2 span", "price_sel": "span.a-price span.a-offscreen",
         "rating_sel": "span.a-icon-alt", "asin_in_url": True,
@@ -244,7 +244,7 @@ PLATFORMS = {
     },
     "amazon_nl": {
         "name": "Amazon NL", "region": "NL", "needs_proxy": "NL",
-        "search_url": "https://www.amazon.nl/s?k={kw}",
+        "search_url": "https://www.amazon.nl/s?k={kw}&s=exact-aware-popularity-rank",
         "card_sel": "div[data-component-type='s-search-result']",
         "title_sel": "h2 span", "price_sel": "span.a-price span.a-offscreen",
         "rating_sel": "span.a-icon-alt", "asin_in_url": True,
@@ -252,7 +252,7 @@ PLATFORMS = {
     },
     "amazon_pl": {
         "name": "Amazon PL", "region": "PL", "needs_proxy": "PL",
-        "search_url": "https://www.amazon.pl/s?k={kw}",
+        "search_url": "https://www.amazon.pl/s?k={kw}&s=exact-aware-popularity-rank",
         "card_sel": "div[data-component-type='s-search-result']",
         "title_sel": "h2 span", "price_sel": "span.a-price span.a-offscreen",
         "rating_sel": "span.a-icon-alt", "asin_in_url": True,
@@ -260,7 +260,7 @@ PLATFORMS = {
     },
     "amazon_se": {
         "name": "Amazon SE", "region": "SE", "needs_proxy": "SE",
-        "search_url": "https://www.amazon.se/s?k={kw}",
+        "search_url": "https://www.amazon.se/s?k={kw}&s=exact-aware-popularity-rank",
         "card_sel": "div[data-component-type='s-search-result']",
         "title_sel": "h2 span", "price_sel": "span.a-price span.a-offscreen",
         "rating_sel": "span.a-icon-alt", "asin_in_url": True,
@@ -337,7 +337,7 @@ PLATFORMS = {
     # ══════════════════════════════════════════════════════════════════════
     "shopee_sg": {
         "name": "Shopee SG", "region": "SG", "needs_proxy": "SG",
-        "search_url": "https://shopee.sg/search?keyword={kw}",
+        "search_url": "https://shopee.sg/search?keyword={kw}&sortBy=sales",
         "card_sel": "li.shopee-search-item-result__item",
         "title_sel": "div[class*='title']", "price_sel": "span[class*='price']",
         "rating_sel": None, "asin_in_url": False,
@@ -345,7 +345,7 @@ PLATFORMS = {
     },
     "shopee_my": {
         "name": "Shopee MY", "region": "MY", "needs_proxy": "MY",
-        "search_url": "https://shopee.com.my/search?keyword={kw}",
+        "search_url": "https://shopee.com.my/search?keyword={kw}&sortBy=sales",
         "card_sel": "li.shopee-search-item-result__item",
         "title_sel": "div[class*='title']", "price_sel": "span[class*='price']",
         "rating_sel": None, "asin_in_url": False,
@@ -353,7 +353,7 @@ PLATFORMS = {
     },
     "shopee_th": {
         "name": "Shopee TH", "region": "TH", "needs_proxy": "TH",
-        "search_url": "https://shopee.co.th/search?keyword={kw}",
+        "search_url": "https://shopee.co.th/search?keyword={kw}&sortBy=sales",
         "card_sel": "li.shopee-search-item-result__item",
         "title_sel": "div[class*='title']", "price_sel": "span[class*='price']",
         "rating_sel": None, "asin_in_url": False,
@@ -361,7 +361,7 @@ PLATFORMS = {
     },
     "shopee_vn": {
         "name": "Shopee VN", "region": "VN", "needs_proxy": "VN",
-        "search_url": "https://shopee.vn/search?keyword={kw}",
+        "search_url": "https://shopee.vn/search?keyword={kw}&sortBy=sales",
         "card_sel": "li.shopee-search-item-result__item",
         "title_sel": "div[class*='title']", "price_sel": "span[class*='price']",
         "rating_sel": None, "asin_in_url": False,
@@ -369,7 +369,7 @@ PLATFORMS = {
     },
     "shopee_ph": {
         "name": "Shopee PH", "region": "PH", "needs_proxy": "PH",
-        "search_url": "https://shopee.ph/search?keyword={kw}",
+        "search_url": "https://shopee.ph/search?keyword={kw}&sortBy=sales",
         "card_sel": "li.shopee-search-item-result__item",
         "title_sel": "div[class*='title']", "price_sel": "span[class*='price']",
         "rating_sel": None, "asin_in_url": False,
@@ -377,7 +377,7 @@ PLATFORMS = {
     },
     "shopee_id": {
         "name": "Shopee ID", "region": "ID", "needs_proxy": "ID",
-        "search_url": "https://shopee.co.id/search?keyword={kw}",
+        "search_url": "https://shopee.co.id/search?keyword={kw}&sortBy=sales",
         "card_sel": "li.shopee-search-item-result__item",
         "title_sel": "div[class*='title']", "price_sel": "span[class*='price']",
         "rating_sel": None, "asin_in_url": False,
@@ -385,7 +385,7 @@ PLATFORMS = {
     },
     "lazada_sg": {
         "name": "Lazada SG", "region": "SG", "needs_proxy": "SG",
-        "search_url": "https://www.lazada.sg/catalog/?q={kw}",
+        "search_url": "https://www.lazada.sg/catalog/?q={kw}&sort=order",
         "card_sel": "div[data-qa-locator='product-item']",
         "title_sel": "div.RfADt a", "price_sel": "span.ooOxS",
         "rating_sel": None, "asin_in_url": False,
@@ -393,7 +393,7 @@ PLATFORMS = {
     },
     "lazada_my": {
         "name": "Lazada MY", "region": "MY", "needs_proxy": "MY",
-        "search_url": "https://www.lazada.com.my/catalog/?q={kw}",
+        "search_url": "https://www.lazada.com.my/catalog/?q={kw}&sort=order",
         "card_sel": "div[data-qa-locator='product-item']",
         "title_sel": "div.RfADt a", "price_sel": "span.ooOxS",
         "rating_sel": None, "asin_in_url": False,
@@ -401,7 +401,7 @@ PLATFORMS = {
     },
     "lazada_th": {
         "name": "Lazada TH", "region": "TH", "needs_proxy": "TH",
-        "search_url": "https://www.lazada.co.th/catalog/?q={kw}",
+        "search_url": "https://www.lazada.co.th/catalog/?q={kw}&sort=order",
         "card_sel": "div[data-qa-locator='product-item']",
         "title_sel": "div.RfADt a", "price_sel": "span.ooOxS",
         "rating_sel": None, "asin_in_url": False,
@@ -409,7 +409,7 @@ PLATFORMS = {
     },
     "lazada_vn": {
         "name": "Lazada VN", "region": "VN", "needs_proxy": "VN",
-        "search_url": "https://www.lazada.vn/catalog/?q={kw}",
+        "search_url": "https://www.lazada.vn/catalog/?q={kw}&sort=order",
         "card_sel": "div[data-qa-locator='product-item']",
         "title_sel": "div.RfADt a", "price_sel": "span.ooOxS",
         "rating_sel": None, "asin_in_url": False,
@@ -417,7 +417,7 @@ PLATFORMS = {
     },
     "lazada_ph": {
         "name": "Lazada PH", "region": "PH", "needs_proxy": "PH",
-        "search_url": "https://www.lazada.com.ph/catalog/?q={kw}",
+        "search_url": "https://www.lazada.com.ph/catalog/?q={kw}&sort=order",
         "card_sel": "div[data-qa-locator='product-item']",
         "title_sel": "div.RfADt a", "price_sel": "span.ooOxS",
         "rating_sel": None, "asin_in_url": False,
@@ -425,7 +425,7 @@ PLATFORMS = {
     },
     "lazada_id": {
         "name": "Lazada ID", "region": "ID", "needs_proxy": "ID",
-        "search_url": "https://www.lazada.co.id/catalog/?q={kw}",
+        "search_url": "https://www.lazada.co.id/catalog/?q={kw}&sort=order",
         "card_sel": "div[data-qa-locator='product-item']",
         "title_sel": "div.RfADt a", "price_sel": "span.ooOxS",
         "rating_sel": None, "asin_in_url": False,
@@ -454,7 +454,7 @@ PLATFORMS = {
     # ══════════════════════════════════════════════════════════════════════
     "amazon_jp": {
         "name": "Amazon JP", "region": "JP", "needs_proxy": "JP",
-        "search_url": "https://www.amazon.co.jp/s?k={kw}",
+        "search_url": "https://www.amazon.co.jp/s?k={kw}&s=exact-aware-popularity-rank",
         "card_sel": "div[data-component-type='s-search-result']",
         "title_sel": "h2 span", "price_sel": "span.a-price span.a-offscreen",
         "rating_sel": "span.a-icon-alt", "asin_in_url": True,
@@ -538,7 +538,7 @@ PLATFORMS = {
     # ══════════════════════════════════════════════════════════════════════
     "amazon_in": {
         "name": "Amazon IN", "region": "IN", "needs_proxy": "IN",
-        "search_url": "https://www.amazon.in/s?k={kw}",
+        "search_url": "https://www.amazon.in/s?k={kw}&s=exact-aware-popularity-rank",
         "card_sel": "div[data-component-type='s-search-result']",
         "title_sel": "h2 span", "price_sel": "span.a-price span.a-offscreen",
         "rating_sel": "span.a-icon-alt", "asin_in_url": True,
@@ -585,7 +585,7 @@ PLATFORMS = {
     # ══════════════════════════════════════════════════════════════════════
     "amazon_ae": {
         "name": "Amazon AE", "region": "AE", "needs_proxy": "AE",
-        "search_url": "https://www.amazon.ae/s?k={kw}",
+        "search_url": "https://www.amazon.ae/s?k={kw}&s=exact-aware-popularity-rank",
         "card_sel": "div[data-component-type='s-search-result']",
         "title_sel": "h2 span", "price_sel": "span.a-price span.a-offscreen",
         "rating_sel": "span.a-icon-alt", "asin_in_url": True,
@@ -593,7 +593,7 @@ PLATFORMS = {
     },
     "amazon_sa": {
         "name": "Amazon SA", "region": "SA", "needs_proxy": "SA",
-        "search_url": "https://www.amazon.sa/s?k={kw}",
+        "search_url": "https://www.amazon.sa/s?k={kw}&s=exact-aware-popularity-rank",
         "card_sel": "div[data-component-type='s-search-result']",
         "title_sel": "h2 span", "price_sel": "span.a-price span.a-offscreen",
         "rating_sel": "span.a-icon-alt", "asin_in_url": True,
@@ -640,7 +640,7 @@ PLATFORMS = {
     # ══════════════════════════════════════════════════════════════════════
     "amazon_au": {
         "name": "Amazon AU", "region": "AU", "needs_proxy": "AU",
-        "search_url": "https://www.amazon.com.au/s?k={kw}",
+        "search_url": "https://www.amazon.com.au/s?k={kw}&s=exact-aware-popularity-rank",
         "card_sel": "div[data-component-type='s-search-result']",
         "title_sel": "h2 span", "price_sel": "span.a-price span.a-offscreen",
         "rating_sel": "span.a-icon-alt", "asin_in_url": True,
