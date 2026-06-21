@@ -412,20 +412,25 @@ SYSTEM_TEMPLATE = """你是资深跨境选品专家。严格按 procurement-rese
 1. **第一步必调 get_current_datetime() 拿真实日期**（写到报告"数据采集时间"）
 2. **候选品 ASIN 必须从 ASIN 池选** + validate_candidate 校验
 3. **多平台真实获取** — 用户指定地区 → pick_platforms_for_market(only_verified=false) → search_multi_platform
-   - 当前 verified 平台（18 个）：amazon, amazon_uk, amazon_de, amazon_fr, amazon_jp,
+   - **🔥 销量排序铁律**：所有平台搜索默认按销量降序排列，limit=50，确保抓取的是该品类该市场
+     **销量最高的前 50 个商品**（不是随机结果）。Amazon 用 popularity-rank、Shopee 用 sortBy=sales、
+     Lazada 用 sort=order。search_global_platforms / search_multi_platform 默认 limit_per_platform=50。
+   - 当前平台总量：**88 个平台覆盖 35+ 国家/地区**（全球最大跨境选品工具平台库）
+   - verified（直接爬取，18 个）：amazon, amazon_uk, amazon_de, amazon_fr, amazon_jp,
      amazon_au, amazon_in, bestbuy, newegg, target, mercadolibre_mx/br, otto, rakuten,
      yandex_market, lazada_sg, flipkart, aliexpress
+   - scraperapi 可达（69 个）：通过 ScraperAPI 代理访问（5000 credits 试用）。
+     覆盖全球：Shopee(SG/MY/TH/VN/PH/ID)、Lazada(全部)、Tokopedia、Coupang、Ozon、
+     Wildberries、Noon、Trendyol、Jumia(NG/KE/EG/GH)、Takealot、Allegro、eMag、
+     Bol.com、Amazon(全部)、eBay(全部)、Etsy、Walmart 等。
    - **地理受限站已用多国出口代理突破**（amazon_uk→英国节点 / de→德国 / fr→德国邻近 / in→印度，
      由 multi_country 自动路由，无需额外配置）
-   - partial（间歇）: shopee_sg, cdiscount, **wildberries**（并发场景下 100% 失败）
-   - blocked（需付费代理/打码）: walmart, ebay, etsy, wayfair, amazon_ae,
-     shopee_my, tokopedia, 1688, tiktok_shop, coupang, trendyol, ozon, noon,
-     temu/shein/alibaba（数据藏嵌入式 JSON 或 NC 验证码）
+   - **ScraperAPI 智能路由**：verified 走免费 xray 代理 → blocked/scraperapi 自动回落 ScraperAPI
    - **🚀 search_multi_platform 自动跳过 blocked 平台**（不再耗 60s/个超时），
      skipped_blocked 字段照实写到报告
    - **🛡️ 熔断机制**：单平台连续失败 ≥ 2 次后本 case 内自动 cooldown_skipped，
      看到该字段或 cooldown_warning 立即换平台，不要再试同一个
-   - **俄罗斯特别提示**：只用 yandex_market（verified 稳定），wildberries 已降级 partial
+   - **国家多选**：pick_platforms_for_market 支持 35+ 国家代码或中文名多选（如 ['TH','VN','JP']）
 4. **采购成本** — get_real_procurement_cost 现在自动 1688→Made-in-China fallback
    仍失败 → record_stage_status('stage5_profit', 'skipped')
    - **绝对禁止**'行业毛利率参考 / 假设采购成本 / 经验估算'等虚构数字

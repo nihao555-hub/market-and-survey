@@ -781,7 +781,7 @@ def tool_get_movers_shakers_by_url(url: str, limit: int = 50) -> dict:
 
 
 # 兼容旧名（当 LLM 用旧的 get_bestsellers 时，自动走 discover→by_url）
-def tool_get_bestsellers(category: str = "electronics", limit: int = 30, geo: str = "US") -> dict:
+def tool_get_bestsellers(category: str = "electronics", limit: int = 50, geo: str = "US") -> dict:
     logger.info(f"🔧 get_bestsellers({category}, geo={geo}) (auto-discover)")
     d = discover_bestsellers_url(category, use_proxy=True, geo=geo)
     if d.get("amazon_available") is False:
@@ -1049,7 +1049,7 @@ def _is_platform_cooled_down(platform: str) -> bool:
     return _PLATFORM_FAIL_COUNT.get(platform, 0) >= _PLATFORM_FAIL_THRESHOLD
 
 
-def tool_search_products(platform: str, keyword: str, limit: int = 15,
+def tool_search_products(platform: str, keyword: str, limit: int = 50,
                          use_proxy: bool = True, max_retries: int = None) -> dict:
     """单平台搜索。platform 是 PLATFORMS 注册表里的 id。
     
@@ -1282,7 +1282,7 @@ def tool_search_products(platform: str, keyword: str, limit: int = 15,
 
 
 def tool_search_multi_platform(platforms: list[str], keyword: str,
-                                limit_per_platform: int = 20,
+                                limit_per_platform: int = 50,
                                 allow_blocked: bool = False) -> dict:
     """一次抓多个平台（**并发**，每个平台都真实抓，失败明确返回 error，不静默跳过）。
     
@@ -1331,7 +1331,7 @@ def tool_search_multi_platform(platforms: list[str], keyword: str,
             return plat, {
                 "platform_name": r.get("platform_name"),
                 "count": r.get("count", 0),
-                "products": r.get("products", [])[:5],
+                "products": r.get("products", [])[:limit_per_platform],
                 "url": r.get("url"),
                 "error": r.get("error"),
                 "status": r.get("platform_status"),
@@ -2313,7 +2313,7 @@ def tool_file_to_markdown(file_path: str) -> dict:
 
 
 # =====================  TikHub：实时社媒趋势 + TikTok Shop 电商  =====================
-def tool_tiktok_shop_search(keyword: str, region: str = "US", limit: int = 20) -> dict:
+def tool_tiktok_shop_search(keyword: str, region: str = "US", limit: int = 50) -> dict:
     """实时搜 TikTok Shop 商品（真实价格/评分/评论数/销量/店铺）。未配 key 时如实返回 error。"""
     logger.info(f"🔧 tiktok_shop_search({keyword}, region={region}, limit={limit})")
     from modules import tikhub
@@ -2385,7 +2385,7 @@ def tool_tiktok_products_by_category(category_id: str, region: str = "US",
         return {"ok": False, "error": str(e)[:300], "products": []}
 
 
-def tool_tiktok_hot_selling(region: str = "US", limit: int = 20) -> dict:
+def tool_tiktok_hot_selling(region: str = "US", limit: int = 50) -> dict:
     """TikTok Shop 实时热销榜（爆品雷达）。返回当前热卖商品（价格/评分/销量/店铺）。"""
     logger.info(f"🔧 tiktok_hot_selling(region={region}, limit={limit})")
     from modules import tikhub
@@ -2566,11 +2566,12 @@ def tool_scraperapi_status() -> dict:
 
 def tool_search_global_platforms(keyword: str, regions: list[str] = None,
                                   use_scraperapi_for_blocked: bool = True,
-                                  limit_per_platform: int = 15) -> dict:
-    """全球主流电商平台一键搜索 — 自动选择最佳抓取策略。
+                                  limit_per_platform: int = 50) -> dict:
+    """全球主流电商平台一键搜索 — 自动选择最佳抓取策略，按销量排序取 Top 50。
     
     对 verified 平台：走 xray 代理（免费、快）
     对 scraperapi/blocked 平台：自动回落到 ScraperAPI（需配 key，有免费额度）
+    所有平台均使用 sort-by-sales URL，确保返回的是销量最高的商品。
     
     regions 支持 35+ 国家代码（US/UK/DE/JP/KR/SG/MY/TH/VN/PH/ID/MX/BR/AR/CO/CL/
     TR/RU/KZ/IN/PK/AE/SA/AU/NZ/NG/KE/EG/ZA/CN 等）。
@@ -3184,7 +3185,8 @@ TOOLS_SCHEMA = [
                         "description": "国家代码多选：US/JP/DE/TH/VN/PH/ID/KR/RU/TR/AE/SA/BR/AR/AU/NZ/NG/IN 等。不传则搜全球所有可达平台"},
             "use_scraperapi_for_blocked": {"type": "boolean", "default": True,
                                             "description": "是否对 scraperapi/blocked 平台使用 ScraperAPI"},
-            "limit_per_platform": {"type": "integer", "default": 15}
+            "limit_per_platform": {"type": "integer", "default": 50,
+                                    "description": "每个平台抓取的最大商品数（默认 50，按销量排序）"}
         }, "required": ["keyword"]}}},
 ]
 
