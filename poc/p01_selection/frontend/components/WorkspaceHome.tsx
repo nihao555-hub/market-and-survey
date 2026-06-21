@@ -58,7 +58,7 @@ export function WorkspaceHome() {
       const { checkUsage: check } = await import("@/lib/auth");
       const info = await check();
       if (info && !info.can_use) {
-        alert(`Monthly AI research limit reached (${info.reports_used}/${info.reports_limit}). Please upgrade.`);
+        alert(`本月 AI 调研次数已达上限 (${info.reports_used}/${info.reports_limit})。请升级套餐。`);
         return;
       }
     } catch {}
