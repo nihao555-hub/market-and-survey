@@ -33,60 +33,107 @@ AUTOPARSE_DOMAINS = {
     "walmart.com", "ebay.com", "etsy.com",
 }
 
-# 平台 → ScraperAPI 最佳参数配置
+# 平台 → ScraperAPI 最佳参数配置（80+ 平台全球覆盖）
 PLATFORM_SCRAPERAPI_CONFIG = {
-    # 北美
+    # ═══ 北美 ═══
+    "amazon": {"country_code": "us", "render": False},
+    "amazon_ca": {"country_code": "ca", "render": False},
     "walmart": {"country_code": "us", "render": True, "premium": True},
+    "walmart_ca": {"country_code": "ca", "render": True, "premium": True},
     "ebay": {"country_code": "us", "render": False, "premium": True},
     "etsy": {"country_code": "us", "render": True, "premium": True},
     "target": {"country_code": "us", "render": True},
-    # 欧洲
+    "bestbuy": {"country_code": "us", "render": True},
+    "newegg": {"country_code": "us", "render": True},
+    "wayfair": {"country_code": "us", "render": True, "premium": True},
+    "costco": {"country_code": "us", "render": True, "premium": True},
+    "homedepot": {"country_code": "us", "render": True, "premium": True},
+    # ═══ 拉丁美洲 ═══
+    "mercadolibre_mx": {"country_code": "mx", "render": False},
+    "mercadolibre_br": {"country_code": "br", "render": False},
+    "mercadolibre_ar": {"country_code": "ar", "render": False},
+    "mercadolibre_co": {"country_code": "co", "render": False},
+    "mercadolibre_cl": {"country_code": "cl", "render": False},
+    "amazon_br": {"country_code": "br", "render": False},
+    "amazon_mx": {"country_code": "mx", "render": False},
+    "falabella": {"country_code": "cl", "render": True},
+    # ═══ 欧洲 ═══
     "amazon_uk": {"country_code": "uk", "render": False},
     "amazon_de": {"country_code": "de", "render": False},
     "amazon_fr": {"country_code": "fr", "render": False},
+    "amazon_it": {"country_code": "it", "render": False},
+    "amazon_es": {"country_code": "es", "render": False},
+    "amazon_nl": {"country_code": "nl", "render": False},
+    "amazon_pl": {"country_code": "pl", "render": False},
+    "amazon_se": {"country_code": "se", "render": False},
     "otto": {"country_code": "de", "render": True},
+    "zalando": {"country_code": "de", "render": True, "premium": True},
     "cdiscount": {"country_code": "fr", "render": True},
-    # 东南亚
+    "bol_com": {"country_code": "nl", "render": True},
+    "allegro": {"country_code": "pl", "render": True, "premium": True},
+    "emag": {"country_code": "ro", "render": True},
+    "ebay_uk": {"country_code": "uk", "render": False, "premium": True},
+    "ebay_de": {"country_code": "de", "render": False, "premium": True},
+    # ═══ 东南亚 ═══
     "shopee_sg": {"country_code": "sg", "render": True, "premium": True},
     "shopee_my": {"country_code": "my", "render": True, "premium": True},
+    "shopee_th": {"country_code": "th", "render": True, "premium": True},
+    "shopee_vn": {"country_code": "vn", "render": True, "premium": True},
+    "shopee_ph": {"country_code": "ph", "render": True, "premium": True},
+    "shopee_id": {"country_code": "id", "render": True, "premium": True},
     "lazada_sg": {"country_code": "sg", "render": True},
+    "lazada_my": {"country_code": "my", "render": True},
+    "lazada_th": {"country_code": "th", "render": True},
+    "lazada_vn": {"country_code": "vn", "render": True},
+    "lazada_ph": {"country_code": "ph", "render": True},
+    "lazada_id": {"country_code": "id", "render": True},
     "tokopedia": {"country_code": "id", "render": True, "premium": True},
-    # 拉美
-    "mercadolibre_mx": {"country_code": "mx", "render": False},
-    "mercadolibre_br": {"country_code": "br", "render": False},
-    # 日韩
+    "tiki_vn": {"country_code": "vn", "render": True},
+    # ═══ 日韩 ═══
     "amazon_jp": {"country_code": "jp", "render": False},
     "rakuten": {"country_code": "jp", "render": True},
+    "yahoo_shopping_jp": {"country_code": "jp", "render": True},
     "coupang": {"country_code": "kr", "render": True, "premium": True},
-    # 俄罗斯
+    "gmarket_kr": {"country_code": "kr", "render": True},
+    # ═══ 俄罗斯 + 独联体 ═══
     "ozon": {"country_code": "ru", "render": True, "premium": True},
-    "wildberries": {"country_code": "ru", "render": True},
+    "wildberries": {"country_code": "ru", "render": True, "premium": True},
     "yandex_market": {"country_code": "ru", "render": True},
-    # 中东
-    "amazon_ae": {"country_code": "ae", "render": False},
-    "noon": {"country_code": "ae", "render": True, "premium": True},
-    # 大洋洲
-    "amazon_au": {"country_code": "au", "render": False},
-    # 土耳其
-    "trendyol": {"country_code": "tr", "render": True, "premium": True},
-    # 印度
+    "kaspi_kz": {"country_code": "kz", "render": True},
+    # ═══ 南亚 ═══
     "amazon_in": {"country_code": "in", "render": False},
     "flipkart": {"country_code": "in", "render": True},
-    # 全球
+    "myntra": {"country_code": "in", "render": True, "premium": True},
+    "daraz_pk": {"country_code": "pk", "render": True},
+    "daraz_bd": {"country_code": "bd", "render": True},
+    # ═══ 中东 ═══
+    "amazon_ae": {"country_code": "ae", "render": False},
+    "amazon_sa": {"country_code": "sa", "render": False},
+    "noon": {"country_code": "ae", "render": True, "premium": True},
+    "noon_sa": {"country_code": "sa", "render": True, "premium": True},
+    "trendyol": {"country_code": "tr", "render": True, "premium": True},
+    "hepsiburada": {"country_code": "tr", "render": True, "premium": True},
+    # ═══ 大洋洲 ═══
+    "amazon_au": {"country_code": "au", "render": False},
+    "catch_au": {"country_code": "au", "render": True},
+    "trademe_nz": {"country_code": "nz", "render": True},
+    # ═══ 非洲 ═══
+    "jumia_ng": {"country_code": "ng", "render": False},
+    "jumia_ke": {"country_code": "ke", "render": False},
+    "jumia_eg": {"country_code": "eg", "render": False},
+    "jumia_gh": {"country_code": "gh", "render": False},
+    "takealot": {"country_code": "za", "render": True},
+    # ═══ 全球 ═══
     "aliexpress": {"country_code": "us", "render": True},
     "temu": {"country_code": "us", "render": True, "premium": True},
     "shein": {"country_code": "us", "render": True, "premium": True},
     "alibaba": {"country_code": "us", "render": True, "premium": True},
-    # 中国
+    # ═══ 中国 ═══
     "jd": {"country_code": "cn", "render": True},
     "taobao": {"country_code": "cn", "render": True, "premium": True},
     "tmall": {"country_code": "cn", "render": True, "premium": True},
     "pinduoduo": {"country_code": "cn", "render": True, "premium": True},
     "1688": {"country_code": "cn", "render": True, "premium": True},
-    # 非洲
-    "jumia_ng": {"country_code": "ng", "render": False},
-    "jumia_ke": {"country_code": "ke", "render": False},
-    "jumia_eg": {"country_code": "eg", "render": False},
 }
 
 
