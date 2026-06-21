@@ -8,6 +8,7 @@ import type { EChartsOption } from "echarts";
 import { fetchDataSnapshots, fetchAllSnapshots, fetchCategorySparklines, fetchDailyRefreshStatus, triggerDailyRefresh, backfillGoogleTrends } from "@/lib/api";
 import type { DataSnapshot, CategorySparkData } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { zhCat } from "@/lib/category-i18n";
 
 // ─── ECharts wrapper (lazy import) ─────────────────────────────────
 function MiniChart({ option, height = 280 }: { option: EChartsOption; height?: number }) {
@@ -518,7 +519,7 @@ function CategoryCards({ latestSnaps, sparkData }: { latestSnaps: DataSnapshot[]
         <div key={card.name} className="rounded-[8px] border border-[var(--gray-5)] bg-[var(--gray-1)] overflow-hidden">
           <div className="border-b border-[var(--gray-4)] px-4 py-3">
             <div className="flex items-center justify-between">
-              <h3 className="truncate text-[13px] font-semibold text-[var(--gray-12)]">{card.name}</h3>
+              <h3 className="truncate text-[13px] font-semibold text-[var(--gray-12)]">{zhCat(card.name)}</h3>
               <span className="flex-shrink-0 rounded-[4px] bg-[var(--gray-4)] px-1.5 py-0.5 text-[10px] text-[var(--gray-9)]">{card.latestCount} 商品</span>
             </div>
             <div className="mt-2 flex items-center gap-4 text-[11px] text-[var(--gray-9)]">
@@ -585,7 +586,7 @@ function LatestCategorySummary({ snapshots }: { snapshots: DataSnapshot[] }) {
         const avgPrice = prices.length ? (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(1) : "—";
         return (
           <div key={c.id} className="rounded-[6px] border border-[var(--gray-5)] bg-[var(--gray-1)] px-3 py-2">
-            <div className="truncate text-[12px] font-medium text-[var(--gray-12)]">{name}</div>
+            <div className="truncate text-[12px] font-medium text-[var(--gray-12)]">{zhCat(name)}</div>
             <div className="mt-1 flex items-center gap-3 text-[11px] text-[var(--gray-9)]">
               <span>{prods.length} 商品</span>
               <span>均价 ${avgPrice}</span>

@@ -2,8 +2,9 @@
 import React from "react";
 import {
   LayoutList, RefreshCw, Clock, ShoppingCart, Star, Store, Flame, Hash,
-  TrendingUp, Package, Users, Search, X,
+  TrendingUp, Package, Users, Search, X, Filter, ArrowUpDown, ChevronDown,
 } from "lucide-react";
+import { zhCat, matchCategory } from "@/lib/category-i18n";
 import {
   fetchDailyRefreshStatus, fetchDataSnapshots, fetchAllSnapshots,
   fetchCategorySparklines,
@@ -193,78 +194,199 @@ function fmtSold(n: number): string {
   return String(n);
 }
 
+type CatSortKey = "count" | "price" | "rating" | "name";
+
 function PerCategoryCards({ latestSnaps, sparkData, onSelectCat }: {
   latestSnaps: DataSnapshot[];
   sparkData: CategorySparkData[];
   onSelectCat: (id: string) => void;
 }) {
   const cards = React.useMemo(() => buildPerCatCardsFromSpark(latestSnaps, sparkData), [latestSnaps, sparkData]);
+  const [catSearch, setCatSearch] = React.useState("");
+  const [sortKey, setSortKey] = React.useState<CatSortKey>("count");
+  const [viewMode, setViewMode] = React.useState<"card" | "table">("card");
+
+  const filtered = React.useMemo(() => {
+    let list = cards.filter((c) => matchCategory(c.name, catSearch));
+    const sorters: Record<CatSortKey, (a: CatCardData, b: CatCardData) => number> = {
+      count: (a, b) => b.latestCount - a.latestCount,
+      price: (a, b) => b.latestAvgPrice - a.latestAvgPrice,
+      rating: (a, b) => b.latestAvgRating - a.latestAvgRating,
+      name: (a, b) => zhCat(a.name).localeCompare(zhCat(b.name), "zh-CN"),
+    };
+    list.sort(sorters[sortKey]);
+    return list;
+  }, [cards, catSearch, sortKey]);
+
   if (cards.length === 0) return null;
 
   return (
     <section className="mb-6">
-      <div className="mb-3 flex items-center gap-2">
-        <TrendingUp className="h-4 w-4 text-[var(--gray-9)]" />
-        <h2 className="text-sm font-semibold text-[var(--gray-12)]">按品类趋势</h2>
-        <span className="rounded-full bg-[var(--gray-4)] px-1.5 text-[11px] text-[var(--gray-9)]">{cards.length}</span>
-      </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {cards.map((card) => (
-          <button
-            key={card.catId || card.name}
-            type="button"
-            onClick={() => onSelectCat(card.catId)}
-            className="rounded-[8px] border border-[var(--gray-5)] bg-[var(--gray-1)] overflow-hidden text-left transition-all hover:-translate-y-0.5 hover:border-[var(--gray-6)] hover:shadow-md"
-          >
-            <div className="border-b border-surface-3 px-4 py-3">
-              <div className="flex items-center justify-between">
-                <h3 className="truncate text-[13px] font-semibold text-[var(--gray-12)]">{card.name}</h3>
-                <span className="flex-shrink-0 rounded-[4px] bg-[var(--gray-4)] px-1.5 py-0.5 text-[10px] text-[var(--gray-9)]">{card.latestCount} 商品</span>
-              </div>
-              <div className="mt-2 flex items-center gap-4 text-[11px] text-[var(--gray-9)]">
-                <div className="flex items-center gap-1.5">
-                  <span>均价</span>
-                  <span className="font-medium text-[var(--gray-12)]">${card.latestAvgPrice}</span>
-                  <CatSparkline values={card.priceHistory} />
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span>评分</span>
-                  <span className="font-medium text-[var(--gray-12)]">{card.latestAvgRating}</span>
-                  <CatSparkline values={card.ratingHistory} />
-                </div>
-              </div>
+      {/* Twenty CRM style header bar */}
+      <div className="mb-4 rounded-lg border border-[var(--gray-5)] bg-[var(--gray-2)] p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-[var(--gray-9)]" />
+            <h2 className="text-sm font-semibold text-[var(--gray-12)]">品类趋势</h2>
+            <span className="rounded-[4px] bg-[var(--gray-4)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--gray-9)]">
+              {filtered.length} / {cards.length}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Search input */}
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--gray-7)]" />
+              <input
+                value={catSearch}
+                onChange={(e) => setCatSearch(e.target.value)}
+                placeholder="搜索品类（中文/英文）…"
+                className="w-48 rounded-md border border-[var(--gray-5)] bg-[var(--gray-1)] py-1.5 pl-7 pr-7 text-xs text-[var(--gray-12)] outline-none transition-all focus:w-64 focus:border-[var(--gray-8)]/40 focus:ring-2 focus:ring-brand/15"
+              />
+              {catSearch && (
+                <button onClick={() => setCatSearch("")} className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-[var(--gray-7)] hover:text-[var(--gray-12)]">
+                  <X className="h-3 w-3" />
+                </button>
+              )}
             </div>
-            {card.top5.length > 0 && (
-              <div className="px-4 py-2">
-                <div className="mb-1.5 text-[10px] font-medium text-[var(--gray-7)]">TOP 5 热销</div>
-                <div className="space-y-1.5">
-                  {card.top5.map((p, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded text-[10px] font-bold text-[var(--gray-9)]">{i + 1}</span>
-                      {p.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.image} alt="" className="h-7 w-7 flex-shrink-0 rounded object-cover" />
-                      ) : (
-                        <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded bg-[var(--gray-4)]">
-                          <Package className="h-3 w-3 text-[var(--gray-7)]" />
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-[11px] text-[var(--gray-12)]">{p.title}</div>
-                      </div>
-                      <div className="flex flex-shrink-0 items-center gap-2 text-[10px] text-[var(--gray-9)]">
-                        <span className="font-medium">${p.price}</span>
-                        {p.sold > 0 && <span>已售 {fmtSold(p.sold)}</span>}
-                        {p.rating > 0 && <span>★{p.rating}</span>}
-                      </div>
-                    </div>
-                  ))}
+            {/* Sort dropdown */}
+            <div className="relative">
+              <select
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value as CatSortKey)}
+                className="appearance-none rounded-md border border-[var(--gray-5)] bg-[var(--gray-1)] py-1.5 pl-2 pr-6 text-xs text-[var(--gray-11)] outline-none hover:border-[var(--gray-6)]"
+              >
+                <option value="count">按商品数</option>
+                <option value="price">按均价</option>
+                <option value="rating">按评分</option>
+                <option value="name">按名称</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-1.5 top-1/2 h-3 w-3 -translate-y-1/2 text-[var(--gray-7)]" />
+            </div>
+            {/* View toggle */}
+            <div className="flex rounded-md border border-[var(--gray-5)] bg-[var(--gray-1)]">
+              <button
+                onClick={() => setViewMode("card")}
+                className={cn("rounded-l-md px-2 py-1.5 text-xs transition-colors", viewMode === "card" ? "bg-[var(--gray-4)] text-[var(--gray-12)]" : "text-[var(--gray-8)] hover:text-[var(--gray-12)]")}
+                title="卡片视图"
+              >
+                <LayoutList className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode("table")}
+                className={cn("rounded-r-md px-2 py-1.5 text-xs transition-colors", viewMode === "table" ? "bg-[var(--gray-4)] text-[var(--gray-12)]" : "text-[var(--gray-8)] hover:text-[var(--gray-12)]")}
+                title="表格视图"
+              >
+                <Filter className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {filtered.length === 0 && catSearch ? (
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-[var(--gray-5)] py-12 text-center">
+          <Search className="mb-2 h-6 w-6 text-[var(--gray-7)]" />
+          <p className="text-sm text-[var(--gray-9)]">没有匹配「{catSearch}」的品类</p>
+          <p className="mt-1 text-xs text-[var(--gray-7)]">试试其他中文或英文关键词</p>
+        </div>
+      ) : viewMode === "table" ? (
+        /* Twenty CRM style table view */
+        <div className="overflow-hidden rounded-lg border border-[var(--gray-5)]">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-[var(--gray-5)] bg-[var(--gray-3)] text-[11px] uppercase tracking-wider text-[var(--gray-8)]">
+                  <th className="px-3 py-2.5 font-medium">品类名称</th>
+                  <th className="px-3 py-2.5 font-medium text-right">商品数</th>
+                  <th className="px-3 py-2.5 font-medium text-right">均价</th>
+                  <th className="px-3 py-2.5 font-medium text-right">均评分</th>
+                  <th className="px-3 py-2.5 font-medium">均价趋势</th>
+                  <th className="px-3 py-2.5 font-medium">评分趋势</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((card) => (
+                  <tr
+                    key={card.catId || card.name}
+                    className="border-b border-[var(--gray-4)] last:border-0 cursor-pointer transition-colors hover:bg-[var(--gray-3)]/50"
+                    onClick={() => onSelectCat(card.catId)}
+                  >
+                    <td className="px-3 py-2.5">
+                      <div className="font-medium text-[var(--gray-12)]">{zhCat(card.name)}</div>
+                      <div className="text-[10px] text-[var(--gray-7)]">{card.name}</div>
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-[var(--gray-11)]">{card.latestCount}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-[var(--gray-11)]">${card.latestAvgPrice}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums text-[var(--gray-11)]">{card.latestAvgRating}</td>
+                    <td className="px-3 py-2.5"><CatSparkline values={card.priceHistory} /></td>
+                    <td className="px-3 py-2.5"><CatSparkline values={card.ratingHistory} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        /* Card grid view */
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((card) => (
+            <button
+              key={card.catId || card.name}
+              type="button"
+              onClick={() => onSelectCat(card.catId)}
+              className="rounded-lg border border-[var(--gray-5)] bg-[var(--gray-1)] overflow-hidden text-left transition-all hover:-translate-y-0.5 hover:border-[var(--gray-6)] hover:shadow-md"
+            >
+              <div className="border-b border-[var(--gray-4)] px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="truncate text-[13px] font-semibold text-[var(--gray-12)]">{zhCat(card.name)}</h3>
+                  <span className="flex-shrink-0 rounded-[4px] bg-[var(--gray-4)] px-1.5 py-0.5 text-[10px] text-[var(--gray-9)]">{card.latestCount} 商品</span>
+                </div>
+                <div className="mt-0.5 text-[10px] text-[var(--gray-7)]">{card.name}</div>
+                <div className="mt-2 flex items-center gap-4 text-[11px] text-[var(--gray-9)]">
+                  <div className="flex items-center gap-1.5">
+                    <span>均价</span>
+                    <span className="font-medium text-[var(--gray-12)]">${card.latestAvgPrice}</span>
+                    <CatSparkline values={card.priceHistory} />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span>评分</span>
+                    <span className="font-medium text-[var(--gray-12)]">{card.latestAvgRating}</span>
+                    <CatSparkline values={card.ratingHistory} />
+                  </div>
                 </div>
               </div>
-            )}
-          </button>
-        ))}
-      </div>
+              {card.top5.length > 0 && (
+                <div className="px-4 py-2">
+                  <div className="mb-1.5 text-[10px] font-medium text-[var(--gray-7)]">TOP 5 热销</div>
+                  <div className="space-y-1.5">
+                    {card.top5.map((p, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded text-[10px] font-bold text-[var(--gray-9)]">{i + 1}</span>
+                        {p.image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.image} alt="" className="h-7 w-7 flex-shrink-0 rounded object-cover" />
+                        ) : (
+                          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded bg-[var(--gray-4)]">
+                            <Package className="h-3 w-3 text-[var(--gray-7)]" />
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-[11px] text-[var(--gray-12)]">{p.title}</div>
+                        </div>
+                        <div className="flex flex-shrink-0 items-center gap-2 text-[10px] text-[var(--gray-9)]">
+                          <span className="font-medium">${p.price}</span>
+                          {p.sold > 0 && <span>已售 {fmtSold(p.sold)}</span>}
+                          {p.rating > 0 && <span>★{p.rating}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -310,7 +432,10 @@ function CategoryOverviewTable({ cats, onSelectCat }: { cats: DataSnapshot[]; on
                 className="border-b border-[var(--gray-5)] last:border-0 hover:bg-[var(--gray-3)]/30 cursor-pointer transition-colors"
                 onClick={() => onSelectCat(r.id)}
               >
-                <td className="px-3 py-2 font-medium text-[var(--gray-12)]">{r.name}</td>
+                <td className="px-3 py-2 font-medium text-[var(--gray-12)]">
+                  <div>{zhCat(r.name)}</div>
+                  {r.parentCat && <div className="text-[10px] text-[var(--gray-7)]">{zhCat(r.parentCat)}</div>}
+                </td>
                 <td className="px-3 py-2 text-right text-[var(--gray-9)]">{r.count}</td>
                 <td className="px-3 py-2 text-right text-[var(--gray-9)]">
                   {r.priceMin !== null ? `$${r.priceMin}–$${r.priceMax}` : "—"}
@@ -632,7 +757,7 @@ export function CategoryRankPage() {
                   <input
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="搜商品 / 店铺 / 话题…"
+                    placeholder="搜品类 / 商品 / 店铺 / 话题…"
                     className="w-full rounded-lg border border-[var(--gray-5)] bg-[var(--gray-3)] py-1.5 pl-8 pr-8 text-sm text-[var(--gray-12)] outline-none focus:border-[var(--gray-8)]/40 focus:ring-2 focus:ring-brand/15"
                   />
                   {query && (
@@ -685,7 +810,7 @@ export function CategoryRankPage() {
                                 : "border-[var(--gray-5)] bg-[var(--gray-1)] text-[var(--gray-8)] hover:bg-[var(--gray-3)] hover:text-[var(--gray-12)]",
                             )}
                           >
-                            {c.payload?.category_name}
+                            {zhCat((c.payload?.category_name ?? "") as string)}
                             <span className={cn("ml-1.5 text-[10px]", active ? "text-[var(--gray-12)]/70" : "text-[var(--gray-7)]")}>
                               {c.payload?.products?.length ?? 0}
                             </span>
@@ -696,7 +821,7 @@ export function CategoryRankPage() {
                     {activeCatSnap && (
                       <div className="mb-3 flex items-center gap-2 text-xs text-[var(--gray-9)]">
                         <TrendingUp className="h-3.5 w-3.5 text-[var(--gray-12)]" />
-                        <span className="font-medium text-[var(--gray-8)]">{activeCatSnap.payload?.category_name}</span>
+                        <span className="font-medium text-[var(--gray-8)]">{zhCat((activeCatSnap.payload?.category_name ?? "") as string)}</span>
                         · 实时 Top {activeCatProducts.length}
                         {activeCatSnap.payload?.stats?.weighted_avg_rating
                           ? ` · 加权均分 ${activeCatSnap.payload.stats.weighted_avg_rating}` : ""}

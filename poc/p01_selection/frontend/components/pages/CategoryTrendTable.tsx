@@ -7,6 +7,7 @@ import {
 import { fetchAllSnapshots, type DataSnapshot } from "@/lib/api";
 import { Panel, Skeleton, EmptyState, FilterTabs } from "./primitives";
 import { cn } from "@/lib/utils";
+import { zhCat } from "@/lib/category-i18n";
 
 interface CategoryDayStats {
   date: string;
@@ -298,7 +299,7 @@ export function CategoryTrendTable() {
                     : "border-[var(--gray-5)] bg-[var(--gray-1)] text-[var(--gray-8)] hover:bg-[var(--gray-3)] hover:text-[var(--gray-12)]",
                 )}
               >
-                {t.categoryName}
+                {zhCat(t.categoryName)}
                 <span className={cn("ml-1 text-[10px]", active ? "text-[var(--gray-12)]/70" : "text-[var(--gray-7)]")}>
                   {t.days.length}d
                 </span>
@@ -313,7 +314,7 @@ export function CategoryTrendTable() {
         <div className="p-4">
           <div className="mb-3 flex items-center gap-2 text-xs text-[var(--gray-9)]">
             <BarChart3 className="h-3.5 w-3.5 text-[var(--gray-12)]" />
-            <span className="font-medium text-[var(--gray-12)]">{selectedTrend.categoryName}</span>
+            <span className="font-medium text-[var(--gray-12)]">{zhCat(selectedTrend.categoryName)}</span>
             <span>{"\u00b7"} {"\u8fd1"} {selectedTrend.days.length} {"\u6b21\u6570\u636e\u5feb\u7167"}</span>
           </div>
 
