@@ -355,9 +355,12 @@ HASHTAG_TREND_TERM = "🏷️ 热门话题榜"
 # 控制每批抓多少个一级品类、每类取多少商品（成本/时长可调）。
 # 默认覆盖全部 28 个一级品类，每类 20 商品（单次接口调用即返回，零额外成本）。
 # 想要更庞大的底盘时把 CATEGORY_PAGES 调大：每多一页 = 每类多一次接口调用、多约 20 商品。
+# INCLUDE_SUBCATS=1 时也抓二级子品类（约 212 个），提供更精细的品类覆盖。
 CATEGORY_MAX = int(os.getenv("DAILY_REFRESH_CATEGORIES", "28"))
 CATEGORY_TOP_N = int(os.getenv("DAILY_REFRESH_CATEGORY_TOPN", "20"))
 CATEGORY_PAGES = int(os.getenv("DAILY_REFRESH_CATEGORY_PAGES", "1"))
+INCLUDE_SUBCATS = os.getenv("DAILY_REFRESH_INCLUDE_SUBCATS", "1") == "1"
+SUBCAT_TOP_N = int(os.getenv("DAILY_REFRESH_SUBCAT_TOPN", "10"))
 HASHTAG_TOP_N = int(os.getenv("DAILY_REFRESH_HASHTAGS", "20"))
 # 热销榜单次接口约返回 95 条，默认全收（同一次调用，无额外成本）。
 HOT_SELLING_TOP_N = int(os.getenv("DAILY_REFRESH_HOTSELLING", "100"))
@@ -385,7 +388,11 @@ def _fetch_category_products_paged(tikhub, category_id: str, geo: str,
 
 
 def _collect_category_rankings(geo: str = "US") -> list[dict]:
-    """按 TikTok Shop 一级品类抓实时商品榜（每类一条快照，含 Top N 商品 + 价格/评分/店铺统计）。"""
+    """按 TikTok Shop 一级品类（+可选二级子品类）抓实时商品榜。
+    
+    一级品类 28 个是 TikTok Shop 的全部顶级分类；二级子品类约 212 个，
+    INCLUDE_SUBCATS=1 时也会抓取，提供更细粒度的品类覆盖。
+    """
     if not _tikhub_ok():
         return [dict(source="category_rank", tier=2, status="unavailable", real_data=False,
                      summary="按品类榜单通道未就绪（需 TIKHUB_API_KEY）", payload={"reason": "no_tikhub_key"})]
@@ -395,22 +402,41 @@ def _collect_category_rankings(geo: str = "US") -> list[dict]:
     except Exception as e:  # noqa: BLE001
         return [dict(source="category_rank", tier=2, status="error", real_data=False,
                      summary=f"品类列表获取失败：{str(e)[:140]}", payload={"error": str(e)[:300]})]
-    rows: list[dict] = []
+    
+    # Build flat list: top-level + optional sub-categories
+    flat: list[dict] = []
     for cat in cats[:CATEGORY_MAX]:
         cid = cat.get("category_id")
         cname = cat.get("category_name") or cid
         if not cid:
             continue
+        flat.append({"id": cid, "name": cname, "name_en": cat.get("category_name_en"),
+                     "parent": None, "top_n": CATEGORY_TOP_N})
+        if INCLUDE_SUBCATS:
+            for sub in (cat.get("children") or []):
+                sid = sub.get("category_id")
+                sname = sub.get("category_name") or sid
+                if sid:
+                    flat.append({"id": sid, "name": sname, "name_en": sub.get("category_name_en"),
+                                 "parent": cname, "top_n": SUBCAT_TOP_N})
+    
+    rows: list[dict] = []
+    for entry in flat:
+        cid, cname = entry["id"], entry["name"]
+        top_n = entry["top_n"]
         try:
-            prods = _fetch_category_products_paged(tikhub, cid, geo, CATEGORY_TOP_N, CATEGORY_PAGES)
+            prods = _fetch_category_products_paged(tikhub, cid, geo, top_n, CATEGORY_PAGES)
             if prods:
+                payload = {"category_id": cid, "category_name": cname,
+                           "category_name_en": entry.get("name_en"),
+                           "products": prods, "stats": tikhub.product_stats(prods),
+                           "source_label": "TikTok Shop（按品类·实时）"}
+                if entry.get("parent"):
+                    payload["parent_category"] = entry["parent"]
                 rows.append(dict(
                     source="category_rank", tier=2, status="ok", real_data=True,
                     summary=f"{cname}：实时 Top {len(prods)} · {tikhub.shop_summary(cname, prods)}",
-                    payload={"category_id": cid, "category_name": cname,
-                             "category_name_en": cat.get("category_name_en"),
-                             "products": prods, "stats": tikhub.product_stats(prods),
-                             "source_label": "TikTok Shop（按品类·实时）"},
+                    payload=payload,
                 ))
             else:
                 rows.append(dict(source="category_rank", tier=2, status="empty", real_data=False,

@@ -48,23 +48,56 @@ interface CatCardData {
   top5: Array<{ title: string; price: number; sold: number; rating: number; image?: string }>;
 }
 
+/** Extract stats from a single snapshot — handles both live (products[]) and backfill (avg_price/product_count/avg_rating) */
+function _extractStats(s: DataSnapshot): { avgPrice: number; count: number; avgRating: number } | null {
+  const p = s.payload;
+  if (!p) return null;
+  if (typeof p.avg_price === "number" || typeof p.product_count === "number") {
+    return {
+      avgPrice: (p.avg_price as number) || 0,
+      count: (p.product_count as number) || 0,
+      avgRating: (p.avg_rating as number) || 0,
+    };
+  }
+  const prods = (p.products || []) as ShopProduct[];
+  if (prods.length === 0) return null;
+  const prices = prods.map((pr) => pr.price).filter((v): v is number => typeof v === "number" && v > 0);
+  const ratings = prods.map((pr) => pr.rating).filter((v): v is number => typeof v === "number" && v > 0);
+  return {
+    avgPrice: prices.length ? +(prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2) : 0,
+    count: prods.length,
+    avgRating: ratings.length ? +(ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : 0,
+  };
+}
+
 function buildPerCatCards(latestSnaps: DataSnapshot[], historySnaps: DataSnapshot[]): CatCardData[] {
+  // Group history by day for backfill aggregation
   const byRun = new Map<string, DataSnapshot[]>();
   for (const s of historySnaps) {
-    const key = s.capturedAt?.slice(0, 16) || s.id;
+    const key = s.capturedAt?.slice(0, 10) || s.id;
     if (!byRun.has(key)) byRun.set(key, []);
     byRun.get(key)!.push(s);
   }
   const entries = [...byRun.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 
+  // Collect all category names from both latest and history
+  const catNames = new Map<string, string>();
+  for (const s of [...latestSnaps, ...historySnaps]) {
+    const name = (s.payload?.category_name || s.payload?.category_name_en || "") as string;
+    const catId = (s.payload?.category_id || "") as string;
+    if (name && !catNames.has(name)) catNames.set(name, catId);
+  }
+
   const cards: CatCardData[] = [];
-  for (const snap of latestSnaps) {
-    const name = (snap.payload?.category_name || snap.payload?.category_name_en || "") as string;
-    const catId = (snap.payload?.category_id || "") as string;
-    if (!name) continue;
-    const prods = (snap.payload?.products || []) as ShopProduct[];
-    const prices = prods.map((p) => p.price).filter((v): v is number => typeof v === "number" && v > 0);
-    const ratings = prods.map((p) => p.rating).filter((v): v is number => typeof v === "number" && v > 0);
+  for (const [name, catId] of catNames) {
+    // Find latest snapshot with products array for Top 5
+    const latestSnap = latestSnaps.find((s) => (s.payload?.category_name || s.payload?.category_name_en) === name);
+    const prods = (latestSnap?.payload?.products || []) as ShopProduct[];
+
+    const latestStats = latestSnap ? _extractStats(latestSnap) : null;
+    let latestAvgPrice = latestStats?.avgPrice ?? 0;
+    let latestCount = latestStats?.count ?? prods.length;
+    let latestAvgRating = latestStats?.avgRating ?? 0;
 
     const priceHistory: number[] = [];
     const countHistory: number[] = [];
@@ -72,12 +105,17 @@ function buildPerCatCards(latestSnaps: DataSnapshot[], historySnaps: DataSnapsho
     for (const [, snaps] of entries) {
       const s = snaps.find((s2) => (s2.payload?.category_name || s2.payload?.category_name_en) === name);
       if (!s) continue;
-      const ps = (s.payload?.products || []) as ShopProduct[];
-      const pr = ps.map((p) => p.price).filter((v): v is number => typeof v === "number" && v > 0);
-      const rt = ps.map((p) => p.rating).filter((v): v is number => typeof v === "number" && v > 0);
-      priceHistory.push(pr.length ? +(pr.reduce((a, b) => a + b, 0) / pr.length).toFixed(2) : 0);
-      countHistory.push(ps.length);
-      ratingHistory.push(rt.length ? +(rt.reduce((a, b) => a + b, 0) / rt.length).toFixed(1) : 0);
+      const stats = _extractStats(s);
+      if (!stats) continue;
+      priceHistory.push(stats.avgPrice);
+      countHistory.push(stats.count);
+      ratingHistory.push(stats.avgRating);
+    }
+
+    if (!latestStats && priceHistory.length > 0) {
+      latestAvgPrice = priceHistory[priceHistory.length - 1];
+      latestCount = countHistory[countHistory.length - 1];
+      latestAvgRating = ratingHistory[ratingHistory.length - 1];
     }
 
     const top5 = prods
@@ -94,9 +132,7 @@ function buildPerCatCards(latestSnaps: DataSnapshot[], historySnaps: DataSnapsho
 
     cards.push({
       name, catId,
-      latestAvgPrice: prices.length ? +(prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2) : 0,
-      latestCount: prods.length,
-      latestAvgRating: ratings.length ? +(ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : 0,
+      latestAvgPrice, latestCount, latestAvgRating,
       priceHistory, countHistory, ratingHistory, top5,
     });
   }
@@ -189,17 +225,18 @@ function PerCategoryCards({ latestSnaps, historySnaps, onSelectCat }: {
 function CategoryOverviewTable({ cats, onSelectCat }: { cats: DataSnapshot[]; onSelectCat: (id: string) => void }) {
   if (cats.length === 0) return null;
   const rows = cats.map((c) => {
+    const stats = _extractStats(c);
     const prods: ShopProduct[] = c.payload?.products ?? [];
     const prices = prods.map((p) => p.price).filter((v): v is number => typeof v === "number" && v > 0);
-    const ratings = prods.map((p) => p.rating).filter((v): v is number => typeof v === "number" && v > 0);
     return {
       id: c.payload?.category_id as string,
       name: (c.payload?.category_name ?? c.payload?.category_name_en ?? "—") as string,
-      count: prods.length,
+      parentCat: (c.payload?.parent_category ?? null) as string | null,
+      count: stats?.count ?? prods.length,
       priceMin: prices.length ? Math.min(...prices) : null,
       priceMax: prices.length ? Math.max(...prices) : null,
-      avgPrice: prices.length ? +(prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2) : null,
-      avgRating: ratings.length ? +(ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : null,
+      avgPrice: stats?.avgPrice ?? null,
+      avgRating: stats?.avgRating ?? null,
       topProduct: prods[0] ?? null,
     };
   });
@@ -419,13 +456,13 @@ export function CategoryRankPage() {
     try {
       const [st, catSnaps, hotSnaps, htSnaps, catHist] = await Promise.all([
         fetchDailyRefreshStatus(),
-        fetchDataSnapshots({ source: "category_rank", limit: 40 }),
+        fetchDataSnapshots({ source: "category_rank", limit: 300 }),
         fetchDataSnapshots({ term: HOT_SELLING_TERM, limit: 1 }),
         fetchDataSnapshots({ term: HASHTAG_TREND_TERM, limit: 1 }),
-        fetchAllSnapshots({ source: "category_rank", limit: 300 }),
+        fetchAllSnapshots({ source: "category_rank", limit: 10000 }),
       ]);
       setStatus(st);
-      const okCats = catSnaps.filter((s) => s.realData && (s.payload?.products?.length ?? 0) > 0);
+      const okCats = catSnaps.filter((s) => s.realData && ((s.payload?.products?.length ?? 0) > 0 || typeof s.payload?.product_count === "number"));
       setCats(okCats);
       setHot(hotSnaps[0] ?? null);
       setHashtagSnap(htSnaps[0] ?? null);

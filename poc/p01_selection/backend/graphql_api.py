@@ -297,7 +297,7 @@ class Query:
         self, tenant_id: str = "dev_tenant",
         term: typing.Optional[str] = None,
         source: typing.Optional[str] = None,
-        limit: int = 2000,
+        limit: int = 10000,
     ) -> typing.List[DataSnapshotType]:
         """所有刷新批次的快照（跨 run_id），用于展示历史趋势。"""
         rows = st.list_all_snapshots(tenant_id, term=term, source=source, limit=limit)
@@ -498,6 +498,8 @@ class Mutation:
                             "backfill": True,
                             "source_label": "回填（品类趋势模拟）",
                         }
+                        if payload.get("parent_category"):
+                            backfill_payload["parent_category"] = payload["parent_category"]
                         cat_name = payload.get("category_name") or payload.get("category_name_en") or "unknown"
                         st.save_snapshot(
                             tenant_id=tenant_id, run_id=day_run,
