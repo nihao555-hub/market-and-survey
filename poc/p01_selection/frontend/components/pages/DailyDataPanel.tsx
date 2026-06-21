@@ -1,12 +1,78 @@
 "use client";
-import React from "react";
-import { RefreshCw, Database, Clock, ListChecks, Search, TrendingUp, CalendarDays, ShoppingCart, Flame, Star } from "lucide-react";
+import React, { useRef, useEffect } from "react";
+import { RefreshCw, Database, Clock, ListChecks, Search, TrendingUp, CalendarDays, ShoppingCart, Flame, Star, BarChart3 } from "lucide-react";
+import type { EChartsOption } from "echarts";
 import {
-  fetchDailyRefreshStatus, fetchDataSnapshots, triggerDailyRefresh,
+  fetchDailyRefreshStatus, fetchDataSnapshots, triggerDailyRefresh, fetchAllSnapshots,
   type DataSnapshot, type RefreshStatus,
 } from "@/lib/api";
 import { Button, StatusBadge, StatTile, Skeleton, EmptyState, type StatusKind } from "./primitives";
 import { ProductDetailModal, type ProductForModal } from "./ProductDetailModal";
+
+function DataChart({ option, height = 280 }: { option: EChartsOption; height?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inst = useRef<unknown>(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    let disposed = false;
+    import("echarts").then((ec) => {
+      if (disposed || !ref.current) return;
+      if (inst.current) (inst.current as { dispose: () => void }).dispose();
+      const chart = ec.init(ref.current, undefined, { renderer: "canvas" });
+      chart.setOption({
+        backgroundColor: "transparent",
+        grid: { left: 50, right: 20, top: 35, bottom: 35, containLabel: true },
+        tooltip: { trigger: "axis", backgroundColor: "#fff", borderColor: "#e5e5e5", textStyle: { color: "#333", fontSize: 12 } },
+        ...option,
+      } as EChartsOption);
+      inst.current = chart;
+      const ro = new ResizeObserver(() => chart.resize());
+      ro.observe(ref.current);
+      return () => ro.disconnect();
+    });
+    return () => { disposed = true; if (inst.current) (inst.current as { dispose: () => void }).dispose(); inst.current = null; };
+  }, [option]);
+  return <div ref={ref} style={{ width: "100%", height }} />;
+}
+
+interface GTrendItem { keyword: string; direction: string; latest: number; ts: string; }
+function buildGoogleTrendChart(snaps: DataSnapshot[]): { option: EChartsOption; items: GTrendItem[] } {
+  const items: GTrendItem[] = [];
+  for (const s of snaps) {
+    const kws = (s.payload?.keywords || []) as Array<{ keyword?: string; direction?: string; recent_3m_avg?: number }>;
+    for (const k of kws) {
+      if (k.keyword) items.push({ keyword: k.keyword, direction: k.direction || "", latest: k.recent_3m_avg || 0, ts: s.capturedAt || "" });
+    }
+  }
+  const byKw = new Map<string, { ts: string; val: number }[]>();
+  for (const it of items) {
+    if (!byKw.has(it.keyword)) byKw.set(it.keyword, []);
+    byKw.get(it.keyword)!.push({ ts: it.ts, val: it.latest });
+  }
+  const kwList = [...byKw.keys()].slice(0, 8);
+  if (kwList.length === 0) return { option: {}, items };
+
+  const allTimes = [...new Set(items.map((i) => i.ts.slice(0, 16)))].sort();
+  const COLORS = ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6", "#ef4444", "#06b6d4"];
+  return {
+    items,
+    option: {
+      legend: { data: kwList, bottom: 0, textStyle: { fontSize: 11, color: "#888" }, type: "scroll" },
+      xAxis: { type: "category", data: allTimes.map((t) => {
+        try { return new Date(t).toLocaleString("zh-CN", { hour12: false, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }); } catch { return t; }
+      }), axisLabel: { fontSize: 10, color: "#999" }, axisLine: { lineStyle: { color: "#e5e5e5" } } },
+      yAxis: { type: "value", name: "搜索热度", nameTextStyle: { fontSize: 11, color: "#999" }, axisLabel: { fontSize: 10, color: "#999" }, splitLine: { lineStyle: { color: "#f5f5f5" } } },
+      series: kwList.map((kw, i) => {
+        const pts = byKw.get(kw) || [];
+        return {
+          name: kw, type: "line" as const, smooth: true, symbol: "circle", symbolSize: 4,
+          lineStyle: { width: 2 }, itemStyle: { color: COLORS[i % COLORS.length] },
+          data: allTimes.map((t) => { const p = pts.find((x) => x.ts.slice(0, 16) === t); return p?.val ?? null; }),
+        };
+      }),
+    },
+  };
+}
 
 // 数据源中文名 + 图标
 const SOURCE_META: Record<string, { label: string; icon: React.ReactNode }> = {
@@ -49,15 +115,18 @@ export function DailyDataPanel() {
   const [loading, setLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
   const [selectedProduct, setSelectedProduct] = React.useState<ProductForModal | null>(null);
+  const [googleSnaps, setGoogleSnaps] = React.useState<DataSnapshot[]>([]);
 
   const reload = React.useCallback(async () => {
     try {
-      const [st, snaps] = await Promise.all([
+      const [st, snaps, gSnaps] = await Promise.all([
         fetchDailyRefreshStatus(),
         fetchDataSnapshots({ limit: 200 }),
+        fetchAllSnapshots({ source: "google_trends", limit: 200 }),
       ]);
       setStatus(st);
       setSnapshots(snaps);
+      setGoogleSnaps(gSnaps);
     } catch { /* 静默 */ }
     finally { setLoading(false); }
   }, []);
@@ -141,6 +210,36 @@ export function DailyDataPanel() {
               实时电商通道（TikTok Shop）需配置 <span className="font-medium text-ink-muted">TIKHUB_API_KEY</span>；通道未就绪时如实标注，<span className="font-medium text-ink-muted">不编造数据</span>，接入后自动补齐。
             </div>
           )}
+
+          {/* ═══ Google Trends 走势图═══ */}
+          {googleSnaps.length > 0 && (() => {
+            const { option: gtOpt, items: gtItems } = buildGoogleTrendChart(googleSnaps);
+            if (gtItems.length === 0) return null;
+            return (
+              <section className="mb-4 rounded-[8px] border border-hairline bg-white overflow-hidden">
+                <div className="flex items-center justify-between border-b border-surface-3 px-5 py-3">
+                  <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
+                    <BarChart3 className="h-4 w-4 text-ink-subtle" />
+                    Google Trends 搜索热度走势
+                  </h2>
+                </div>
+                <div className="px-2 pt-2 pb-1">
+                  <DataChart option={gtOpt} height={280} />
+                </div>
+                <div className="border-t border-surface-3 px-5 py-3">
+                  <div className="flex flex-wrap gap-2">
+                    {[...new Map(gtItems.map((it) => [it.keyword, it])).values()].slice(0, 10).map((it) => (
+                      <span key={it.keyword} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                        it.direction === "上升" ? "bg-green-50 text-green-600" : it.direction === "下降" ? "bg-red-50 text-red-600" : "bg-surface-2 text-ink-subtle"
+                      }`}>
+                        {it.direction === "上升" ? "↑" : it.direction === "下降" ? "↓" : "→"} {it.keyword}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </section>
+            );
+          })()}
 
           {/* 快照分组 */}
           {groups.length === 0 ? (

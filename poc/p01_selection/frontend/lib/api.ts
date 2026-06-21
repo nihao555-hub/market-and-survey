@@ -230,14 +230,15 @@ export async function fetchDataSnapshots(opts?: {
 }
 
 export async function fetchAllSnapshots(opts?: {
+  term?: string;
   source?: string;
   limit?: number;
 }): Promise<DataSnapshot[]> {
   const d = await gqlRequest<{ allSnapshots: DataSnapshot[] }>(
-    `query($source: String, $limit: Int!) {
-       allSnapshots(source: $source, limit: $limit) { ${SNAPSHOT_FIELDS} }
+    `query($term: String, $source: String, $limit: Int!) {
+       allSnapshots(term: $term, source: $source, limit: $limit) { ${SNAPSHOT_FIELDS} }
      }`,
-    { source: opts?.source ?? null, limit: opts?.limit ?? 500 }
+    { term: opts?.term ?? null, source: opts?.source ?? null, limit: opts?.limit ?? 500 }
   );
   return d.allSnapshots || [];
 }

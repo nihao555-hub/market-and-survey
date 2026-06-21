@@ -29,6 +29,7 @@ import {
 import { marketIso, marketLabel } from "@/lib/markets";
 import { Flag } from "@/components/ui/Flag";
 import { HotProductsSection } from "@/components/HotProductsSection";
+import { CategoryTrendsSection } from "@/components/CategoryTrendsSection";
 import { formatDate, parseTitle } from "@/lib/thread-format";
 
 const TOOLS: { key: PageKey; label: string; desc: string; icon: React.ReactNode }[] = [
@@ -137,6 +138,9 @@ export function WorkspaceHome() {
           </span>
         </div>
       </section>
+
+      {/* Category & social trends (time-series charts) */}
+      <CategoryTrendsSection />
 
       {/* Hot products */}
       <HotProductsSection />

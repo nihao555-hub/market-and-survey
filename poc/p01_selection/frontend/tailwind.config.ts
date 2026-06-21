@@ -68,25 +68,25 @@ const config: Config = {
           4: "hsl(var(--chart-4))",
           5: "hsl(var(--chart-5))",
         },
-        // ── 品牌主色（橙色系，Primary #F97316 orange-500） ──
+        // ── 品牌主色（Twenty CRM 中性灰，克制 B2B） ──
+        // rgb() format to support Tailwind opacity modifiers (bg-brand/10, etc.)
         brand: {
-          DEFAULT: "#F97316",
-          hover: "#EA580C",
-          light: "#FB923C",
-          fg: "#FFFFFF",
+          DEFAULT: "rgb(51 51 51 / <alpha-value>)",
+          hover: "rgb(102 102 102 / <alpha-value>)",
+          light: "rgb(153 153 153 / <alpha-value>)",
+          fg: "#ffffff",
         },
-        // ── 品牌辅助色（暖琥珀，用于渐变第二色） ──
-        brand2: { DEFAULT: "#FBBF24" },
-        // ── 语义色（设计稿② Semantic） ──
-        success: { DEFAULT: "#10B981", bg: "#D1FAE5", border: "#A7F3D0" },
-        warning: { DEFAULT: "#F59E0B", bg: "#FEF3C7", border: "#FDE68A" },
-        danger: { DEFAULT: "#EF4444", bg: "#FEE2E2", border: "#FCA5A5" },
-        info: { DEFAULT: "#3B82F6", bg: "#DBEAFE", border: "#93C5FD" },
-        // ── 兼容旧 token（重映射到设计稿② slate 中性阶） ──
-        canvas: "#FFFFFF",
-        surface: { 1: "#F8FAFC", 2: "#F1F5F9", 3: "#E2E8F0", 4: "#CBD5E1" },
-        hairline: { DEFAULT: "#E2E8F0", strong: "#CBD5E1", tertiary: "#94A3B8" },
-        ink: { DEFAULT: "#0F172A", muted: "#475569", subtle: "#64748B", tertiary: "#94A3B8" },
+        brand2: { DEFAULT: "rgb(131 131 131 / <alpha-value>)" },
+        // ── 语义色（rgb format for opacity support） ──
+        success: { DEFAULT: "rgb(22 163 74 / <alpha-value>)", bg: "#dcfce7", border: "#bbf7d0" },
+        warning: { DEFAULT: "rgb(217 119 6 / <alpha-value>)", bg: "#fef9c3", border: "#fde68a" },
+        danger: { DEFAULT: "rgb(220 38 38 / <alpha-value>)", bg: "#fee2e2", border: "#fca5a5" },
+        info: { DEFAULT: "rgb(59 130 246 / <alpha-value>)", bg: "#dbeafe", border: "#93c5fd" },
+        // ── 兼容旧 token → Twenty CRM gray CSS 变量 ──
+        canvas: "var(--gray-1)",
+        surface: { 1: "var(--gray-2)", 2: "var(--gray-3)", 3: "var(--gray-4)", 4: "var(--gray-5)" },
+        hairline: { DEFAULT: "var(--gray-5)", strong: "var(--gray-6)", tertiary: "var(--gray-8)" },
+        ink: { DEFAULT: "var(--gray-12)", muted: "var(--gray-11)", subtle: "var(--gray-9)", tertiary: "var(--gray-8)" },
       },
       borderRadius: {
         xl: "16px",

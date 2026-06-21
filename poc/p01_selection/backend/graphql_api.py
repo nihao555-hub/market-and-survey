@@ -295,11 +295,12 @@ class Query:
     @strawberry.field
     def all_snapshots(
         self, tenant_id: str = "dev_tenant",
+        term: typing.Optional[str] = None,
         source: typing.Optional[str] = None,
         limit: int = 500,
     ) -> typing.List[DataSnapshotType]:
         """所有刷新批次的快照（跨 run_id），用于展示历史趋势。"""
-        rows = st.list_all_snapshots(tenant_id, source=source, limit=limit)
+        rows = st.list_all_snapshots(tenant_id, term=term, source=source, limit=limit)
         return [_snapshot_type(d) for d in rows]
 
     @strawberry.field

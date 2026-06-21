@@ -1,11 +1,12 @@
 "use client";
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import {
   LayoutList, RefreshCw, Clock, ShoppingCart, Star, Store, Flame, Hash,
-  TrendingUp, Package, Users, Search, X,
+  TrendingUp, Package, Users, Search, X, BarChart3,
 } from "lucide-react";
+import type { EChartsOption } from "echarts";
 import {
-  fetchDailyRefreshStatus, fetchDataSnapshots,
+  fetchDailyRefreshStatus, fetchDataSnapshots, fetchAllSnapshots,
   type DataSnapshot, type RefreshStatus,
 } from "@/lib/api";
 import {
@@ -14,6 +15,86 @@ import {
 import { cn } from "@/lib/utils";
 import { CategoryTrendTable } from "./CategoryTrendTable";
 import { ProductDetailModal, type ProductForModal } from "./ProductDetailModal";
+
+// ─── ECharts wrapper ───
+function CatChart({ option, height = 300 }: { option: EChartsOption; height?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inst = useRef<unknown>(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    let disposed = false;
+    import("echarts").then((ec) => {
+      if (disposed || !ref.current) return;
+      if (inst.current) (inst.current as { dispose: () => void }).dispose();
+      const chart = ec.init(ref.current, undefined, { renderer: "canvas" });
+      chart.setOption({
+        backgroundColor: "transparent",
+        grid: { left: 50, right: 20, top: 40, bottom: 40, containLabel: true },
+        tooltip: { trigger: "axis", backgroundColor: "#fff", borderColor: "#e5e5e5", textStyle: { color: "#333", fontSize: 12 } },
+        ...option,
+      } as EChartsOption);
+      inst.current = chart;
+      const ro = new ResizeObserver(() => chart.resize());
+      ro.observe(ref.current);
+      return () => ro.disconnect();
+    });
+    return () => { disposed = true; if (inst.current) (inst.current as { dispose: () => void }).dispose(); inst.current = null; };
+  }, [option]);
+  return <div ref={ref} style={{ width: "100%", height }} />;
+}
+
+function fmtShortTime(iso?: string | null): string {
+  if (!iso) return "";
+  try { return new Date(iso).toLocaleString("zh-CN", { hour12: false, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
+}
+
+function buildCatTrendChart(history: DataSnapshot[], metric: "avgPrice" | "count" | "avgRating"): EChartsOption {
+  const byRun = new Map<string, DataSnapshot[]>();
+  for (const s of history) {
+    const key = s.capturedAt?.slice(0, 16) || s.id;
+    if (!byRun.has(key)) byRun.set(key, []);
+    byRun.get(key)!.push(s);
+  }
+  const entries = [...byRun.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  if (entries.length < 1) return {};
+
+  const allCats = new Set<string>();
+  for (const [, snaps] of entries) {
+    for (const s of snaps) {
+      const name = (s.payload?.category_name || s.payload?.category_name_en || "") as string;
+      if (name) allCats.add(name);
+    }
+  }
+  const catList = [...allCats].slice(0, 10);
+  const times = entries.map(([t]) => fmtShortTime(t) || t);
+  const COLORS = ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6", "#ef4444", "#06b6d4", "#84cc16", "#f97316"];
+  const metricLabel = metric === "avgPrice" ? "均价 ($)" : metric === "count" ? "商品数" : "均评分";
+
+  return {
+    legend: { data: catList, bottom: 0, textStyle: { fontSize: 11, color: "#888" }, type: "scroll", pageIconColor: "#888" },
+    xAxis: { type: "category", data: times, axisLabel: { fontSize: 10, color: "#999" }, axisLine: { lineStyle: { color: "#e5e5e5" } } },
+    yAxis: { type: "value", name: metricLabel, nameTextStyle: { fontSize: 11, color: "#999" }, axisLabel: { fontSize: 10, color: "#999" }, splitLine: { lineStyle: { color: "#f5f5f5" } } },
+    series: catList.map((cat, i) => ({
+      name: cat,
+      type: "line" as const,
+      smooth: true,
+      symbol: "circle",
+      symbolSize: 4,
+      lineStyle: { width: 2 },
+      itemStyle: { color: COLORS[i % COLORS.length] },
+      data: entries.map(([, snaps]) => {
+        const s = snaps.find((snap) => (snap.payload?.category_name || snap.payload?.category_name_en) === cat);
+        if (!s) return null;
+        const prods = (s.payload?.products || []) as Array<{ price?: number; rating?: number }>;
+        if (metric === "count") return prods.length;
+        const vals = prods.map((p) => metric === "avgPrice" ? p.price : p.rating).filter((v): v is number => typeof v === "number" && v > 0);
+        return vals.length ? +(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2) : null;
+      }),
+    })),
+  };
+}
+
+type CatMetric = "avgPrice" | "count" | "avgRating";
 
 /** 品类总览表：聚合所有品类的关键指标 */
 function CategoryOverviewTable({ cats, onSelectCat }: { cats: DataSnapshot[]; onSelectCat: (id: string) => void }) {
@@ -236,6 +317,8 @@ export function CategoryRankPage() {
   const [activeCat, setActiveCat] = React.useState<string | null>(null);
   const [query, setQuery] = React.useState("");
   const [selectedProduct, setSelectedProduct] = React.useState<ProductForModal | null>(null);
+  const [catHistory, setCatHistory] = React.useState<DataSnapshot[]>([]);
+  const [catMetric, setCatMetric] = React.useState<CatMetric>("avgPrice");
   const q = query.trim().toLowerCase();
 
   const openProduct = (p: ShopProduct, opts?: { category?: string; source?: string }) => {
@@ -245,17 +328,19 @@ export function CategoryRankPage() {
   const reload = React.useCallback(async () => {
     setReloading(true);
     try {
-      const [st, catSnaps, hotSnaps, htSnaps] = await Promise.all([
+      const [st, catSnaps, hotSnaps, htSnaps, catHist] = await Promise.all([
         fetchDailyRefreshStatus(),
         fetchDataSnapshots({ source: "category_rank", limit: 40 }),
         fetchDataSnapshots({ term: HOT_SELLING_TERM, limit: 1 }),
         fetchDataSnapshots({ term: HASHTAG_TREND_TERM, limit: 1 }),
+        fetchAllSnapshots({ source: "category_rank", limit: 300 }),
       ]);
       setStatus(st);
       const okCats = catSnaps.filter((s) => s.realData && (s.payload?.products?.length ?? 0) > 0);
       setCats(okCats);
       setHot(hotSnaps[0] ?? null);
       setHashtagSnap(htSnaps[0] ?? null);
+      setCatHistory(catHist);
       setActiveCat((prev) => prev ?? okCats[0]?.payload?.category_id ?? null);
     } catch { /* 静默 */ }
     finally { setLoading(false); setReloading(false); }
@@ -292,6 +377,9 @@ export function CategoryRankPage() {
   const hashtagsFiltered = searching
     ? hashtags.filter((h) => (h.hashtag ?? "").toLowerCase().includes(q))
     : hashtags;
+
+  const catChartOpt = React.useMemo(() => buildCatTrendChart(catHistory, catMetric), [catHistory, catMetric]);
+  const hasCatHistory = catHistory.length > 0;
 
   const channelOk = status?.tier2ChannelOk ?? false;
   const hasAny = cats.length > 0 || hotProducts.length > 0 || hashtags.length > 0;
@@ -335,6 +423,35 @@ export function CategoryRankPage() {
             <div className="mb-5 rounded-lg border border-hairline bg-surface-1 px-3 py-2 text-xs text-ink-subtle">
               榜单通道（TikHub）需配置 <span className="font-medium text-ink-muted">TIKHUB_API_KEY</span>；通道未就绪时如实标注，<span className="font-medium text-ink-muted">不编造数据</span>，接入后自动补齐。
             </div>
+          )}
+
+          {/* ═══ Category Trend Chart (hero section) ═══ */}
+          {hasCatHistory && (
+            <section className="mb-6 rounded-[8px] border border-hairline bg-white overflow-hidden">
+              <div className="flex items-center justify-between border-b border-surface-3 px-5 py-3">
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
+                  <BarChart3 className="h-4 w-4 text-ink-subtle" />
+                  品类趋势走势
+                </h2>
+                <div className="flex items-center gap-1">
+                  {(["avgPrice", "count", "avgRating"] as const).map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => setCatMetric(m)}
+                      className={cn(
+                        "rounded-[4px] px-2.5 py-1 text-[12px] font-medium transition-colors",
+                        catMetric === m ? "bg-ink text-white" : "text-ink-subtle hover:bg-surface-1 hover:text-ink"
+                      )}
+                    >
+                      {m === "avgPrice" ? "均价" : m === "count" ? "商品数" : "评分"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="px-2 pt-2 pb-1">
+                <CatChart option={catChartOpt} height={300} />
+              </div>
+            </section>
           )}
 
           {!hasAny ? (
