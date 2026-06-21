@@ -13,8 +13,12 @@ services:
         value: "1"
       - key: BACKEND_AUTH_REQUIRED
         value: "0"
+      - key: DAILY_REFRESH_ON_STARTUP
+        value: "1"
       - key: TIKHUB_API_KEY
         sync: false
       - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: SCRAPERAPI_KEY
         sync: false
     healthCheckPath: /healthz
