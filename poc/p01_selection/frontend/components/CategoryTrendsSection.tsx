@@ -652,7 +652,7 @@ export function CategoryTrendsSection() {
       // Fetch social data by individual source for better coverage
       const [status, catSnaps, sparks, gSnaps, ...socialResults] = await Promise.all([
         fetchDailyRefreshStatus(),
-        fetchDataSnapshots({ source: "category_rank", limit: 40 }),
+        fetchAllSnapshots({ source: "category_rank", limit: 300 }),
         fetchCategorySparklines(),
         fetchAllSnapshots({ source: "google_trends", limit: 500 }),
         // Fetch each social platform separately
