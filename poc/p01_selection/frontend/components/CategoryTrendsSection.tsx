@@ -6,7 +6,7 @@ import {
   BookOpen, Video, Tv, Twitter, Citrus, Globe,
 } from "lucide-react";
 import type { EChartsOption } from "echarts";
-import { fetchDataSnapshots, fetchAllSnapshots, fetchDailyRefreshStatus, triggerDailyRefresh } from "@/lib/api";
+import { fetchDataSnapshots, fetchAllSnapshots, fetchDailyRefreshStatus, triggerDailyRefresh, backfillGoogleTrends } from "@/lib/api";
 import type { DataSnapshot } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -333,6 +333,164 @@ function LatestGoogleSummary({ items }: { items: GoogleTrendItem[] }) {
   );
 }
 
+// ─── Per-category sparkline (SVG) ──────────────────────────────────
+function CatSparkline({ values, className }: { values: number[]; className?: string }) {
+  if (values.length < 2) return null;
+  const max = Math.max(...values), min = Math.min(...values);
+  const span = max - min || 1;
+  const W = 100, H = 28;
+  const pts = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * W;
+    const y = H - ((v - min) / span) * (H - 4) - 2;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const rising = values[values.length - 1] >= values[0];
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className={cn("h-7 w-[100px]", className)} preserveAspectRatio="none">
+      <polyline points={pts.join(" ")} fill="none" stroke={rising ? "#10b981" : "#f43f5e"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+interface CatCardData {
+  name: string;
+  latestAvgPrice: number;
+  latestCount: number;
+  latestAvgRating: number;
+  priceHistory: number[];
+  countHistory: number[];
+  ratingHistory: number[];
+  top5: Array<{ title: string; price: number; sold: number; rating: number; image?: string }>;
+}
+
+function buildCatCards(latestSnaps: DataSnapshot[], historySnaps: DataSnapshot[]): CatCardData[] {
+  const byRun = new Map<string, DataSnapshot[]>();
+  for (const s of historySnaps) {
+    const key = s.capturedAt?.slice(0, 16) || s.id;
+    if (!byRun.has(key)) byRun.set(key, []);
+    byRun.get(key)!.push(s);
+  }
+  const entries = [...byRun.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+
+  const catNames = new Set<string>();
+  for (const s of latestSnaps) {
+    const name = (s.payload?.category_name || s.payload?.category_name_en || "") as string;
+    if (name) catNames.add(name);
+  }
+
+  const cards: CatCardData[] = [];
+  for (const catName of catNames) {
+    const latestSnap = latestSnaps.find((s) => (s.payload?.category_name || s.payload?.category_name_en) === catName);
+    const prods = (latestSnap?.payload?.products || []) as Array<{ title?: string; price?: number; sold_count?: number; rating?: number; image?: string }>;
+    const prices = prods.map((p) => p.price).filter((v): v is number => typeof v === "number" && v > 0);
+    const ratings = prods.map((p) => p.rating).filter((v): v is number => typeof v === "number" && v > 0);
+
+    const priceHistory: number[] = [];
+    const countHistory: number[] = [];
+    const ratingHistory: number[] = [];
+    for (const [, snaps] of entries) {
+      const s = snaps.find((snap) => (snap.payload?.category_name || snap.payload?.category_name_en) === catName);
+      if (!s) continue;
+      const ps = (s.payload?.products || []) as Array<{ price?: number; rating?: number }>;
+      const pr = ps.map((p) => p.price).filter((v): v is number => typeof v === "number" && v > 0);
+      const rt = ps.map((p) => p.rating).filter((v): v is number => typeof v === "number" && v > 0);
+      priceHistory.push(pr.length ? +(pr.reduce((a, b) => a + b, 0) / pr.length).toFixed(2) : 0);
+      countHistory.push(ps.length);
+      ratingHistory.push(rt.length ? +(rt.reduce((a, b) => a + b, 0) / rt.length).toFixed(1) : 0);
+    }
+
+    const top5 = prods
+      .filter((p) => p.title)
+      .sort((a, b) => (b.sold_count || 0) - (a.sold_count || 0))
+      .slice(0, 5)
+      .map((p) => ({
+        title: p.title || "",
+        price: p.price || 0,
+        sold: p.sold_count || 0,
+        rating: p.rating || 0,
+        image: p.image,
+      }));
+
+    cards.push({
+      name: catName,
+      latestAvgPrice: prices.length ? +(prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2) : 0,
+      latestCount: prods.length,
+      latestAvgRating: ratings.length ? +(ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1) : 0,
+      priceHistory,
+      countHistory,
+      ratingHistory,
+      top5,
+    });
+  }
+  return cards.sort((a, b) => b.latestCount - a.latestCount);
+}
+
+function fmtSold(n: number): string {
+  if (n >= 1e4) return `${(n / 1e4).toFixed(1)}万`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+  return String(n);
+}
+
+function CategoryCards({ latestSnaps, historySnaps }: { latestSnaps: DataSnapshot[]; historySnaps: DataSnapshot[] }) {
+  const cards = React.useMemo(() => buildCatCards(latestSnaps, historySnaps), [latestSnaps, historySnaps]);
+  if (cards.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {cards.map((card) => (
+        <div key={card.name} className="rounded-[8px] border border-[var(--gray-5)] bg-[var(--gray-1)] overflow-hidden">
+          <div className="border-b border-[var(--gray-4)] px-4 py-3">
+            <div className="flex items-center justify-between">
+              <h3 className="truncate text-[13px] font-semibold text-[var(--gray-12)]">{card.name}</h3>
+              <span className="flex-shrink-0 rounded-[4px] bg-[var(--gray-4)] px-1.5 py-0.5 text-[10px] text-[var(--gray-9)]">{card.latestCount} 商品</span>
+            </div>
+            <div className="mt-2 flex items-center gap-4 text-[11px] text-[var(--gray-9)]">
+              <div className="flex items-center gap-1.5">
+                <span>均价</span>
+                <span className="font-medium text-[var(--gray-12)]">${card.latestAvgPrice}</span>
+                <CatSparkline values={card.priceHistory} />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span>评分</span>
+                <span className="font-medium text-[var(--gray-12)]">{card.latestAvgRating}</span>
+                <CatSparkline values={card.ratingHistory} />
+              </div>
+            </div>
+          </div>
+          {card.top5.length > 0 && (
+            <div className="px-4 py-2">
+              <div className="mb-1.5 text-[10px] font-medium text-[var(--gray-8)]">TOP 5 热销</div>
+              <div className="space-y-1.5">
+                {card.top5.map((p, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded text-[10px] font-bold text-[var(--gray-9)]">{i + 1}</span>
+                    {p.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.image} alt="" className="h-7 w-7 flex-shrink-0 rounded object-cover" />
+                    ) : (
+                      <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded bg-[var(--gray-3)]">
+                        <Package className="h-3 w-3 text-[var(--gray-7)]" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[11px] text-[var(--gray-12)]">{p.title}</div>
+                    </div>
+                    <div className="flex flex-shrink-0 items-center gap-2 text-[10px] text-[var(--gray-9)]">
+                      <span className="font-medium">${p.price}</span>
+                      {p.sold > 0 && <span>已售 {fmtSold(p.sold)}</span>}
+                      {p.rating > 0 && <span>★{p.rating}</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Latest snapshot summary cards ─────────────────────────────────
 function LatestCategorySummary({ snapshots }: { snapshots: DataSnapshot[] }) {
   if (snapshots.length === 0) return null;
@@ -391,9 +549,10 @@ function LatestSocialSummary({ snapshots }: { snapshots: DataSnapshot[] }) {
 // ─── Main Component ────────────────────────────────────────────────
 export function CategoryTrendsSection() {
   const [tab, setTab] = React.useState<ChartTab>("category");
-  const [metric, setMetric] = React.useState<"avgPrice" | "count" | "avgRating">("avgPrice");
+  // metric state removed — category tab now shows per-category cards
   const [loading, setLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
+  const [backfilling, setBackfilling] = React.useState(false);
   const [lastUpdate, setLastUpdate] = React.useState<string | null>(null);
   const [tierOk, setTierOk] = React.useState(false);
 
@@ -435,23 +594,30 @@ export function CategoryTrendsSection() {
     setRefreshing(true);
     try {
       await triggerDailyRefresh();
-      // Wait a bit for data to be collected
       setTimeout(() => { load(); setRefreshing(false); }, 5000);
     } catch {
       setRefreshing(false);
     }
   };
 
+  const handleBackfill = async () => {
+    setBackfilling(true);
+    try {
+      await backfillGoogleTrends();
+      setTimeout(() => { load(); setBackfilling(false); }, 8000);
+    } catch {
+      setBackfilling(false);
+    }
+  };
+
   // Build chart data
-  const catPoints = React.useMemo(() => buildCategoryPoints(historyCats), [historyCats]);
   const socialPoints = React.useMemo(() => buildSocialPoints(historySocial), [historySocial]);
   const googleItems = React.useMemo(() => buildGoogleTrendItems(googleSnaps), [googleSnaps]);
-  const catChartOpt = React.useMemo(() => buildCategoryChartOption(catPoints, metric), [catPoints, metric]);
   const socialChartOpt = React.useMemo(() => buildSocialChartOption(socialPoints), [socialPoints]);
   const googleChartOpt = React.useMemo(() => buildGoogleTrendChartOption(googleItems), [googleItems]);
 
   const hasData = latestCats.length > 0 || latestSocial.length > 0 || googleItems.length > 0;
-  const hasHistory = catPoints.length > 1 || socialPoints.length > 1 || googleItems.length > 0;
+  const hasHistory = socialPoints.length > 1 || googleItems.length > 0;
 
   return (
     <section className="mt-6">
@@ -473,6 +639,16 @@ export function CategoryTrendsSection() {
             <span className="hidden items-center gap-1 text-[11px] text-[var(--gray-8)] sm:inline-flex">
               <Clock className="h-3 w-3" /> {fmtTime(lastUpdate)}
             </span>
+          )}
+          {tab === "google" && (
+            <button
+              onClick={handleBackfill}
+              disabled={backfilling}
+              className="flex h-7 items-center gap-1 rounded-[4px] border border-[var(--gray-5)] bg-[var(--gray-1)] px-2.5 text-[12px] font-medium text-[var(--gray-11)] transition-colors hover:bg-[var(--bg-transparent-light)] disabled:opacity-40"
+            >
+              <Globe className={cn("h-3 w-3", backfilling && "animate-pulse")} />
+              {backfilling ? "回填中…" : "回填近1月"}
+            </button>
           )}
           <button
             onClick={handleRefresh}
@@ -553,62 +729,47 @@ export function CategoryTrendsSection() {
               </button>
             </div>
 
-            {tab === "category" && (
-              <div className="flex items-center gap-1">
-                {(["avgPrice", "count", "avgRating"] as const).map((m) => (
-                  <button
-                    key={m}
-                    onClick={() => setMetric(m)}
-                    className={cn(
-                      "rounded-[4px] px-2 py-0.5 text-[11px] transition-colors",
-                      metric === m
-                        ? "bg-[var(--bg-transparent-light)] font-medium text-[var(--gray-12)]"
-                        : "text-[var(--gray-9)] hover:text-[var(--gray-11)]"
-                    )}
-                  >
-                    {m === "avgPrice" ? "均价" : m === "count" ? "商品数" : "评分"}
-                  </button>
-                ))}
-              </div>
-            )}
+            {/* metric selector removed — category tab now shows per-category cards */}
           </div>
 
-          {/* Chart area */}
-          <div className="px-2 pt-2">
-            {hasHistory ? (
-              tab === "category" ? (
-                <MiniChart option={catChartOpt} height={280} />
-              ) : tab === "social" ? (
-                <MiniChart option={socialChartOpt} height={280} />
-              ) : (
-                <MiniChart option={googleChartOpt} height={280} />
-              )
-            ) : (
-              <div className="flex h-[280px] flex-col items-center justify-center text-center">
-                <BarChart3 className="h-8 w-8 text-[var(--gray-6)]" />
-                <div className="mt-2 text-[12px] text-[var(--gray-9)]">
-                  数据积累中…至少需要 2 次刷新才能生成趋势图表
-                </div>
-                <div className="mt-1 text-[11px] text-[var(--gray-8)]">
-                  （每 2 小时自动刷新一次，或手动点击「立即刷新」）
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Latest snapshot summary */}
-          <div className="border-t border-[var(--gray-4)] px-4 py-3">
-            <div className="mb-2 text-[11px] font-medium text-[var(--gray-9)]">
-              {tab === "category" ? "最新品类快照" : tab === "social" ? "最新平台热搜" : "最新搜索热度"}
+          {/* Content area */}
+          {tab === "category" ? (
+            <div className="p-4">
+              <CategoryCards latestSnaps={latestCats} historySnaps={historyCats} />
             </div>
-            {tab === "category" ? (
-              <LatestCategorySummary snapshots={latestCats} />
-            ) : tab === "social" ? (
-              <LatestSocialSummary snapshots={latestSocial} />
-            ) : (
-              <LatestGoogleSummary items={googleItems} />
-            )}
-          </div>
+          ) : (
+            <>
+              <div className="px-2 pt-2">
+                {hasHistory ? (
+                  tab === "social" ? (
+                    <MiniChart option={socialChartOpt} height={280} />
+                  ) : (
+                    <MiniChart option={googleChartOpt} height={280} />
+                  )
+                ) : (
+                  <div className="flex h-[280px] flex-col items-center justify-center text-center">
+                    <BarChart3 className="h-8 w-8 text-[var(--gray-6)]" />
+                    <div className="mt-2 text-[12px] text-[var(--gray-9)]">
+                      数据积累中…至少需要 2 次刷新才能生成趋势图表
+                    </div>
+                    <div className="mt-1 text-[11px] text-[var(--gray-8)]">
+                      （每 2 小时自动刷新一次，或手动点击「立即刷新」）
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="border-t border-[var(--gray-4)] px-4 py-3">
+                <div className="mb-2 text-[11px] font-medium text-[var(--gray-9)]">
+                  {tab === "social" ? "最新平台热搜" : "最新搜索热度"}
+                </div>
+                {tab === "social" ? (
+                  <LatestSocialSummary snapshots={latestSocial} />
+                ) : (
+                  <LatestGoogleSummary items={googleItems} />
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
     </section>

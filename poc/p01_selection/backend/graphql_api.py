@@ -450,6 +450,52 @@ class Mutation:
         geos = settings.get("targetCountries") or ["US"]
         return run_in_background(tenant_id=tenant_id, geos=geos, trigger="manual")
 
+    @strawberry.mutation
+    def backfill_google_trends(self, tenant_id: str = "dev_tenant") -> bool:
+        """回填 Google Trends 过去一个月的时间序列数据。后台线程运行，立即返回。"""
+        import threading
+
+        def _do_backfill():
+            import sys, uuid
+            from pathlib import Path
+            sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+            from modules.trends import get_keyword_trend
+            from backend.daily_refresh import DEFAULT_SEED_TERMS
+            from datetime import datetime, timezone, timedelta
+            from loguru import logger
+
+            run_id = f"gt_backfill_{uuid.uuid4().hex[:8]}"
+            keywords = DEFAULT_SEED_TERMS[:20]
+            logger.info(f"Google Trends 回填开始: {len(keywords)} 个关键词, run_id={run_id}")
+            for kw in keywords:
+                try:
+                    df = get_keyword_trend([kw], timeframe="today 1-m", geo="US")
+                    if df.empty:
+                        continue
+                    col = kw if kw in df.columns else df.columns[0]
+                    for ts, val in zip(df.index, df[col]):
+                        ts_str = ts.isoformat() if hasattr(ts, "isoformat") else str(ts)
+                        st.save_snapshot(
+                            tenant_id=tenant_id, run_id=run_id, term=kw,
+                            source="google_trends", geo="US", tier=1,
+                            status="ok", real_data=True,
+                            summary=f"Google Trends 回填: {kw} @ {ts_str}",
+                            payload={
+                                "keyword": kw, "geo": "US",
+                                "late_avg": float(val), "early_avg": float(val),
+                                "direction": "回填", "max": float(val), "min": float(val),
+                                "recent_3m_avg": None,
+                                "backfill": True, "backfill_ts": ts_str,
+                            },
+                        )
+                    logger.info(f"回填完成: {kw} ({len(df)} 个数据点)")
+                except Exception as e:
+                    logger.warning(f"回填失败: {kw}: {e}")
+            logger.info(f"Google Trends 回填全部完成: run_id={run_id}")
+
+        threading.Thread(target=_do_backfill, daemon=True).start()
+        return True
+
     # ── API Key ──
     @strawberry.mutation
     def create_api_key(self, name: str = "默认 Key", tenant_id: str = "dev_tenant") -> ApiKeyCreated:

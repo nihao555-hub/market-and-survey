@@ -250,6 +250,13 @@ export async function triggerDailyRefresh(): Promise<boolean> {
   return d.triggerDailyRefresh;
 }
 
+export async function backfillGoogleTrends(): Promise<boolean> {
+  const d = await gqlRequest<{ backfillGoogleTrends: boolean }>(
+    `mutation { backfillGoogleTrends }`
+  );
+  return d.backfillGoogleTrends;
+}
+
 // ─────────── API Key ───────────
 export interface ApiKey {
   id: string;
