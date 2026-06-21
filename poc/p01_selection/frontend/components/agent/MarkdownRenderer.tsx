@@ -60,12 +60,32 @@ export const MarkdownRenderer = React.memo(function MarkdownRenderer({
           code: ({ className, children, ...props }) => {
             const match = /language-chart/.exec(className || "");
             if (match) {
-              try {
-                const chartData: ChartData = JSON.parse(String(children).trim());
-                if (chartData && chartData.series) {
-                  return <AgentChart option={chartDataToOption(chartData)} />;
-                }
-              } catch {}
+              const raw = String(children).trim()
+                .replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+              // Try parsing as-is first, then with trimmed braces (react-markdown v9 quirk)
+              const candidates = [raw];
+              if (raw.startsWith("{{")) candidates.push(raw.slice(1));
+              if (raw.endsWith("}}") && raw.startsWith("{{")) candidates.push(raw.slice(1, -1));
+              for (const attempt of candidates) {
+                try {
+                  const chartData: ChartData = JSON.parse(attempt);
+                  if (chartData && chartData.series) {
+                    return <AgentChart option={chartDataToOption(chartData)} />;
+                  }
+                } catch { /* try next candidate */ }
+              }
+            }
+            // Fallback: try detecting chart JSON even without language-chart class
+            if (!className || className === "") {
+              const raw = String(children).trim();
+              if (raw.startsWith('{"type":"') && raw.includes('"series"')) {
+                try {
+                  const chartData: ChartData = JSON.parse(raw);
+                  if (chartData && chartData.series) {
+                    return <AgentChart option={chartDataToOption(chartData)} />;
+                  }
+                } catch {}
+              }
             }
             return <code className={className} {...props}>{children}</code>;
           },
