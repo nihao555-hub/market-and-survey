@@ -41,24 +41,24 @@ export function AppShell() {
   }, [isChat, setThreads]);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-white">
+    <div className="flex h-screen w-screen overflow-hidden bg-[var(--gray-3)]">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />
         <div className="flex min-h-0 flex-1 overflow-hidden">
           {isChat ? (
-            <main className="min-w-0 flex-1 overflow-hidden bg-white">
+            <main className="min-w-0 flex-1 overflow-hidden bg-[var(--gray-1)]">
               <ChatView />
             </main>
           ) : isHome ? (
             <>
-              <main className="min-w-0 flex-1 overflow-y-auto bg-neutral-50 p-6">
+              <main className="min-w-0 flex-1 overflow-y-auto bg-[var(--gray-3)] p-5">
                 <WorkspaceHome />
               </main>
               <RightRail />
             </>
           ) : (
-            <main className="min-w-0 flex-1 overflow-y-auto bg-neutral-50 p-6">
+            <main className="min-w-0 flex-1 overflow-y-auto bg-[var(--gray-3)] p-5">
               {renderPage(page)}
             </main>
           )}

@@ -23,13 +23,13 @@ import { AlertTriangle, Compass } from "lucide-react";
 import type { UIMessage, ReportArtifacts as ReportArtifactsData } from "@/lib/agent-types";
 import { AgentChart, chartDataToOption, type ChartData } from "@/components/charts/AgentChart";
 
-/** 单条消息渲染（steering §9.5 主消息渲染入口） */
 function MessageBubble({ message, isStreaming }: { message: UIMessage; isStreaming: boolean }) {
   const isUser = message.role === "user";
   if (isUser) {
     return (
       <Message from="user">
-        <div className="max-w-[80%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-brand px-4 py-2.5 text-[15px] leading-relaxed text-white">
+        {/* Twenty CRM: user messages right-aligned with bg-tertiary (#f1f1f1), rounded-sm (4px) */}
+        <div className="max-w-[80%] whitespace-pre-wrap rounded-[4px] bg-[var(--gray-4)] px-4 py-2.5 text-[15px] leading-relaxed text-[var(--gray-11)]">
           {message.parts
             .filter((p) => p.type === "text")
             .map((p, i) => (
@@ -45,10 +45,11 @@ function MessageBubble({ message, isStreaming }: { message: UIMessage; isStreami
 
   return (
     <Message from="assistant" className="max-w-full">
-      <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg border border-hairline bg-white">
-        <Compass className="h-4 w-4 text-brand" strokeWidth={1.75} />
+      {/* Twenty CRM: assistant avatar — minimal icon container */}
+      <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-[4px] border border-[var(--gray-5)] bg-[var(--gray-1)]">
+        <Compass className="h-4 w-4 text-[var(--gray-11)]" strokeWidth={1.75} />
       </div>
-      <div className="min-w-0 flex-1 space-y-1.5">
+      <div className="min-w-0 flex-1 space-y-2">
         {renderItems.map((item, i) => {
           if (item.type === "thinking-steps") {
             return (
@@ -92,12 +93,13 @@ export function MessageList({ threadId }: { threadId: string }) {
 
   return (
     <Conversation className="h-full">
-      <ConversationContent className="mx-auto w-full max-w-3xl gap-6 px-4 py-8">
+      {/* Twenty CRM: message list padding spacing[4]=16px, gap spacing[2]=8px */}
+      <ConversationContent className="mx-auto w-full max-w-3xl gap-2 px-4 py-4">
         {messages.map((m) => (
           <MessageBubble key={m.id} message={m} isStreaming={isStreaming} />
         ))}
         {error && (
-          <div className="flex items-center gap-2 rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
+          <div className="flex items-center gap-2 rounded-[4px] border border-red-200 bg-red-50 px-3 py-2 text-[14px] text-red-700">
             <AlertTriangle className="h-4 w-4 flex-shrink-0" />
             <span>{error}</span>
           </div>

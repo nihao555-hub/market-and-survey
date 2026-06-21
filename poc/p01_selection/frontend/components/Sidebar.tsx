@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   Plus,
@@ -18,6 +18,11 @@ import {
   LayoutList,
   Settings,
   LogOut,
+  ChevronsLeft,
+  ChevronsRight,
+  MessageCirclePlus,
+  Home,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { activeThreadIdAtom, draftCategoryAtom, activePageAtom, threadsAtom, type PageKey } from "@/lib/atoms";
@@ -59,11 +64,15 @@ const NAV: NavGroup[] = [
   },
 ];
 
+type SidebarTab = "nav" | "chat";
+
 export function Sidebar() {
   const setActiveId = useSetAtom(activeThreadIdAtom);
   const [, setDraft] = useAtom(draftCategoryAtom);
   const [active, setActive] = useAtom(activePageAtom);
   const threads = useAtomValue(threadsAtom);
+  const [collapsed, setCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState<SidebarTab>("nav");
 
   const onNav = (key: PageKey) => {
     setActive(key);
@@ -72,78 +81,189 @@ export function Sidebar() {
   };
   const goHome = () => onNav("home");
 
+  if (collapsed) {
+    return (
+      <aside className="flex h-full w-[52px] flex-shrink-0 flex-col items-center py-2 pl-2">
+        <button
+          onClick={() => setCollapsed(false)}
+          className="flex h-7 w-7 items-center justify-center rounded-[4px] text-[var(--gray-9)] transition-colors hover:bg-[var(--bg-transparent-light)] hover:text-[var(--gray-12)]"
+          title="展开侧边栏"
+        >
+          <ChevronsRight className="h-4 w-4" />
+        </button>
+        <div className="mt-3 flex flex-col items-center gap-0.5">
+          {NAV.flatMap((g) => g.items).slice(0, 6).map((it) => (
+            <button
+              key={it.key}
+              onClick={() => onNav(it.key)}
+              className={cn(
+                "flex h-7 w-7 items-center justify-center rounded-[4px] transition-colors",
+                active === it.key
+                  ? "bg-[var(--bg-transparent-light)] text-[var(--gray-12)]"
+                  : "text-[var(--gray-11)] hover:bg-[var(--bg-transparent-light)] hover:text-[var(--gray-12)]"
+              )}
+              title={it.label}
+            >
+              {it.icon}
+            </button>
+          ))}
+        </div>
+      </aside>
+    );
+  }
+
   return (
-    <aside className="flex h-full w-[220px] flex-shrink-0 flex-col border-r border-neutral-200 bg-white">
-      {/* Brand */}
-      <div className="flex h-[60px] items-center gap-2 px-4">
-        <img src="/images/logo-icon.png" alt="SelectPilot" className="h-6 w-6 rounded-md" />
-        <span className="text-[14px] font-semibold text-neutral-900 tracking-tight">SelectPilot</span>
+    <aside className="flex h-full w-[236px] flex-shrink-0 flex-col gap-3 py-2 pl-2">
+      {/* Header: workspace name + search + collapse */}
+      <div className="flex min-h-[32px] items-center gap-1 pr-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <img src="/images/logo-icon.png" alt="SelectPilot" className="h-6 w-6 flex-shrink-0 rounded-[4px]" />
+          <span className="truncate text-[14px] font-semibold text-[var(--gray-12)] tracking-tight">SelectPilot</span>
+        </div>
+        <button
+          className="flex h-6 w-6 items-center justify-center rounded-[4px] text-[var(--gray-9)] transition-colors hover:bg-[var(--bg-transparent-light)] hover:text-[var(--gray-12)]"
+          title="搜索"
+        >
+          <Search className="h-3.5 w-3.5" />
+        </button>
+        <button
+          onClick={() => setCollapsed(true)}
+          className="flex h-6 w-6 items-center justify-center rounded-[4px] text-[var(--gray-9)] transition-colors hover:bg-[var(--bg-transparent-light)] hover:text-[var(--gray-12)]"
+          title="收起侧边栏"
+        >
+          <ChevronsLeft className="h-3.5 w-3.5" />
+        </button>
       </div>
 
-      {/* New research button */}
-      <div className="px-3 pb-3">
+      {/* Tab row: Navigation / AI Chat + New Chat button (Twenty CRM pattern) */}
+      <div className="flex items-center gap-2 pr-2">
+        <div className="flex h-7 flex-shrink-0 items-center gap-0.5 rounded-full border border-[var(--gray-5)] bg-[var(--gray-2)] p-[3px]">
+          <button
+            onClick={() => setActiveTab("nav")}
+            className={cn(
+              "flex h-full items-center justify-center rounded-full px-2 transition-colors",
+              activeTab === "nav"
+                ? "bg-[var(--bg-transparent-light)] text-[var(--gray-12)]"
+                : "text-[var(--gray-9)] hover:bg-[var(--bg-transparent-lighter)]"
+            )}
+            title="导航"
+          >
+            <Home className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setActiveTab("chat")}
+            className={cn(
+              "flex h-full items-center justify-center rounded-full px-2 transition-colors",
+              activeTab === "chat"
+                ? "bg-[var(--bg-transparent-light)] text-[var(--gray-12)]"
+                : "text-[var(--gray-9)] hover:bg-[var(--bg-transparent-lighter)]"
+            )}
+            title="AI 对话"
+          >
+            <MessageSquare className="h-4 w-4" />
+          </button>
+        </div>
         <button
           onClick={goHome}
-          className="flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-[13px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50 active:bg-neutral-100"
+          className="flex h-7 items-center gap-1 rounded-full border border-[var(--gray-5)] bg-[var(--gray-2)] px-2 text-[var(--gray-11)] transition-colors hover:bg-[var(--bg-transparent-light)] hover:text-[var(--gray-12)]"
         >
-          <Plus className="h-3.5 w-3.5" />
-          新建调研
+          <MessageCirclePlus className="h-4 w-4" />
+          <span className="text-[13px] font-medium">新建</span>
         </button>
       </div>
 
-      {/* Navigation */}
-      <nav className="min-h-0 flex-1 overflow-y-auto px-3 py-1">
-        {NAV.map((group, gi) => (
-          <div key={gi} className="mb-1">
-            {group.title && (
-              <div className="px-2 pb-1 pt-3 text-[11px] font-medium uppercase tracking-wider text-neutral-400">
-                {group.title}
+      {activeTab === "nav" ? (
+        <>
+          {/* Navigation items */}
+          <nav className="min-h-0 flex-1 overflow-y-auto pr-1.5">
+            <div className="flex flex-col gap-3">
+              {NAV.map((group, gi) => (
+                <div key={gi}>
+                  {group.title && (
+                    <div className="mb-0.5 px-1 text-[11px] font-medium uppercase tracking-wider text-[var(--gray-9)]">
+                      {group.title}
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-[2px]">
+                    {group.items.map((it) => {
+                      const isActive = active === it.key;
+                      return (
+                        <button
+                          key={it.key}
+                          onClick={() => onNav(it.key)}
+                          className={cn(
+                            "flex w-full items-center gap-2 rounded-[4px] px-1 text-left text-[14px] transition-colors",
+                            "h-7",
+                            isActive
+                              ? "bg-[var(--bg-transparent-light)] font-medium text-[var(--gray-12)]"
+                              : "text-[var(--gray-11)] hover:bg-[var(--bg-transparent-light)] hover:text-[var(--gray-12)]"
+                          )}
+                        >
+                          <span className={cn(
+                            "flex h-4 w-4 items-center justify-center",
+                            isActive ? "text-[var(--gray-12)]" : "text-current"
+                          )}>
+                            {it.icon}
+                          </span>
+                          <span className="font-medium">{it.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </nav>
+
+          {/* Bottom: settings + logout */}
+          <div className="flex flex-col gap-[2px] pr-1.5 pb-2">
+            <button
+              onClick={() => onNav("settings")}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-[4px] px-1 h-7 text-[14px] transition-colors",
+                active === "settings"
+                  ? "bg-[var(--bg-transparent-light)] font-medium text-[var(--gray-12)]"
+                  : "text-[var(--gray-11)] hover:bg-[var(--bg-transparent-light)] hover:text-[var(--gray-12)]"
+              )}
+            >
+              <Settings className={cn("h-4 w-4", active === "settings" ? "text-[var(--gray-12)]" : "text-current")} />
+              <span className="font-medium">设置</span>
+            </button>
+            <button
+              onClick={() => { clearAuth(); window.location.href = "/"; }}
+              className="flex w-full items-center gap-2 rounded-[4px] px-1 h-7 text-[14px] text-[var(--gray-9)] hover:bg-[var(--bg-transparent-light)] hover:text-[var(--gray-12)] transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="font-medium">退出</span>
+            </button>
+          </div>
+        </>
+      ) : (
+        /* AI Chat history tab */
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1.5">
+          <div className="flex flex-col gap-3">
+            <div className="mb-0.5 px-1 text-[11px] font-medium uppercase tracking-wider text-[var(--gray-9)]">
+              最近对话
+            </div>
+            {threads.length === 0 ? (
+              <div className="px-1 text-[13px] text-[var(--gray-9)]">暂无对话记录</div>
+            ) : (
+              <div className="flex flex-col gap-[2px]">
+                {threads.slice(0, 20).map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setActiveId(t.id)}
+                    className="flex w-full items-center gap-2 rounded-[4px] px-1 h-7 text-left text-[14px] text-[var(--gray-11)] hover:bg-[var(--bg-transparent-light)] hover:text-[var(--gray-12)] transition-colors"
+                  >
+                    <MessageSquare className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate font-medium">{t.title || "未命名对话"}</span>
+                  </button>
+                ))}
               </div>
             )}
-            {group.items.map((it) => {
-              const isActive = active === it.key;
-              return (
-                <button
-                  key={it.key}
-                  onClick={() => onNav(it.key)}
-                  className={cn(
-                    "mb-0.5 flex w-full items-center gap-2.5 rounded-md px-2 py-[7px] text-left text-[13px] transition-colors",
-                    isActive
-                      ? "bg-neutral-100 font-medium text-neutral-900"
-                      : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
-                  )}
-                >
-                  <span className={isActive ? "text-neutral-900" : "text-neutral-400"}>{it.icon}</span>
-                  {it.label}
-                </button>
-              );
-            })}
           </div>
-        ))}
-      </nav>
-
-      {/* Bottom: settings + logout */}
-      <div className="border-t border-neutral-200 px-3 py-2 space-y-0.5">
-        <button
-          onClick={() => onNav("settings")}
-          className={cn(
-            "flex w-full items-center gap-2.5 rounded-md px-2 py-[7px] text-[13px] transition-colors",
-            active === "settings"
-              ? "bg-neutral-100 font-medium text-neutral-900"
-              : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
-          )}
-        >
-          <Settings className={cn("h-4 w-4", active === "settings" ? "text-neutral-900" : "text-neutral-400")} />
-          设置
-        </button>
-        <button
-          onClick={() => { clearAuth(); window.location.href = "/"; }}
-          className="flex w-full items-center gap-2.5 rounded-md px-2 py-[7px] text-[13px] text-neutral-500 hover:bg-neutral-50 hover:text-neutral-900 transition-colors"
-        >
-          <LogOut className="h-4 w-4 text-neutral-400" />
-          退出
-        </button>
-      </div>
+        </div>
+      )}
     </aside>
   );
 }

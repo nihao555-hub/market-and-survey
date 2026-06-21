@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { ChevronDown, Brain, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Brain, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Task, TaskContent, TaskTrigger } from "@/components/ai-elements/task";
 import {
@@ -13,18 +13,12 @@ import { ToolStepRenderer } from "./ToolStepRenderer";
 import { isThinkingStepActive } from "@/lib/thinking-steps";
 import type { UIMessagePart, ToolPart } from "@/lib/agent-types";
 
-/** reasoning 折叠的中文文案 */
 const zhThinkingMessage = (isStreaming: boolean, duration?: number) => {
   if (isStreaming || duration === 0) return <ShimmeringText>正在思考…</ShimmeringText>;
   if (duration === undefined) return <span>已完成思考</span>;
   return <span>已思考 {duration} 秒</span>;
 };
 
-/**
- * 思考步骤聚合区（steering §3）：用 ai-elements 的 Task 作为「任务树」外壳，
- * 内部 reasoning 用标准 Reasoning 折叠、工具用 ToolStepRenderer 折叠卡片。
- * 流结束 + 答案已开始 → 自动折叠为「X 个分析步骤」。
- */
 export function ThinkingStepsDisplay({
   parts,
   isLastMessageStreaming,
@@ -36,7 +30,6 @@ export function ThinkingStepsDisplay({
 }) {
   const isThinking = parts.some((p) => isThinkingStepActive(p, isLastMessageStreaming));
 
-  // 自动展开/折叠规则（steering §3.4）
   const autoExpanded = isThinking || !hasAssistantTextResponseStarted;
   const [manualOverride, setManualOverride] = React.useState<boolean | null>(null);
   const expanded = manualOverride ?? autoExpanded;
@@ -47,26 +40,25 @@ export function ThinkingStepsDisplay({
     <Task
       open={expanded}
       onOpenChange={(o) => setManualOverride(o)}
-      className="my-2 rounded-lg border border-hairline bg-surface-1 px-3 py-2"
+      className="my-2 rounded-[4px] border border-[var(--gray-4)] bg-[var(--bg-transparent-lighter)] px-3 py-2"
     >
       <TaskTrigger title="">
-        <div className="flex w-full cursor-pointer items-center gap-2 text-sm text-ink-muted transition-colors hover:text-ink">
+        <div className="flex w-full cursor-pointer items-center gap-1 text-[16px] font-medium text-[var(--gray-9)] transition-colors hover:text-[var(--gray-12)]">
           {isThinking ? (
-            <Loader2 className="h-4 w-4 text-brand animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin text-[var(--gray-9)]" />
           ) : (
-            <Brain className="h-4 w-4 text-ink-subtle" />
+            <Brain className="h-4 w-4 text-[var(--gray-9)]" />
           )}
           {isThinking ? (
             <ShimmeringText>正在分析…</ShimmeringText>
           ) : (
             <span>{stepCount > 0 ? `${stepCount} 个分析步骤` : "分析过程"}</span>
           )}
-          <ChevronDown
-            className={cn(
-              "ml-auto h-4 w-4 text-ink-subtle transition-transform",
-              expanded && "rotate-180"
-            )}
-          />
+          {expanded ? (
+            <ChevronUp className="ml-auto h-4 w-4 text-[var(--gray-9)]" />
+          ) : (
+            <ChevronDown className="ml-auto h-4 w-4 text-[var(--gray-9)]" />
+          )}
         </div>
       </TaskTrigger>
       <TaskContent>
@@ -84,9 +76,9 @@ export function ThinkingStepsDisplay({
               >
                 <ReasoningTrigger
                   getThinkingMessage={zhThinkingMessage}
-                  className="text-ink-subtle"
+                  className="text-[var(--gray-9)]"
                 />
-                <ReasoningContent className="!mt-2 text-ink-subtle">
+                <ReasoningContent className="!mt-2 rounded-[4px] border border-[var(--gray-4)] bg-[var(--bg-transparent-lighter)] p-3 text-[var(--gray-11)] text-[14px] leading-relaxed whitespace-pre-wrap">
                   {text}
                 </ReasoningContent>
               </Reasoning>

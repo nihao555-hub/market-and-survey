@@ -27,7 +27,6 @@ const THREAD_QUERY = /* GraphQL */ `
   }
 `;
 
-/** 澄清态：用户已输入品类，显示 A2UI 表单等待补充参数 */
 function ClarifyState({
   category,
   kind,
@@ -40,23 +39,22 @@ function ClarifyState({
   onReset: () => void;
 }) {
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-[var(--gray-1)]">
       <div className="scroll-area flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6">
           <button
             onClick={onReset}
-            className="inline-flex items-center gap-1.5 text-xs text-ink-subtle transition-colors hover:text-ink"
+            className="inline-flex items-center gap-1.5 text-[12px] text-[var(--gray-9)] transition-colors hover:text-[var(--gray-12)]"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             返回工作台
           </button>
-          {/* 用户消息气泡 */}
+          {/* User message bubble — Twenty style: right-aligned, bg-tertiary */}
           <div className="flex justify-end">
-            <div className="rounded-2xl rounded-br-md bg-brand px-4 py-2.5 text-[15px] text-white">
+            <div className="rounded-[4px] bg-[var(--gray-4)] px-4 py-2.5 text-[15px] text-[var(--gray-11)]">
               {category}
             </div>
           </div>
-          {/* A2UI 表单 */}
           <div className="flex justify-start">
             <div className="w-full max-w-xl">
               <ClarifyForm category={category} kind={kind} onSubmit={onSubmit} />
@@ -64,7 +62,7 @@ function ClarifyState({
           </div>
         </div>
       </div>
-      <div className="border-t border-hairline bg-white px-4 py-3">
+      <div className="border-t border-[var(--gray-5)] bg-[var(--gray-1)] px-4 py-3">
         <div className="mx-auto w-full max-w-3xl">
           <PromptInputBox
             onSend={() => onReset()}
@@ -77,7 +75,6 @@ function ClarifyState({
   );
 }
 
-/** 会话态：消息流 + 底部输入框 */
 function ActiveThread({ threadId }: { threadId: string }) {
   useAgentChatSubscription(threadId);
   const isStreaming = useAtomValue(isStreamingAtomFamily(threadId));
@@ -112,12 +109,12 @@ function ActiveThread({ threadId }: { threadId: string }) {
   }, [threadId]);
 
   return (
-    <div className="flex h-full flex-col bg-white">
+    <div className="flex h-full flex-col bg-[var(--gray-1)]">
       <div className="min-h-0 flex-1">
         <MessageList threadId={threadId} />
         {error && (
           <div className="mx-auto max-w-3xl px-4 py-3">
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="rounded-[4px] border border-red-200 bg-red-50 px-4 py-3 text-[14px] text-red-700">
               {error}
               <button
                 onClick={() => window.location.reload()}
@@ -127,7 +124,7 @@ function ActiveThread({ threadId }: { threadId: string }) {
           </div>
         )}
       </div>
-      <div className="border-t border-hairline bg-white px-4 py-3">
+      <div className="border-t border-[var(--gray-5)] bg-[var(--gray-1)] px-4 py-3">
         <div className="mx-auto w-full max-w-3xl">
           <PromptInputBox
             isLoading={isStreaming}
@@ -140,15 +137,12 @@ function ActiveThread({ threadId }: { threadId: string }) {
   );
 }
 
-/** 对话区：会话态 / 澄清态（工作台首页由 WorkspaceHome 承载） */
 export function ChatView() {
   const activeId = useAtomValue(activeThreadIdAtom);
   const [draftCategory, setDraftCategory] = useAtom(draftCategoryAtom);
   const [draftKind, setDraftKind] = useAtom(draftKindAtom);
 
   const handleStartResearch = (p: SelectionParams) => {
-    // 通过 BrowserEvent 总线触发发送（steering §8）；
-    // sendSelection 内部会 setActiveThreadId → 切到会话态
     dispatchBrowserEvent<SelectionParams>(AGENT_SEND_EVENT, p);
     setTimeout(() => {
       setDraftCategory(null);

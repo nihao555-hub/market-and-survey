@@ -98,24 +98,24 @@ export function WorkspaceHome() {
   return (
     <div className="mx-auto w-full max-w-[1100px]">
       {/* Hero research input */}
-      <section className="rounded-xl border border-neutral-200 bg-white p-6">
-        <h1 className="text-[20px] font-semibold text-neutral-900">你想调研什么？</h1>
-        <p className="mt-1 text-[13px] text-neutral-500">
+      <section className="rounded-[8px] border border-[var(--gray-5)] bg-[var(--gray-1)] p-6">
+        <h1 className="text-[20px] font-semibold text-[var(--gray-12)]">你想调研什么？</h1>
+        <p className="mt-1 text-[13px] text-[var(--gray-11)]">
           输入产品品类或市场。AI 将自动完成趋势、竞品、痛点、利润和知识产权风险分析。
         </p>
 
-        <div className="mt-4 flex items-center gap-2 rounded-lg border border-neutral-200 bg-neutral-50 p-1">
+        <div className="mt-4 flex items-center gap-2 rounded-[4px] border border-[var(--gray-5)] bg-[var(--gray-3)] p-1">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && start(input)}
             placeholder="例如：智能插座、宠物饮水机、户外露营装备、美国市场"
-            className="min-w-0 flex-1 bg-transparent px-3 py-2 text-[13px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
+            className="min-w-0 flex-1 bg-transparent px-3 py-2 text-[14px] text-[var(--gray-12)] placeholder:text-[var(--gray-8)] focus:outline-none"
           />
           <button
             onClick={() => start(input)}
             disabled={!input.trim()}
-            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-neutral-900 text-white transition-colors hover:bg-neutral-800 disabled:opacity-30"
+            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[4px] bg-[var(--gray-12)] text-[var(--gray-1)] transition-colors hover:bg-[var(--gray-11)] disabled:opacity-30"
           >
             <ArrowRight className="h-4 w-4" />
           </button>
@@ -123,16 +123,16 @@ export function WorkspaceHome() {
 
         {/* Filter chips */}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-[12px] font-medium text-neutral-600">
+          <span className="inline-flex items-center gap-1.5 rounded-[4px] border border-[var(--gray-5)] bg-[var(--gray-1)] px-2.5 py-1 text-[12px] font-medium text-[var(--gray-11)]">
             <Flag iso={marketIso(firstMarket)} size={12} />
             {marketLabel(firstMarket)}
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-[12px] font-medium text-neutral-600">
-            <Clock className="h-3 w-3 text-neutral-400" />
+          <span className="inline-flex items-center gap-1.5 rounded-[4px] border border-[var(--gray-5)] bg-[var(--gray-1)] px-2.5 py-1 text-[12px] font-medium text-[var(--gray-11)]">
+            <Clock className="h-3 w-3 text-[var(--gray-8)]" />
             近 30 天
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-neutral-200 bg-white px-2.5 py-1 text-[12px] font-medium text-neutral-600">
-            <Database className="h-3 w-3 text-neutral-400" />
+          <span className="inline-flex items-center gap-1.5 rounded-[4px] border border-[var(--gray-5)] bg-[var(--gray-1)] px-2.5 py-1 text-[12px] font-medium text-[var(--gray-11)]">
+            <Database className="h-3 w-3 text-[var(--gray-8)]" />
             所有数据源
           </span>
         </div>
@@ -144,13 +144,13 @@ export function WorkspaceHome() {
       {/* Recent categories */}
       {recentCategories.length > 0 && (
         <section className="mt-5">
-          <div className="mb-2 text-[12px] font-medium text-neutral-500">最近调研品类</div>
+          <div className="mb-2 text-[12px] font-medium text-[var(--gray-9)]">最近调研品类</div>
           <div className="flex flex-wrap items-center gap-2">
             {recentCategories.map((label) => (
               <button
                 key={label}
                 onClick={() => start(label)}
-                className="rounded-md border border-neutral-200 bg-white px-3 py-2 text-[13px] font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+                className="rounded-[4px] border border-[var(--gray-5)] bg-[var(--gray-1)] px-3 py-2 text-[13px] font-medium text-[var(--gray-11)] transition-colors hover:bg-[var(--bg-transparent-light)]"
               >
                 {label}
               </button>
@@ -161,20 +161,20 @@ export function WorkspaceHome() {
 
       {/* Research tools */}
       <section className="mt-6">
-        <h2 className="text-[14px] font-semibold text-neutral-900 mb-3">调研工具</h2>
+        <h2 className="text-[14px] font-semibold text-[var(--gray-12)] mb-3">调研工具</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {TOOLS.map((t) => (
             <button
               key={t.key}
               onClick={() => setPage(t.key)}
-              className="flex items-center gap-3 rounded-lg border border-neutral-200 bg-white p-3 text-left transition-colors hover:bg-neutral-50"
+              className="flex items-center gap-3 rounded-[8px] border border-[var(--gray-5)] bg-[var(--gray-1)] p-3 text-left transition-colors hover:bg-[var(--bg-transparent-light)]"
             >
-              <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-neutral-100 text-neutral-600">
+              <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[8px] bg-[var(--gray-4)] text-[var(--gray-11)]">
                 {t.icon}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="text-[13px] font-medium text-neutral-900">{t.label}</div>
-                <div className="truncate text-[11px] text-neutral-500">{t.desc}</div>
+                <div className="text-[13px] font-medium text-[var(--gray-12)]">{t.label}</div>
+                <div className="truncate text-[11px] text-[var(--gray-9)]">{t.desc}</div>
               </div>
             </button>
           ))}
@@ -182,18 +182,18 @@ export function WorkspaceHome() {
       </section>
 
       {/* Recent tasks */}
-      <section className="mt-6 rounded-xl border border-neutral-200 bg-white overflow-hidden">
-        <div className="flex items-center justify-between border-b border-neutral-200 px-5 py-3">
-          <h2 className="text-[14px] font-semibold text-neutral-900">最近任务</h2>
-          <button onClick={() => setPage("tasks")} className="text-[12px] text-neutral-500 hover:text-neutral-900 transition-colors">查看全部</button>
+      <section className="mt-6 rounded-[8px] border border-[var(--gray-5)] bg-[var(--gray-1)] overflow-hidden">
+        <div className="flex items-center justify-between border-b border-[var(--gray-4)] px-5 py-3">
+          <h2 className="text-[14px] font-semibold text-[var(--gray-12)]">最近任务</h2>
+          <button onClick={() => setPage("tasks")} className="text-[12px] text-[var(--gray-9)] hover:text-[var(--gray-12)] transition-colors">查看全部</button>
         </div>
         {recentRows.length === 0 ? (
           <div className="flex flex-col items-center justify-center px-5 py-14 text-center">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-100 text-neutral-400">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--gray-4)] text-[var(--gray-8)]">
               <Inbox className="h-5 w-5" />
             </span>
-            <div className="mt-3 text-[13px] font-medium text-neutral-900">还没有调研任务</div>
-            <div className="mt-1 max-w-sm text-[12px] text-neutral-500">
+            <div className="mt-3 text-[13px] font-medium text-[var(--gray-12)]">还没有调研任务</div>
+            <div className="mt-1 max-w-sm text-[12px] text-[var(--gray-9)]">
               在上方输入品类开始你的第一次调研。结果将自动显示在此处。
             </div>
           </div>
@@ -201,7 +201,7 @@ export function WorkspaceHome() {
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
-                <tr className="border-b border-neutral-100 bg-neutral-50 text-left text-[11px] text-neutral-500">
+                <tr className="border-b border-[var(--gray-4)] bg-[var(--gray-3)] text-left text-[11px] text-[var(--gray-9)]">
                   <th className="px-5 py-2.5 font-medium">名称</th>
                   <th className="px-3 py-2.5 font-medium">市场</th>
                   <th className="px-3 py-2.5 font-medium">创建时间</th>
@@ -214,20 +214,20 @@ export function WorkspaceHome() {
                   <tr
                     key={t.id}
                     onClick={() => setActiveId(t.id)}
-                    className="cursor-pointer border-t border-neutral-100 transition-colors hover:bg-neutral-50"
+                    className="cursor-pointer border-t border-[var(--gray-4)] transition-colors hover:bg-[var(--bg-transparent-light)]"
                   >
-                    <td className="px-5 py-3 font-medium text-neutral-900">{t.name}</td>
+                    <td className="px-5 py-3 font-medium text-[var(--gray-12)]">{t.name}</td>
                     <td className="px-3 py-3">
-                      <span className="inline-flex items-center gap-1.5 text-neutral-600">
+                      <span className="inline-flex items-center gap-1.5 text-[var(--gray-11)]">
                         {t.iso ? <Flag iso={t.iso} size={14} /> : null}
                         {t.iso ? t.iso.toUpperCase() : t.market}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-neutral-500">{t.time}</td>
+                    <td className="px-3 py-3 text-[var(--gray-9)]">{t.time}</td>
                     <td className="px-3 py-3">
                       {t.state === "running" ? (
-                        <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-neutral-600">
-                          <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-400" />
+                        <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[var(--gray-11)]">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-[var(--gray-8)]" />
                           分析中
                         </span>
                       ) : (
@@ -240,7 +240,7 @@ export function WorkspaceHome() {
                     <td className="px-5 py-3 text-right">
                       <button
                         onClick={(e) => { e.stopPropagation(); setActiveId(t.id); }}
-                        className="rounded p-1 text-neutral-400 transition-colors hover:bg-neutral-100 hover:text-neutral-700"
+                        className="rounded-[4px] p-1 text-[var(--gray-8)] transition-colors hover:bg-[var(--bg-transparent-light)] hover:text-[var(--gray-12)]"
                       >
                         <MoreHorizontal className="h-4 w-4" />
                       </button>
