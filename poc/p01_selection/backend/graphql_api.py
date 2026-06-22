@@ -535,12 +535,14 @@ class Mutation:
 
     # ── 每日数据刷新 ──
     @strawberry.mutation
-    def trigger_daily_refresh(self, tenant_id: str = "dev_tenant") -> bool:
-        """手动触发一次每日刷新（后台线程跑，立即返回是否已启动）。按用户设置的目标国家逐个刷新。"""
+    def trigger_daily_refresh(self, tenant_id: str = "dev_tenant", full: bool = False) -> bool:
+        """手动触发一次每日刷新（后台线程跑，立即返回是否已启动）。
+        full=True 时触发全量刷新（含 220+ 子品类），等同 daily_full 定时任务。"""
         from backend.daily_refresh import run_in_background
         settings = st.get_settings(tenant_id)
         geos = settings.get("targetCountries") or ["US"]
-        return run_in_background(tenant_id=tenant_id, geos=geos, trigger="manual")
+        trigger = "daily_full" if full else "manual"
+        return run_in_background(tenant_id=tenant_id, geos=geos, trigger=trigger)
 
     @strawberry.mutation
     def backfill_google_trends(self, tenant_id: str = "dev_tenant") -> bool:

@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { CategoryTrendTable } from "./CategoryTrendTable";
 import { ProductDetailModal, type ProductForModal } from "./ProductDetailModal";
+import { CategoryDetailModal } from "./CategoryDetailModal";
 
 // (CatChart + buildCatTrendChart removed — replaced by PerCategoryCards below)
 
@@ -616,6 +617,7 @@ export function CategoryRankPage() {
   const [activeCat, setActiveCat] = React.useState<string | null>(null);
   const [query, setQuery] = React.useState("");
   const [selectedProduct, setSelectedProduct] = React.useState<ProductForModal | null>(null);
+  const [selectedCatDetail, setSelectedCatDetail] = React.useState<DataSnapshot | null>(null);
   const [catHistory, setCatHistory] = React.useState<DataSnapshot[]>([]);
   const [sparkData, setSparkData] = React.useState<CategorySparkData[]>([]);
 
@@ -729,7 +731,11 @@ export function CategoryRankPage() {
           <PerCategoryCards
             latestSnaps={cats}
             sparkData={sparkData}
-            onSelectCat={(id) => { setActiveCat(id); setTab("category"); }}
+            onSelectCat={(id) => {
+              const snap = cats.find((c) => c.payload?.category_id === id);
+              if (snap) setSelectedCatDetail(snap);
+              setActiveCat(id); setTab("category");
+            }}
           />
 
           {!hasAny ? (
@@ -742,7 +748,11 @@ export function CategoryRankPage() {
             <>
               {/* 品类总览表 */}
               {tab === "category" && !searching && (
-                <CategoryOverviewTable cats={cats} onSelectCat={(id) => { setActiveCat(id); setTab("category"); }} />
+                <CategoryOverviewTable cats={cats} onSelectCat={(id) => {
+                  const snap = cats.find((c) => c.payload?.category_id === id);
+                  if (snap) setSelectedCatDetail(snap);
+                  setActiveCat(id); setTab("category");
+                }} />
               )}
 
               {/* 品类趋势分析表格（跨日期对比） */}
@@ -911,6 +921,7 @@ export function CategoryRankPage() {
         </>
       )}
       <ProductDetailModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
+      <CategoryDetailModal snapshot={selectedCatDetail} onClose={() => setSelectedCatDetail(null)} />
     </PageContainer>
   );
 }

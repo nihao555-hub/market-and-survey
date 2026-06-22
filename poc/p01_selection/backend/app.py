@@ -378,6 +378,17 @@ async def api_config_status():
     return api_status()
 
 
+@app.post("/trigger-full-refresh")
+async def trigger_full_refresh():
+    """手动触发全量刷新（含 220+ 子品类），等同 daily_full 定时任务。"""
+    from backend.daily_refresh import run_in_background
+    from backend import storage as _st
+    settings = _st.get_settings("dev_tenant")
+    geos = settings.get("targetCountries") or ["US"]
+    ok = run_in_background(geos=geos, trigger="daily_full")
+    return {"ok": ok, "trigger": "daily_full", "geos": geos}
+
+
 # ─── 用户认证 API（注册/登录/邮箱验证）───
 from pydantic import BaseModel as _BM
 
