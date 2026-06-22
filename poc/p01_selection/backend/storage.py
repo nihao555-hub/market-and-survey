@@ -153,27 +153,29 @@ def _resolve_db_url() -> tuple[str, bool]:
 DB_URL, _IS_SQLITE = _resolve_db_url()
 _engine_kwargs: dict = {"future": True}
 if not _IS_SQLITE:
-    # 托管 Postgres（Render/Supabase）：连接易被回收，开 pre_ping + 适度连接池。
     _engine_kwargs.update(pool_pre_ping=True, pool_size=5, max_overflow=10,
                           pool_recycle=300)
+    # MySQL/OceanBase 跨区域连接需更长超时
+    if "mysql" in DB_URL:
+        _engine_kwargs["connect_args"] = {"connect_timeout": 30, "read_timeout": 60, "write_timeout": 60}
 
 
-def _create_engine_with_retry(url: str, kwargs: dict, max_retries: int = 3):
-    """创建引擎并建表，PostgreSQL 首次连接可能因 DNS 延迟失败，自动重试。"""
-    import time
+def _create_engine_with_retry(url: str, kwargs: dict, max_retries: int = 5):
+    """创建引擎并建表，远程数据库首次连接可能因 DNS/网络延迟失败，自动重试。"""
+    import time, logging
+    _log = logging.getLogger(__name__)
     engine = create_engine(url, **kwargs)
     for attempt in range(max_retries):
         try:
             Base.metadata.create_all(engine)
+            _log.info(f"数据库连接成功: {url[:50]}...")
             return engine
         except Exception as e:
+            _log.warning(f"数据库连接尝试 {attempt+1}/{max_retries} 失败: {str(e)[:120]}")
             if attempt < max_retries - 1:
-                time.sleep(2 ** attempt)
+                time.sleep(3 * (attempt + 1))  # 3s, 6s, 9s, 12s
             else:
-                # PostgreSQL 不可达时回落到 SQLite
-                import logging
-                logging.getLogger(__name__).warning(
-                    f"PostgreSQL 连接失败 ({e})，回落到 SQLite")
+                _log.warning(f"数据库连接失败，回落到 SQLite: {str(e)[:200]}")
                 fallback_url = f"sqlite:///{DB_PATH}"
                 engine = create_engine(fallback_url, future=True)
                 Base.metadata.create_all(engine)
