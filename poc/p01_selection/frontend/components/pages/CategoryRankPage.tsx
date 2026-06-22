@@ -195,7 +195,7 @@ function buildPerCatCards(latestSnaps: DataSnapshot[], historySnaps: DataSnapsho
     cards.push({
       name, catId,
       latestAvgPrice, latestCount, latestAvgRating,
-      priceHistory, countHistory, ratingHistory, top5,
+      priceHistory, countHistory, ratingHistory, trendsHistory: [], top5,
       allProducts: prods,
     });
   }
