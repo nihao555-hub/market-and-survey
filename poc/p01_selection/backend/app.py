@@ -44,19 +44,28 @@ async def _clear_stale_streams():
 # 用 APScheduler BackgroundScheduler：采集器是同步阻塞调用，跑在独立线程池里，
 # 不占用 FastAPI 的事件循环。可用环境变量调节：
 #   DAILY_REFRESH_ENABLED   默认 1（关掉设 0）
-#   DAILY_REFRESH_HOUR_UTC  默认 16（= 北京 0 点）
+#   DAILY_REFRESH_HOUR_UTC  默认 5（= 美国东部 EST 0:00）
 #   DAILY_REFRESH_MINUTE    默认 0
-#   DAILY_REFRESH_ON_STARTUP 默认 0（设 1 时启动即先跑一次做底子）
+#   DAILY_REFRESH_ON_STARTUP 默认 1（启动时先跑一次精简刷新做底子）
 _scheduler = None
 
 
 def _scheduled_refresh():
-    """定时触发时读用户设置拿目标国家列表。"""
+    """定时触发：普通刷新（每 2 小时，不含子品类）。"""
     from backend import storage as _st
     from backend.daily_refresh import run_daily_refresh
     settings = _st.get_settings("dev_tenant")
     geos = settings.get("targetCountries") or ["US"]
     run_daily_refresh(geos=geos, trigger="schedule")
+
+
+def _daily_full_refresh():
+    """每天美国东部时间 0:00 全量刷新：含全部 220+ 子品类。"""
+    from backend import storage as _st
+    from backend.daily_refresh import run_daily_refresh
+    settings = _st.get_settings("dev_tenant")
+    geos = settings.get("targetCountries") or ["US"]
+    run_daily_refresh(geos=geos, trigger="daily_full")
 
 
 @app.on_event("startup")
@@ -69,7 +78,7 @@ async def _start_daily_refresh_scheduler():
         from apscheduler.schedulers.background import BackgroundScheduler
         from apscheduler.triggers.cron import CronTrigger
 
-        # 每 N 小时刷新一次（用户要求「每两小时更新一次」），默认 2 小时。
+        # 每 N 小时刷新一次（普通刷新，不含子品类），默认 2 小时。
         interval = int(_os.getenv("DAILY_REFRESH_INTERVAL_HOURS", "2"))
         minute = int(_os.getenv("DAILY_REFRESH_MINUTE", "0"))
         hour_spec = f"*/{interval}" if interval > 1 else "*"
@@ -83,11 +92,22 @@ async def _start_daily_refresh_scheduler():
             coalesce=True,
             misfire_grace_time=3600,
         )
+        # 每天美国东部时间 0:00 (UTC 05:00) 全量刷新含 220+ 子品类
+        daily_hour = int(_os.getenv("DAILY_FULL_REFRESH_HOUR_UTC", "5"))
+        _scheduler.add_job(
+            _daily_full_refresh,
+            trigger=CronTrigger(hour=daily_hour, minute=0, timezone="UTC"),
+            id="daily_full_refresh",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=7200,
+        )
         _scheduler.start()
         import logging
         logging.getLogger("uvicorn").info(
-            f"刷新调度已启动：cron {minute} {hour_spec} * * * (UTC) = 每 {interval} 小时一次"
-            f"（含北京 0:00 = UTC 16:00）")
+            f"刷新调度已启动：普通刷新 cron {minute} {hour_spec} * * * (UTC) = 每 {interval} 小时一次；"
+            f"全量刷新（含 220+ 子品类）cron 0 {daily_hour} * * * (UTC) = 美国东部 0:00")
 
         # 默认启动时跑一次刷新（用精简词表，快速上线数据）
         if _os.getenv("DAILY_REFRESH_ON_STARTUP", "1") == "1":
