@@ -52,11 +52,10 @@ _scheduler = None
 
 def _scheduled_refresh():
     """定时触发：普通刷新（每 2 小时，不含子品类）。
-    优化：如果数据库中已有新鲜品类数据（< 24h），跳过抓取以节省 TikHub API 调用。"""
+    品类数据新鲜时自动跳过 TikHub 品类抓取（在 run_daily_refresh 内部判断），
+    但仍会刷新 Google Trends、季节性等 term 数据。"""
     from backend import storage as _st
-    from backend.daily_refresh import run_daily_refresh, has_fresh_data
-    if has_fresh_data("dev_tenant"):
-        return  # 数据仍然新鲜，无需消耗 API 配额
+    from backend.daily_refresh import run_daily_refresh
     settings = _st.get_settings("dev_tenant")
     geos = settings.get("targetCountries") or ["US"]
     run_daily_refresh(geos=geos, trigger="schedule")

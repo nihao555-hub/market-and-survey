@@ -556,14 +556,21 @@ def run_daily_refresh(tenant_id: str = "dev_tenant", terms: Optional[list[str]] 
         # 跨平台实时社媒趋势：每批采集一次（与具体追踪词无关）
         _persist(SOCIAL_TREND_TERM, _collect_social_trends())
 
+        # 如果数据库中已有新鲜品类数据且非 daily_full，跳过 TikHub 品类抓取节省 API 成本
+        _skip_tikhub_categories = (trigger in ("startup", "schedule")
+                                   and has_fresh_data(tenant_id))
+
         for current_geo in geo_list:
-            logger.info(f"daily_refresh geo={current_geo} collecting...")
-            # 按品类榜单 / 实时热销榜 / 热门话题曲线
-            # daily_full（美国 EST 0:00）时抓全部 220+ 子品类；startup/schedule 只抓 28 个顶级品类
-            _include_all_subcats = trigger == "daily_full"
-            _persist("📦 品类榜单", _collect_category_rankings(current_geo, include_subcats=_include_all_subcats), current_geo)
-            _persist(HOT_SELLING_TERM, [_collect_hot_selling(current_geo)], current_geo)
-            _persist(HASHTAG_TREND_TERM, [_collect_hashtag_trends(current_geo)], current_geo)
+            logger.info(f"daily_refresh geo={current_geo} collecting... skip_cats={_skip_tikhub_categories}")
+            if _skip_tikhub_categories:
+                logger.info("品类数据仍然新鲜（24h 内），跳过 TikHub 品类/热销/话题抓取")
+            else:
+                # 按品类榜单 / 实时热销榜 / 热门话题曲线
+                # daily_full（美国 EST 0:00）时抓全部 220+ 子品类；startup/schedule 只抓 28 个顶级品类
+                _include_all_subcats = trigger == "daily_full"
+                _persist("📦 品类榜单", _collect_category_rankings(current_geo, include_subcats=_include_all_subcats), current_geo)
+                _persist(HOT_SELLING_TERM, [_collect_hot_selling(current_geo)], current_geo)
+                _persist(HASHTAG_TREND_TERM, [_collect_hashtag_trends(current_geo)], current_geo)
 
             for term in terms:
                 rows = (_collect_tier1(term, current_geo)
