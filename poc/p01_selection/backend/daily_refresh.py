@@ -54,12 +54,19 @@ DEFAULT_SEED_TERMS = [
     "desk organizer", "standing desk", "mechanical keyboard", "blue light glasses",
 ]
 
+# 首次启动时只跑一小批核心词（加速数据上线），后续 schedule 跑完整词表。
+STARTUP_SEED_TERMS = [
+    "garlic press", "wireless earbuds", "yoga mat", "pet hair remover",
+    "jade roller", "humidifier", "desk organizer", "led strip lights",
+]
+
 # 单次刷新最多处理多少个词（控制时长与限流风险）。默认足够容纳整张种子词表 +
 # 若干监控规则/近期调研词；如需压实时层成本可用 DAILY_REFRESH_MAX_TERMS 调小。
 MAX_TERMS = int(os.getenv("DAILY_REFRESH_MAX_TERMS", "50"))
 
 # 开源数据集底子（Amazon Reviews 2023）配置
-OPEN_DATASET_ENABLED = os.getenv("OPEN_DATASET_ENABLED", "1") == "1"
+# 默认关闭以加速首次刷新（Render 免费实例下载 HuggingFace 大文件极慢）
+OPEN_DATASET_ENABLED = os.getenv("OPEN_DATASET_ENABLED", "0") == "1"
 OPEN_DATASET_TTL_DAYS = int(os.getenv("OPEN_DATASET_TTL_DAYS", "7"))
 OPEN_DATASET_MAX_LINES = int(os.getenv("OPEN_DATASET_MAX_LINES", "150000"))
 OPEN_DATASET_PER_TERM = int(os.getenv("OPEN_DATASET_PER_TERM", "30"))
@@ -359,7 +366,7 @@ HASHTAG_TREND_TERM = "🏷️ 热门话题榜"
 CATEGORY_MAX = int(os.getenv("DAILY_REFRESH_CATEGORIES", "28"))
 CATEGORY_TOP_N = int(os.getenv("DAILY_REFRESH_CATEGORY_TOPN", "20"))
 CATEGORY_PAGES = int(os.getenv("DAILY_REFRESH_CATEGORY_PAGES", "1"))
-INCLUDE_SUBCATS = os.getenv("DAILY_REFRESH_INCLUDE_SUBCATS", "1") == "1"
+INCLUDE_SUBCATS = os.getenv("DAILY_REFRESH_INCLUDE_SUBCATS", "0") == "1"
 SUBCAT_TOP_N = int(os.getenv("DAILY_REFRESH_SUBCAT_TOPN", "10"))
 HASHTAG_TOP_N = int(os.getenv("DAILY_REFRESH_HASHTAGS", "20"))
 # 热销榜单次接口约返回 95 条，默认全收（同一次调用，无额外成本）。
@@ -421,7 +428,13 @@ def _collect_category_rankings(geo: str = "US") -> list[dict]:
                                  "parent": cname, "top_n": SUBCAT_TOP_N})
     
     rows: list[dict] = []
+    t_start = time.time()
+    CATEGORY_TIMEOUT = int(os.getenv("DAILY_REFRESH_CATEGORY_TIMEOUT", "300"))  # 5 min max
     for entry in flat:
+        # 超时保护：品类收集不超过 5 分钟
+        if time.time() - t_start > CATEGORY_TIMEOUT:
+            logger.warning(f"category_rankings timeout after {CATEGORY_TIMEOUT}s, collected {len(rows)} categories")
+            break
         cid, cname = entry["id"], entry["name"]
         top_n = entry["top_n"]
         try:
@@ -509,7 +522,12 @@ def run_daily_refresh(tenant_id: str = "dev_tenant", terms: Optional[list[str]] 
     started = _now_iso()
     t0 = time.time()
     try:
-        terms = terms or collect_terms(tenant_id)
+        # startup 触发用精简词表加速首次数据上线
+        if terms is None:
+            if trigger == "startup":
+                terms = STARTUP_SEED_TERMS[:]
+            else:
+                terms = collect_terms(tenant_id)
         channel_ok = tier2_channel_ok()
         ds_products = open_dataset_products(tenant_id, terms)
         st.set_config(_state_key(tenant_id), {
