@@ -245,9 +245,10 @@ function buildPerCatCardsFromSpark(latestSnaps: DataSnapshot[], sparkData: Categ
     const priceHistory = spark?.points.map((p) => p.avgPrice) ?? [];
     const countHistory = spark?.points.map((p) => p.productCount) ?? [];
     const ratingHistory = spark?.points.map((p) => p.avgRating) ?? [];
-    // Google Trends sparkline: match category slug from latestSnap or name
-    const catSlug = (latestSnap?.payload?.category_name_en as string) || name;
-    const trendsHistory = catTrendsMap.get(catSlug) || [];
+    // Google Trends sparkline: normalize to slug format (lowercase, dashes) for matching
+    const catNameEn = (latestSnap?.payload?.category_name_en as string) || name;
+    const catSlug = catNameEn.toLowerCase().replace(/[&]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
+    const trendsHistory = catTrendsMap.get(catSlug) || catTrendsMap.get(catNameEn) || [];
 
     const latestStats = latestSnap ? _extractStats(latestSnap) : null;
     const latestAvgPrice = latestStats?.avgPrice ?? (priceHistory.length ? priceHistory[priceHistory.length - 1] : 0);
