@@ -51,9 +51,12 @@ _scheduler = None
 
 
 def _scheduled_refresh():
-    """定时触发：普通刷新（每 2 小时，不含子品类）。"""
+    """定时触发：普通刷新（每 2 小时，不含子品类）。
+    优化：如果数据库中已有新鲜品类数据（< 24h），跳过抓取以节省 TikHub API 调用。"""
     from backend import storage as _st
-    from backend.daily_refresh import run_daily_refresh
+    from backend.daily_refresh import run_daily_refresh, has_fresh_data
+    if has_fresh_data("dev_tenant"):
+        return  # 数据仍然新鲜，无需消耗 API 配额
     settings = _st.get_settings("dev_tenant")
     geos = settings.get("targetCountries") or ["US"]
     run_daily_refresh(geos=geos, trigger="schedule")
@@ -110,12 +113,17 @@ async def _start_daily_refresh_scheduler():
             f"全量刷新（含 220+ 子品类）cron 0 {daily_hour} * * * (UTC) = 美国东部 0:00")
 
         # 默认启动时跑一次刷新（用精简词表，快速上线数据）
+        # 优化：如果数据库中已有 24h 内的品类数据，跳过 TikHub 调用节省 API 成本
         if _os.getenv("DAILY_REFRESH_ON_STARTUP", "1") == "1":
-            from backend.daily_refresh import run_in_background
+            from backend.daily_refresh import run_in_background, has_fresh_data
             from backend import storage as _st
             settings = _st.get_settings("dev_tenant")
             geos = settings.get("targetCountries") or ["US"]
-            run_in_background(geos=geos, trigger="startup")
+            if has_fresh_data("dev_tenant"):
+                logging.getLogger("uvicorn").info(
+                    "数据库已有新鲜数据（24h 内），跳过启动刷新，节省 TikHub API 调用")
+            else:
+                run_in_background(geos=geos, trigger="startup")
     except Exception as _e:
         import logging
         logging.getLogger("uvicorn").warning(f"每日刷新调度未启动: {_e}")
