@@ -367,7 +367,7 @@ async def admin_daily_refresh_status(tenant_id: str = Depends(require_tenant)):
 
 @app.get("/healthz")
 async def healthz():
-    """健康检查：确认进程存活 + Redis 可达 + Auth DB 可用。"""
+    """健康检查：确认进程存活 + Redis 可达 + 数据库类型。"""
     redis_ok = False
     try:
         c = aioredis.from_url(REDIS_URL, decode_responses=True)
@@ -376,7 +376,9 @@ async def healthz():
         redis_ok = True
     except Exception:
         pass
-    return {"ok": True, "redis": redis_ok}
+    from backend.storage import DB_URL
+    db_type = "postgres" if "postgresql" in DB_URL else "sqlite"
+    return {"ok": True, "redis": redis_ok, "db": db_type}
 
 
 @app.get("/api-config-status")
