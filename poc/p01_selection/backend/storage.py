@@ -697,3 +697,28 @@ def list_all_snapshots(tenant_id: str = "dev_tenant", *,
         if source:
             q = q.filter(DataSnapshot.source == source)
         return list(q.order_by(DataSnapshot.captured_at.desc()).limit(limit).all())
+
+
+def purge_simulated_backfill(tenant_id: str = "dev_tenant") -> int:
+    """删除所有旧版模拟回填数据（payload 中含 backfill=True 且 source_label 含「模拟」的）。"""
+    from sqlalchemy import cast, String
+    with SessionLocal() as s:
+        # 找到所有旧版 all_backfill_ 开头的 run_id 的 category_rank 数据（这些是模拟的）
+        rows = (s.query(DataSnapshot)
+                .filter(DataSnapshot.tenant_id == tenant_id,
+                        DataSnapshot.source == "category_rank",
+                        DataSnapshot.run_id.like("all_backfill_%"))
+                .all())
+        count = len(rows)
+        for r in rows:
+            s.delete(r)
+        # 也删除旧版社媒模拟回填（run_id 含 _social_d 且非 TikTok 真实曲线）
+        social_rows = (s.query(DataSnapshot)
+                       .filter(DataSnapshot.tenant_id == tenant_id,
+                               DataSnapshot.run_id.like("all_backfill_%_social_d%"))
+                       .all())
+        count += len(social_rows)
+        for r in social_rows:
+            s.delete(r)
+        s.commit()
+    return count

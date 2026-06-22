@@ -546,73 +546,73 @@ class Mutation:
 
     @strawberry.mutation
     def backfill_google_trends(self, tenant_id: str = "dev_tenant") -> bool:
-        """回填过去一个月的全部趋势数据（品类+社媒+Google Trends）。后台线程运行，立即返回。
-        优化：品类回填使用 DB 现有数据（不调 TikHub），只有 Google Trends 需要网络请求。"""
+        """回填过去一个月的真实趋势数据。后台线程运行，立即返回。
+        所有数据均来自真实 API（Google Trends / TikHub），不生成任何模拟数据。"""
         import threading
 
         def _do_backfill():
-            import sys, uuid, random
+            import sys, uuid
             from pathlib import Path
             sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-            from backend.daily_refresh import (DEFAULT_SEED_TERMS, SOCIAL_TREND_TERM,
-                                                _collect_social_trends)
-            from datetime import datetime, timezone, timedelta
+            from backend.daily_refresh import DEFAULT_SEED_TERMS, SOCIAL_TREND_TERM
+            from datetime import datetime, timezone
             from loguru import logger
 
-            run_id = f"all_backfill_{uuid.uuid4().hex[:8]}"
-            now = datetime.now(timezone.utc)
-            logger.info(f"全量趋势回填开始: run_id={run_id}")
+            run_id = f"real_backfill_{uuid.uuid4().hex[:8]}"
+            logger.info(f"真实数据回填开始: run_id={run_id}")
 
-            # ── 1. 品类趋势回填：从 DB 读取现有品类数据，生成 30 天模拟历史（不调 TikHub） ──
+            # ── 1. Google Trends 真实回填（30 天每日搜索热度）──
+            saved_gt = 0
             try:
+                from modules.trends import get_keyword_trend
+                # 回填所有种子词 + DB 中品类英文名
+                keywords = list(DEFAULT_SEED_TERMS)
                 existing_cats = st.list_latest_snapshots(tenant_id, source="category_rank", limit=500)
-                ok_cats = [c for c in existing_cats if c.real_data and c.payload]
-                logger.info(f"品类回填: 从 DB 取到 {len(ok_cats)} 个品类（不调 TikHub）")
-                for day_offset in range(30, 0, -1):
-                    ts = now - timedelta(days=day_offset)
-                    day_run = f"{run_id}_cat_d{day_offset}"
-                    for cat_snap in ok_cats:
-                        payload = dict(cat_snap.payload or {})
-                        prods = payload.get("products") or []
-                        prices = [p.get("price") for p in prods if isinstance(p.get("price"), (int, float)) and p["price"] > 0]
-                        ratings = [p.get("rating") for p in prods if isinstance(p.get("rating"), (int, float)) and p["rating"] > 0]
-                        avg_price = sum(prices) / len(prices) if prices else 0
-                        avg_rating = sum(ratings) / len(ratings) if ratings else 0
-                        varied_price = round(avg_price * (1 + random.uniform(-0.08, 0.08)), 2)
-                        varied_count = max(1, len(prods) + random.randint(-3, 3))
-                        varied_rating = round(max(1.0, min(5.0, avg_rating + random.uniform(-0.15, 0.15))), 1)
-                        backfill_payload = {
-                            "category_id": payload.get("category_id"),
-                            "category_name": payload.get("category_name"),
-                            "category_name_en": payload.get("category_name_en"),
-                            "avg_price": varied_price,
-                            "product_count": varied_count,
-                            "avg_rating": varied_rating,
-                            "backfill": True,
-                            "source_label": "回填（品类趋势模拟）",
-                        }
-                        if payload.get("parent_category"):
-                            backfill_payload["parent_category"] = payload["parent_category"]
-                        cat_name = payload.get("category_name") or payload.get("category_name_en") or "unknown"
-                        st.save_snapshot(
-                            tenant_id=tenant_id, run_id=day_run,
-                            term="📦 品类榜单", source="category_rank",
-                            geo="US", tier=2, status="ok", real_data=True,
-                            summary=f"{cat_name} 回填 d-{day_offset}",
-                            payload=backfill_payload,
-                            captured_at=ts,
-                        )
-                logger.info(f"品类回填完成: {len(ok_cats)} 品类 × 30 天")
+                for cat in existing_cats:
+                    p = cat.payload or {}
+                    en_name = p.get("category_name_en") or ""
+                    if en_name and en_name not in keywords:
+                        keywords.append(en_name)
+                logger.info(f"Google Trends 回填: {len(keywords)} 个关键词")
+                for kw in keywords:
+                    try:
+                        df = get_keyword_trend([kw], timeframe="today 1-m", geo="US")
+                        if df.empty:
+                            continue
+                        col = kw if kw in df.columns else df.columns[0]
+                        for ts_idx, val in zip(df.index, df[col]):
+                            ts_str = ts_idx.isoformat() if hasattr(ts_idx, "isoformat") else str(ts_idx)
+                            try:
+                                ts_dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                            except Exception:
+                                ts_dt = None
+                            st.save_snapshot(
+                                tenant_id=tenant_id, run_id=run_id, term=kw,
+                                source="google_trends", geo="US", tier=1,
+                                status="ok", real_data=True,
+                                summary=f"Google Trends: {kw} @ {ts_str}",
+                                payload={
+                                    "keyword": kw, "geo": "US",
+                                    "late_avg": float(val), "early_avg": float(val),
+                                    "direction": "real_backfill",
+                                    "max": float(val), "min": float(val),
+                                },
+                                captured_at=ts_dt,
+                            )
+                            saved_gt += 1
+                        logger.info(f"Google Trends OK: {kw} ({len(df)} 点)")
+                    except Exception as e:
+                        logger.warning(f"Google Trends 失败: {kw}: {e}")
             except Exception as e:
-                logger.warning(f"品类趋势回填失败: {e}")
+                logger.warning(f"Google Trends 模块不可用: {e}")
 
-            # ── 2. 社媒趋势回填：用 TikTok 话题热度曲线(30天)做真实回填 ──
+            # ── 2. TikTok 话题 30 天真实热度曲线（TikHub API）──
+            saved_social = 0
             try:
                 from modules import tikhub
                 if tikhub.is_configured():
-                    # Use trending hashtags with 30-day time range for real historical data
                     tags = tikhub.trending_hashtags(time_range=30, country="US", limit=20)
-                    logger.info(f"社媒回填: TikTok 话题曲线 {len(tags)} 个话题")
+                    logger.info(f"TikTok 话题回填: {len(tags)} 个话题")
                     for tag_data in tags:
                         curve = tag_data.get("popularity_curve") or []
                         hashtag = tag_data.get("hashtag") or "unknown"
@@ -634,84 +634,21 @@ class Mutation:
                                 term=SOCIAL_TREND_TERM,
                                 source="trend_tiktok",
                                 geo="US", tier=2, status="ok", real_data=True,
-                                summary=f"TikTok #{hashtag} 热度曲线",
+                                summary=f"TikTok #{hashtag} 真实热度曲线",
                                 payload={
                                     "platform": "tiktok",
                                     "label": "TikTok 话题热度",
                                     "items": [{"keyword": f"#{hashtag}", "heat": int(pt_val)}],
                                     "hot_count": int(pt_val),
-                                    "backfill": True,
                                 },
                                 captured_at=ts,
                             )
-
-                    # Also generate synthetic backfill for Twitter and Lemon8
-                    live_social = _collect_social_trends(limit=20)
-                    for plat_row in live_social:
-                        src = plat_row.get("source", "")
-                        if src in ("trend_twitter", "trend_lemon8") and plat_row.get("real_data"):
-                            items = (plat_row.get("payload") or {}).get("items") or []
-                            base_count = len(items)
-                            for day_offset in range(30, 0, -1):
-                                ts = now - timedelta(days=day_offset)
-                                varied_count = max(1, base_count + random.randint(-5, 5))
-                                st.save_snapshot(
-                                    tenant_id=tenant_id,
-                                    run_id=f"{run_id}_social_d{day_offset}",
-                                    term=SOCIAL_TREND_TERM,
-                                    source=src,
-                                    geo="US", tier=2, status="ok", real_data=True,
-                                    summary=f"{src} 回填 d-{day_offset}",
-                                    payload={
-                                        "platform": src.replace("trend_", ""),
-                                        "label": plat_row.get("payload", {}).get("label", src),
-                                        "items": items[:varied_count],
-                                        "backfill": True,
-                                    },
-                                    captured_at=ts,
-                                )
-                    logger.info("社媒趋势回填完成")
+                            saved_social += 1
+                    logger.info(f"TikTok 话题回填完成: {saved_social} 条")
             except Exception as e:
-                logger.warning(f"社媒趋势回填失败: {e}")
+                logger.warning(f"TikTok 话题回填失败: {e}")
 
-            # ── 3. Google Trends 回填 ──
-            try:
-                from modules.trends import get_keyword_trend
-                keywords = DEFAULT_SEED_TERMS[:15]
-                logger.info(f"Google Trends 回填: {len(keywords)} 个关键词")
-                for kw in keywords:
-                    try:
-                        df = get_keyword_trend([kw], timeframe="today 1-m", geo="US")
-                        if df.empty:
-                            continue
-                        col = kw if kw in df.columns else df.columns[0]
-                        for ts_idx, val in zip(df.index, df[col]):
-                            ts_str = ts_idx.isoformat() if hasattr(ts_idx, "isoformat") else str(ts_idx)
-                            try:
-                                ts_dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-                            except Exception:
-                                ts_dt = None
-                            st.save_snapshot(
-                                tenant_id=tenant_id, run_id=run_id, term=kw,
-                                source="google_trends", geo="US", tier=1,
-                                status="ok", real_data=True,
-                                summary=f"Google Trends 回填: {kw} @ {ts_str}",
-                                payload={
-                                    "keyword": kw, "geo": "US",
-                                    "late_avg": float(val), "early_avg": float(val),
-                                    "direction": "回填", "max": float(val), "min": float(val),
-                                    "recent_3m_avg": None,
-                                    "backfill": True, "backfill_ts": ts_str,
-                                },
-                                captured_at=ts_dt,
-                            )
-                        logger.info(f"Google Trends 回填完成: {kw} ({len(df)} 点)")
-                    except Exception as e:
-                        logger.warning(f"Google Trends 回填失败: {kw}: {e}")
-            except Exception as e:
-                logger.warning(f"Google Trends 模块不可用: {e}")
-
-            logger.info(f"全量趋势回填完成: run_id={run_id}")
+            logger.info(f"真实数据回填完成: Google Trends {saved_gt} 条, TikTok {saved_social} 条")
 
         threading.Thread(target=_do_backfill, daemon=True).start()
         return True

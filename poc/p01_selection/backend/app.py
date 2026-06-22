@@ -124,26 +124,30 @@ async def _start_daily_refresh_scheduler():
             else:
                 run_in_background(geos=geos, trigger="startup")
 
-        # 自动回填：如果历史数据不足 3 天，用 DB 现有品类生成 30 天模拟趋势 + Google Trends
+        # 自动回填：如果 Google Trends 真实数据不足 3 天，触发回填
         if _os.getenv("AUTO_BACKFILL", "1") == "1":
             import threading
             def _auto_backfill():
                 import time
                 time.sleep(30)  # 等待 startup refresh 完成
                 from backend import storage as _st2
-                all_snaps = _st2.list_all_snapshots("dev_tenant", source="category_rank", limit=5000)
+                gt_snaps = _st2.list_all_snapshots("dev_tenant", source="google_trends", limit=5000)
                 days = set()
-                for s in all_snaps:
+                for s in gt_snaps:
                     if s.captured_at:
                         days.add(s.captured_at.strftime("%Y-%m-%d"))
                 if len(days) < 3:
+                    # 先清理旧版模拟数据
+                    purged = _st2.purge_simulated_backfill("dev_tenant")
+                    if purged:
+                        logging.getLogger("uvicorn").info(f"已清理 {purged} 条旧版模拟回填数据")
                     logging.getLogger("uvicorn").info(
-                        f"历史数据只有 {len(days)} 天，自动回填 30 天趋势数据（从 DB 读取，不调 TikHub）")
+                        f"Google Trends 真实数据只有 {len(days)} 天，自动回填 30 天真实趋势数据")
                     from backend.graphql_api import Mutation
                     Mutation().backfill_google_trends("dev_tenant")
                 else:
                     logging.getLogger("uvicorn").info(
-                        f"已有 {len(days)} 天历史数据，无需回填")
+                        f"已有 {len(days)} 天 Google Trends 数据，无需回填")
             threading.Thread(target=_auto_backfill, daemon=True).start()
     except Exception as _e:
         import logging
@@ -422,10 +426,13 @@ async def trigger_full_refresh():
 
 @app.post("/trigger-backfill")
 async def trigger_backfill():
-    """回填 30 天趋势数据（从 DB 读取品类，不调 TikHub）+ Google Trends 真实数据。"""
+    """回填 30 天真实趋势数据（Google Trends + TikTok 话题热度曲线）。不生成模拟数据。"""
+    from backend import storage as _st
+    # 先清理旧版模拟数据
+    purged = _st.purge_simulated_backfill("dev_tenant")
     from backend.graphql_api import Mutation
     ok = Mutation().backfill_google_trends("dev_tenant")
-    return {"ok": ok, "type": "backfill_30d"}
+    return {"ok": ok, "type": "real_backfill_30d", "purged_simulated": purged}
 
 
 # ─── 用户认证 API（注册/登录/邮箱验证）───
