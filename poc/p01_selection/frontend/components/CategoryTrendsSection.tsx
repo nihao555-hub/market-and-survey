@@ -345,20 +345,22 @@ function LatestGoogleSummary({ items }: { items: GoogleTrendItem[] }) {
 }
 
 // ─── Per-category sparkline (SVG) ──────────────────────────────────
-function CatSparkline({ values, className }: { values: number[]; className?: string }) {
+function CatSparkline({ values, className, wide }: { values: number[]; className?: string; wide?: boolean }) {
   if (values.length < 2) return null;
   const max = Math.max(...values), min = Math.min(...values);
   const span = max - min || 1;
-  const W = 100, H = 28;
+  const W = wide ? 200 : 100, H = wide ? 40 : 28;
   const pts = values.map((v, i) => {
     const x = (i / (values.length - 1)) * W;
     const y = H - ((v - min) / span) * (H - 4) - 2;
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   });
   const rising = values[values.length - 1] >= values[0];
+  const fillPts = wide ? `0,${H} ${pts.join(" ")} ${W},${H}` : "";
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className={cn("h-7 w-[100px]", className)} preserveAspectRatio="none">
-      <polyline points={pts.join(" ")} fill="none" stroke={rising ? "#10b981" : "#f43f5e"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox={`0 0 ${W} ${H}`} className={cn(wide ? "h-10 w-full" : "h-7 w-[100px]", className)} preserveAspectRatio="none">
+      {wide && <polygon points={fillPts} fill={rising ? "rgba(16,185,129,0.12)" : "rgba(244,63,94,0.12)"} />}
+      <polyline points={pts.join(" ")} fill="none" stroke={rising ? "#10b981" : "#f43f5e"} strokeWidth={wide ? "2" : "1.5"} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -371,6 +373,7 @@ interface CatCardData {
   priceHistory: number[];
   countHistory: number[];
   ratingHistory: number[];
+  trendsHistory: number[];
   top5: Array<{ title: string; price: number; sold: number; rating: number; image?: string }>;
 }
 
@@ -475,8 +478,30 @@ function buildCatCards(latestSnaps: DataSnapshot[], historySnaps: DataSnapshot[]
 }
 
 /** Build cat cards from server-side sparkline data (fast path). */
-function buildCatCardsFromSpark(latestSnaps: DataSnapshot[], sparkData: CategorySparkData[]): CatCardData[] {
+function buildCatCardsFromSpark(latestSnaps: DataSnapshot[], sparkData: CategorySparkData[], googleSnaps?: DataSnapshot[]): CatCardData[] {
   const sparkMap = new Map(sparkData.map((s) => [s.name, s]));
+
+  // Build Google Trends history map (slug → values[])
+  const catTrendsMap = new Map<string, number[]>();
+  if (googleSnaps && googleSnaps.length > 0) {
+    const kwPoints = new Map<string, { ts: string; val: number }[]>();
+    for (const s of googleSnaps) {
+      const term = (s.payload?.term || s.payload?.keyword || "") as string;
+      const val = (s.payload?.value ?? s.payload?.late_avg ?? 0) as number;
+      const ts = (s.capturedAt || s.payload?.date || "") as string;
+      if (!term || !ts) continue;
+      if (!kwPoints.has(term)) kwPoints.set(term, []);
+      kwPoints.get(term)!.push({ ts, val });
+    }
+    for (const [kw, pts] of kwPoints) {
+      pts.sort((a, b) => a.ts.localeCompare(b.ts));
+      const existing = catTrendsMap.get(kw) || [];
+      if (pts.length > existing.length) {
+        catTrendsMap.set(kw, pts.map((p) => p.val));
+      }
+    }
+  }
+
   const allNames = new Set([
     ...sparkData.map((s) => s.name),
     ...latestSnaps.map((s) => (s.payload?.category_name || s.payload?.category_name_en || "") as string).filter(Boolean),
@@ -489,6 +514,11 @@ function buildCatCardsFromSpark(latestSnaps: DataSnapshot[], sparkData: Category
     const priceHistory = spark?.points.map((p) => p.avgPrice) ?? [];
     const countHistory = spark?.points.map((p) => p.productCount) ?? [];
     const ratingHistory = spark?.points.map((p) => p.avgRating) ?? [];
+    // Google Trends sparkline: normalize to slug format for matching
+    const catNameEn = (latestSnap?.payload?.category_name_en as string) || name;
+    const catSlug = catNameEn.toLowerCase().replace(/[&]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
+    const trendsHistory = catTrendsMap.get(catSlug) || catTrendsMap.get(catNameEn) || [];
+
     const latestStats = latestSnap ? _extractStats(latestSnap) : null;
     const latestAvgPrice = latestStats?.avgPrice ?? (priceHistory.length ? priceHistory[priceHistory.length - 1] : 0);
     const latestCount = latestStats?.count ?? (countHistory.length ? countHistory[countHistory.length - 1] : prods.length);
@@ -498,7 +528,7 @@ function buildCatCardsFromSpark(latestSnaps: DataSnapshot[], sparkData: Category
       .sort((a, b) => (b.sold_count ?? 0) - (a.sold_count ?? 0))
       .slice(0, 5)
       .map((p) => ({ title: p.title || "", price: p.price || 0, sold: p.sold_count || 0, rating: p.rating || 0, image: p.image }));
-    cards.push({ name, latestAvgPrice, latestCount, latestAvgRating, priceHistory, countHistory, ratingHistory, top5 });
+    cards.push({ name, latestAvgPrice, latestCount, latestAvgRating, priceHistory, countHistory, ratingHistory, trendsHistory, top5 });
   }
   return cards.sort((a, b) => b.latestCount - a.latestCount);
 }
@@ -592,8 +622,8 @@ function CategoryDetailModal({ card, onClose }: { card: CatCardData | null; onCl
   );
 }
 
-function CategoryCards({ latestSnaps, sparkData }: { latestSnaps: DataSnapshot[]; sparkData: CategorySparkData[] }) {
-  const cards = React.useMemo(() => buildCatCardsFromSpark(latestSnaps, sparkData), [latestSnaps, sparkData]);
+function CategoryCards({ latestSnaps, sparkData, googleSnaps }: { latestSnaps: DataSnapshot[]; sparkData: CategorySparkData[]; googleSnaps?: DataSnapshot[] }) {
+  const cards = React.useMemo(() => buildCatCardsFromSpark(latestSnaps, sparkData, googleSnaps), [latestSnaps, sparkData, googleSnaps]);
   const [selectedCard, setSelectedCard] = useState<CatCardData | null>(null);
   if (cards.length === 0) return null;
 
@@ -620,6 +650,13 @@ function CategoryCards({ latestSnaps, sparkData }: { latestSnaps: DataSnapshot[]
                 <CatSparkline values={card.ratingHistory} />
               </div>
             </div>
+            {card.trendsHistory.length >= 2 && (
+              <div className="mt-2 flex items-center gap-2">
+                <TrendingUp className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                <span className="text-[10px] text-blue-600 font-medium flex-shrink-0">销量趋势</span>
+                <CatSparkline values={card.trendsHistory} wide />
+              </div>
+            )}
           </div>
           {card.top5.length > 0 && (
             <div className="px-4 py-2">
@@ -917,14 +954,7 @@ export function CategoryTrendsSection() {
           {/* Content area */}
           {tab === "category" ? (
             <div className="p-4">
-              {/* Trend line chart at top */}
-              {googleItems.length > 0 && (
-                <div className="mb-4">
-                  <div className="mb-2 text-[11px] font-medium text-[var(--gray-9)]">品类搜索热度走势（近30天）</div>
-                  <MiniChart option={googleChartOpt} height={260} />
-                </div>
-              )}
-              <CategoryCards latestSnaps={latestCats} sparkData={catSparks} />
+              <CategoryCards latestSnaps={latestCats} sparkData={catSparks} googleSnaps={googleSnaps} />
             </div>
           ) : (
             <>
