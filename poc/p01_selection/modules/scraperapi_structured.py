@@ -30,9 +30,76 @@ AMAZON_TLD_MAP = {
 # Walmart TLD 映射
 WALMART_TLD_MAP = {"US": "com", "CA": "ca"}
 
+# eBay TLD 映射（全球主要站点）
+EBAY_TLD_MAP = {
+    "US": "com", "UK": "co.uk", "GB": "co.uk", "DE": "de", "FR": "fr",
+    "IT": "it", "ES": "es", "AU": "com.au", "CA": "ca", "AT": "at",
+    "BE": "be", "CH": "ch", "NL": "nl", "IE": "ie", "PL": "pl",
+    "SG": "com.sg", "MY": "com.my", "PH": "ph", "IN": "in",
+}
+
+# Google Shopping 支持的国家（主要市场）
+GOOGLE_SHOPPING_COUNTRIES = {
+    "US", "UK", "GB", "CA", "AU", "DE", "FR", "IT", "ES", "NL", "BE",
+    "AT", "CH", "SE", "NO", "DK", "FI", "PL", "CZ", "IE", "PT",
+    "JP", "KR", "IN", "SG", "MY", "TH", "ID", "PH", "VN",
+    "BR", "MX", "AR", "CL", "CO",
+    "AE", "SA", "IL", "TR", "ZA", "NG", "EG",
+}
+
 
 def _key() -> str:
     return os.environ.get("SCRAPERAPI_KEY", "") or SCRAPERAPI_KEY
+
+
+def _parse_numeric(val) -> float:
+    """从价格/数字字符串中提取浮点数"""
+    if val is None:
+        return 0
+    if isinstance(val, (int, float)):
+        return float(val)
+    import re
+    nums = re.findall(r"[\d,]+\.?\d*", str(val).replace(",", ""))
+    if nums:
+        try:
+            return float(nums[0])
+        except (ValueError, TypeError):
+            pass
+    return 0
+
+
+def _sort_by_popularity(products: list) -> list:
+    """按销量 > 评论数 > 评分排序，确保 Top sellers 在前面"""
+    import re
+    
+    def _pop_score(p):
+        # 销量文本解析（"2K+ bought", "10K+ sold", "150 sold"）
+        sv = p.get("sales_volume") or p.get("sold_count") or ""
+        sv_num = 0
+        if sv:
+            sv_str = str(sv).upper().replace(",", "")
+            m = re.search(r"([\d.]+)\s*K?\+?", sv_str)
+            if m:
+                sv_num = float(m.group(1))
+                if "K" in sv_str:
+                    sv_num *= 1000
+        
+        # 评论数
+        reviews = p.get("reviews") or p.get("review_count") or 0
+        if isinstance(reviews, str):
+            reviews = _parse_numeric(reviews)
+        
+        # 评分
+        rating = p.get("rating") or 0
+        if isinstance(rating, str):
+            rating = _parse_numeric(rating)
+        
+        return (sv_num, float(reviews), float(rating))
+    
+    # 只在有销量/评论数据时排序，避免破坏 API 原始的 best sellers 顺序
+    if any(p.get("sales_volume") or p.get("sold_count") or p.get("reviews") for p in products):
+        products.sort(key=_pop_score, reverse=True)
+    return products
 
 
 def _request(endpoint: str, params: dict, timeout: int = TIMEOUT) -> dict:
@@ -148,15 +215,21 @@ def amazon_product(asin: str, geo: str = "US") -> dict:
 # Amazon Search API — 结构化搜索结果
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def amazon_search(query: str, geo: str = "US", page: int = 1) -> dict:
-    """Amazon 结构化搜索，直接返回 JSON 产品列表"""
+def amazon_search(query: str, geo: str = "US", page: int = 1, sort_by: str = "BEST_SELLERS") -> dict:
+    """
+    Amazon 结构化搜索，直接返回 JSON 产品列表。
+    sort_by: BEST_SELLERS / PRICE_LOW_TO_HIGH / PRICE_HIGH_TO_LOW / REVIEWS / NEWEST
+    默认 BEST_SELLERS 确保返回销量最高的商品。
+    """
     tld = AMAZON_TLD_MAP.get(geo.upper(), "com")
     params = {"query": query, "tld": tld, "country_code": geo.lower(), "page": str(page)}
     raw = _request("amazon/search", params)
-    if raw.get("error"):
+    if isinstance(raw, dict) and raw.get("error"):
         return {"available": False, **raw}
     
     results = raw.get("results") or raw.get("organic_results") or []
+    if isinstance(raw, list):
+        results = raw
     products = []
     for item in results:
         if not isinstance(item, dict):
@@ -176,6 +249,9 @@ def amazon_search(query: str, geo: str = "US", page: int = 1) -> dict:
             "sponsored": item.get("sponsored", False),
         })
     
+    # 按销量/评论数排序（确保 Top sellers 在前）
+    products = _sort_by_popularity(products)
+    
     return {
         "available": True,
         "query": query, "geo": geo, "page": page, "tld": tld,
@@ -183,6 +259,7 @@ def amazon_search(query: str, geo: str = "US", page: int = 1) -> dict:
         "products": products,
         "total_results": raw.get("total_results"),
         "_source": f"ScraperAPI Structured Amazon Search (tld={tld})",
+        "_sorted_by": "sales_volume > reviews > rating",
     }
 
 
@@ -306,12 +383,16 @@ def walmart_search(query: str, geo: str = "US", page: int = 1) -> dict:
             "sponsored": item.get("sponsored", False),
         })
     
+    # 按评论数/评分排序（Walmart 无月销字段，用 reviews 排序）
+    products = _sort_by_popularity(products)
+    
     return {
         "available": True,
         "query": query, "geo": geo, "page": page,
         "count": len(products),
         "products": products,
         "_source": "ScraperAPI Structured Walmart Search",
+        "_sorted_by": "reviews > rating",
     }
 
 
@@ -405,8 +486,9 @@ def walmart_category(category_id: str, geo: str = "US", page: int = 1) -> dict:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def ebay_product(product_id: str, geo: str = "US") -> dict:
-    """eBay 商品详情"""
-    params = {"product_id": product_id, "country_code": geo.lower()}
+    """eBay 商品详情 — 支持全球 19 个站点"""
+    tld = EBAY_TLD_MAP.get(geo.upper(), "com")
+    params = {"product_id": product_id, "country_code": geo.lower(), "tld": tld}
     raw = _request("ebay/product", params)
     if isinstance(raw, list):
         raw = raw[0] if raw else {}
@@ -441,8 +523,9 @@ def ebay_product(product_id: str, geo: str = "US") -> dict:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def ebay_search(query: str, geo: str = "US", page: int = 1) -> dict:
-    """eBay 结构化搜索"""
-    params = {"query": query, "country_code": geo.lower(), "page": str(page)}
+    """eBay 结构化搜索 — 支持全球 19 个 eBay 站点"""
+    tld = EBAY_TLD_MAP.get(geo.upper(), "com")
+    params = {"query": query, "country_code": geo.lower(), "tld": tld, "page": str(page)}
     raw = _request("ebay/search", params)
     
     # eBay 可能直接返回 list
@@ -474,12 +557,16 @@ def ebay_search(query: str, geo: str = "US", page: int = 1) -> dict:
             "location": item.get("shipping_location") or item.get("location"),
         })
     
+    # 按已售数量排序（eBay 的 sold_count 是关键销量指标）
+    products = _sort_by_popularity(products)
+    
     return {
         "available": True,
-        "query": query, "geo": geo, "page": page,
+        "query": query, "geo": geo, "page": page, "tld": tld,
         "count": len(products),
         "products": products,
-        "_source": "ScraperAPI Structured eBay Search",
+        "_source": f"ScraperAPI Structured eBay Search (tld={tld})",
+        "_sorted_by": "sold_count > reviews",
     }
 
 

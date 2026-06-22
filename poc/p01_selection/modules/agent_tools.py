@@ -1081,17 +1081,27 @@ def tool_search_products(platform: str, keyword: str, limit: int = 50,
                       f"建议换平台（pick_platforms_for_market 给出的 verified 列表）",
             "platform_status": p.get("status"),
         }
-    # ═══ ScraperAPI SDE 优先路径（Amazon/Walmart/eBay 有结构化 API）═══
+    # ═══ ScraperAPI SDE 优先路径（Amazon/Walmart/eBay/Google Shopping 有结构化 API）═══
     _SDE_PLATFORMS = {
+        # Amazon 全球 22 站
         "amazon": "amazon", "amazon_us": "amazon", "amazon_uk": "amazon",
         "amazon_de": "amazon", "amazon_fr": "amazon", "amazon_jp": "amazon",
         "amazon_in": "amazon", "amazon_au": "amazon", "amazon_ca": "amazon",
         "amazon_it": "amazon", "amazon_es": "amazon", "amazon_br": "amazon",
         "amazon_mx": "amazon", "amazon_nl": "amazon", "amazon_se": "amazon",
         "amazon_pl": "amazon", "amazon_ae": "amazon", "amazon_sa": "amazon",
-        "amazon_sg": "amazon", "amazon_tr": "amazon",
+        "amazon_sg": "amazon", "amazon_tr": "amazon", "amazon_ie": "amazon",
+        "amazon_za": "amazon",
+        # Walmart US/CA
         "walmart": "walmart", "walmart_ca": "walmart",
-        "ebay": "ebay", "ebay_uk": "ebay", "ebay_de": "ebay", "ebay_au": "ebay",
+        # eBay 全球 19 站
+        "ebay": "ebay", "ebay_us": "ebay", "ebay_uk": "ebay", "ebay_de": "ebay",
+        "ebay_au": "ebay", "ebay_fr": "ebay", "ebay_it": "ebay", "ebay_es": "ebay",
+        "ebay_ca": "ebay", "ebay_nl": "ebay", "ebay_be": "ebay", "ebay_at": "ebay",
+        "ebay_ch": "ebay", "ebay_ie": "ebay", "ebay_pl": "ebay", "ebay_sg": "ebay",
+        "ebay_my": "ebay", "ebay_ph": "ebay", "ebay_in": "ebay",
+        # Google Shopping（全球 40+ 国家）
+        "google_shopping": "google_shopping",
     }
     sde_type = _SDE_PLATFORMS.get(platform)
     if sde_type:
@@ -1104,11 +1114,13 @@ def tool_search_products(platform: str, keyword: str, limit: int = 50,
                     geo_code = suffix
             
             if sde_type == "amazon":
-                sde_result = sde.amazon_search(keyword, geo=geo_code, page=1)
+                sde_result = sde.amazon_search(keyword, geo=geo_code, page=1, sort_by="BEST_SELLERS")
             elif sde_type == "walmart":
                 sde_result = sde.walmart_search(keyword, geo=geo_code, page=1)
             elif sde_type == "ebay":
                 sde_result = sde.ebay_search(keyword, geo=geo_code, page=1)
+            elif sde_type == "google_shopping":
+                sde_result = sde.google_shopping(keyword, geo=geo_code, page=1)
             else:
                 sde_result = None
             
@@ -2865,7 +2877,7 @@ TOOLS_SCHEMA = [
         }, "required": ["category"]}}},
     {"type": "function", "function": {
         "name": "search_products",
-        "description": "在单个平台搜索商品（⚠️ 多平台场景请优先用 search_global_platforms 一键搜全部）。platform 必须是 PLATFORMS 注册表里的 id（用 list_platforms 查）。",
+        "description": "在单个平台搜索商品。Amazon/Walmart/eBay/Google Shopping 平台**自动走 ScraperAPI SDE**（结构化JSON，按销量/BSR排序，返回 Top sellers）。其他平台走本地代理。⚠️ 多平台场景请优先用 search_global_platforms 一键搜全部。",
         "parameters": {"type": "object", "properties": {
             "platform": {"type": "string"}, "keyword": {"type": "string"},
             "limit": {"type": "integer"}
