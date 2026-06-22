@@ -312,9 +312,9 @@ class Query:
         self, tenant_id: str = "dev_tenant",
         term: typing.Optional[str] = None,
         source: typing.Optional[str] = None,
-        limit: int = 200,
+        limit: int = 500,
     ) -> typing.List[DataSnapshotType]:
-        """最近一次每日刷新批次落库的真实数据快照（可按 term/source 过滤）。"""
+        """最新数据快照，聚合多个 run_id 保留完整数据（不丢失全量刷新品类）。"""
         rows = st.list_latest_snapshots(tenant_id, term=term, source=source, limit=limit)
         return [_snapshot_type(d) for d in rows]
 

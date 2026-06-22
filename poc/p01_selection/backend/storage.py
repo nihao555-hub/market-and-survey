@@ -571,18 +571,54 @@ def list_latest_snapshots(tenant_id: str = "dev_tenant", *,
                           source: Optional[str] = None,
                           run_id: Optional[str] = None,
                           limit: int = 200) -> list[DataSnapshot]:
-    """列出最近一次刷新批次的快照（或指定 run_id），可按 term/source 过滤。"""
-    rid = run_id or latest_run_id(tenant_id)
-    if not rid:
-        return []
+    """列出最新数据快照，聚合多个 run_id 以保留完整数据。
+
+    核心改进：不再只返回单一 run_id 的数据。当 startup refresh（28 品类）
+    创建新 run_id 后，之前 full refresh 的 220+ 品类数据仍然可见。
+    对每个 (term, source) 组合，返回最新的一条快照。
+    """
+    if run_id:
+        with SessionLocal() as s:
+            q = (s.query(DataSnapshot)
+                 .filter(DataSnapshot.tenant_id == tenant_id,
+                         DataSnapshot.run_id == run_id))
+            if term:
+                q = q.filter(DataSnapshot.term == term)
+            if source:
+                q = q.filter(DataSnapshot.source == source)
+            return list(q.order_by(DataSnapshot.captured_at.asc()).limit(limit).all())
+
+    # 聚合模式：对每个 (term, source) 取最新的一条
+    from sqlalchemy import func
     with SessionLocal() as s:
+        # Subquery: max captured_at per (term, source)
+        base = s.query(DataSnapshot).filter(
+            DataSnapshot.tenant_id == tenant_id,
+            DataSnapshot.real_data == True,
+        )
+        if term:
+            base = base.filter(DataSnapshot.term == term)
+        if source:
+            base = base.filter(DataSnapshot.source == source)
+
+        sub = (base.with_entities(
+            DataSnapshot.term,
+            DataSnapshot.source,
+            func.max(DataSnapshot.captured_at).label("max_ts"),
+        ).group_by(DataSnapshot.term, DataSnapshot.source)
+         .subquery())
+
         q = (s.query(DataSnapshot)
-             .filter(DataSnapshot.tenant_id == tenant_id, DataSnapshot.run_id == rid))
+             .join(sub, (DataSnapshot.term == sub.c.term) &
+                        (DataSnapshot.source == sub.c.source) &
+                        (DataSnapshot.captured_at == sub.c.max_ts))
+             .filter(DataSnapshot.tenant_id == tenant_id,
+                     DataSnapshot.real_data == True))
         if term:
             q = q.filter(DataSnapshot.term == term)
         if source:
             q = q.filter(DataSnapshot.source == source)
-        return list(q.order_by(DataSnapshot.captured_at.asc()).limit(limit).all())
+        return list(q.order_by(DataSnapshot.captured_at.desc()).limit(limit).all())
 
 
 def list_all_snapshots(tenant_id: str = "dev_tenant", *,

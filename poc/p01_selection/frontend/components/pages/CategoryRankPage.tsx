@@ -772,7 +772,7 @@ export function CategoryRankPage() {
     try {
       const [st, catSnaps, hotSnaps, htSnaps, sparks, gtSnaps] = await Promise.all([
         fetchDailyRefreshStatus(),
-        fetchDataSnapshots({ source: "category_rank", limit: 300 }),
+        fetchDataSnapshots({ source: "category_rank", limit: 500 }),
         fetchDataSnapshots({ term: HOT_SELLING_TERM, limit: 1 }),
         fetchDataSnapshots({ term: HASHTAG_TREND_TERM, limit: 1 }),
         fetchCategorySparklines(),
