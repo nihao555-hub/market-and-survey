@@ -217,7 +217,13 @@ def search_amazon_products(keyword: str, geo: str = "US", page: int = 1) -> dict
 
 def api_status() -> dict:
     """汇报哪些付费 API 已配置可用。"""
+    from modules.tikhub import is_configured as tikhub_configured
+    from modules.scraper_api import scraperapi_available
     return {
+        "tikhub": {"available": tikhub_configured(),
+                   "use": "TikTok Shop 实时商品/品类/热销榜 + 社媒热搜（必填）"},
+        "scraperapi": {"available": scraperapi_available(),
+                       "use": "全球电商平台爬取代理（Walmart/eBay/Shopee/Coupang/Ozon 等 80+ 平台）"},
         "dataforseo": {"available": dataforseo_available(),
                        "use": "真实绝对搜索量（趋势洞察）"},
         "rapidapi_amazon": {"available": rapidapi_amazon_available(),

@@ -2816,7 +2816,7 @@ TOOLS_SCHEMA = [
         }, "required": ["category"]}}},
     {"type": "function", "function": {
         "name": "search_products",
-        "description": "在单个平台搜索商品。platform 必须是 PLATFORMS 注册表里的 id（用 list_platforms 查）。",
+        "description": "在单个平台搜索商品（⚠️ 多平台场景请优先用 search_global_platforms 一键搜全部）。platform 必须是 PLATFORMS 注册表里的 id（用 list_platforms 查）。",
         "parameters": {"type": "object", "properties": {
             "platform": {"type": "string"}, "keyword": {"type": "string"},
             "limit": {"type": "integer"}

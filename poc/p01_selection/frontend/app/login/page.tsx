@@ -37,7 +37,7 @@ export default function LoginPage() {
     const json = await res.json();
     if (!res.ok) throw new Error(json.detail || "登录失败");
     saveAuth(json.token, json.email || data.email, json.plan || "free");
-    router.push("/");
+    router.push("/dashboard");
   };
 
   const handleSendCode = async (email: string) => {
@@ -59,7 +59,7 @@ export default function LoginPage() {
     const json = await res.json();
     if (!res.ok) throw new Error(json.detail || "验证失败");
     saveAuth(json.token, json.email || email, json.plan || "free");
-    router.push("/");
+    router.push("/dashboard");
   };
 
   return (
