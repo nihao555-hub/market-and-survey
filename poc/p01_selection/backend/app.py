@@ -7,7 +7,7 @@
 - GET  /thread/{id} 查会话状态
 """
 from __future__ import annotations
-import asyncio, json, uuid
+import asyncio, json, uuid, time
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -89,7 +89,8 @@ async def _start_daily_refresh_scheduler():
             f"刷新调度已启动：cron {minute} {hour_spec} * * * (UTC) = 每 {interval} 小时一次"
             f"（含北京 0:00 = UTC 16:00）")
 
-        if _os.getenv("DAILY_REFRESH_ON_STARTUP", "0") == "1":
+        # 默认启动时跑一次刷新（用精简词表，快速上线数据）
+        if _os.getenv("DAILY_REFRESH_ON_STARTUP", "1") == "1":
             from backend.daily_refresh import run_in_background
             from backend import storage as _st
             settings = _st.get_settings("dev_tenant")
@@ -467,6 +468,35 @@ async def auth_smtp_test():
             results[label] = f"{type(e).__name__}: {e}"
     any_ok = any(v == "OK" for v in results.values())
     return {"ok": any_ok, "results": results}
+
+
+@app.post("/auth/dev-login")
+async def auth_dev_login():
+    """开发/测试用：创建已验证的管理员账号并直接返回 token（跳过邮箱验证）。
+    生产环境可通过 DEV_LOGIN_ENABLED=0 关闭。"""
+    import os as _os
+    if _os.getenv("DEV_LOGIN_ENABLED", "1") != "1":
+        raise HTTPException(403, detail="dev login disabled")
+    from backend.user_auth import _init_db, _hash_password, _generate_token, _db, DB_PATH
+    _init_db()
+    email = "admin@selectpilot.com"
+    name = "Admin"
+    password_hash = _hash_password("admin123")
+    with _db() as conn:
+        existing = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
+        if existing:
+            conn.execute("UPDATE users SET email_verified=1, plan='enterprise' WHERE id=?",
+                         (existing["id"],))
+            uid = existing["id"]
+        else:
+            conn.execute(
+                "INSERT INTO users (email, name, password_hash, email_verified, plan) VALUES (?, ?, ?, 1, 'enterprise')",
+                (email, name, password_hash))
+            uid = conn.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()["id"]
+        token = _generate_token()
+        conn.execute("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)",
+                     (token, uid, time.time() + 30 * 86400))
+    return {"ok": True, "token": token, "email": email, "name": name, "plan": "enterprise"}
 
 
 @app.get("/")
