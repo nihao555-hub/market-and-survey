@@ -220,10 +220,9 @@ function buildPerCatCardsFromSpark(latestSnaps: DataSnapshot[], sparkData: Categ
       if (!kwPoints.has(kw)) kwPoints.set(kw, []);
       kwPoints.get(kw)!.push({ ts, val });
     }
-    // Map keywords to categories and aggregate
+    // Map keywords to categories: try KEYWORD_TO_CATEGORY map first, then use keyword as slug directly
     for (const [kw, pts] of kwPoints) {
-      const catSlug = KEYWORD_TO_CATEGORY[kw];
-      if (!catSlug) continue;
+      const catSlug = KEYWORD_TO_CATEGORY[kw] || kw;
       pts.sort((a, b) => a.ts.localeCompare(b.ts));
       const existing = catTrendsMap.get(catSlug) || [];
       if (pts.length > existing.length) {
