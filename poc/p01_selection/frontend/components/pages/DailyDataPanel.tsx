@@ -215,7 +215,7 @@ export function DailyDataPanel() {
                 <div className="flex items-center justify-between border-b border-surface-3 px-5 py-3">
                   <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--gray-12)]">
                     <BarChart3 className="h-4 w-4 text-[var(--gray-9)]" />
-                    Google Trends 搜索热度走势
+                    品类搜索热度走势
                   </h2>
                 </div>
                 <div className="px-2 pt-2 pb-1">
