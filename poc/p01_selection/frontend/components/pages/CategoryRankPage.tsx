@@ -21,13 +21,14 @@ import { CategoryDetailModal } from "./CategoryDetailModal";
 // (CatChart + buildCatTrendChart removed — replaced by PerCategoryCards below)
 
 // ─── Per-category sparkline (SVG) ───
-function CatSparkline({ values }: { values: number[] }) {
+function CatSparkline({ values, wide }: { values: number[]; wide?: boolean }) {
   if (values.length === 0) return null;
-  const W = 100, H = 28;
+  const W = wide ? 200 : 100;
+  const H = wide ? 40 : 28;
   // Single point: show a dot + flat line
   if (values.length === 1) {
     return (
-      <svg viewBox={`0 0 ${W} ${H}`} className="h-7 w-[100px]" preserveAspectRatio="none">
+      <svg viewBox={`0 0 ${W} ${H}`} className={wide ? "h-10 w-full" : "h-7 w-[100px]"} preserveAspectRatio="none">
         <line x1="0" y1={H / 2} x2={W} y2={H / 2} stroke="#a1a1aa" strokeWidth="1" strokeDasharray="3,3" />
         <circle cx={W / 2} cy={H / 2} r="3" fill="#6366f1" />
       </svg>
@@ -41,9 +42,12 @@ function CatSparkline({ values }: { values: number[] }) {
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   });
   const rising = values[values.length - 1] >= values[0];
+  // For wide mode, add area fill
+  const fillPts = wide ? `0,${H} ${pts.join(" ")} ${W},${H}` : "";
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-7 w-[100px]" preserveAspectRatio="none">
-      <polyline points={pts.join(" ")} fill="none" stroke={rising ? "#10b981" : "#f43f5e"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox={`0 0 ${W} ${H}`} className={wide ? "h-10 w-full" : "h-7 w-[100px]"} preserveAspectRatio="none">
+      {wide && <polygon points={fillPts} fill={rising ? "rgba(16,185,129,0.12)" : "rgba(244,63,94,0.12)"} />}
+      <polyline points={pts.join(" ")} fill="none" stroke={rising ? "#10b981" : "#f43f5e"} strokeWidth={wide ? "2" : "1.5"} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -444,14 +448,15 @@ function PerCategoryCards({ latestSnaps, sparkData, googleTrendsSnaps, onSelectC
                     <span className="font-medium text-[var(--gray-12)]">{card.latestAvgRating}</span>
                     <CatSparkline values={card.ratingHistory} />
                   </div>
-                  {card.trendsHistory.length >= 2 && (
-                    <div className="flex items-center gap-1.5">
-                      <TrendingUp className="h-3 w-3 text-blue-500" />
-                      <CatSparkline values={card.trendsHistory} />
-                    </div>
-                  )}
                   <PriceDistBar products={card.allProducts} />
                 </div>
+                {card.trendsHistory.length >= 2 && (
+                  <div className="mt-2 flex items-center gap-2 px-0">
+                    <TrendingUp className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                    <span className="text-[10px] text-blue-600 font-medium flex-shrink-0">Google趋势</span>
+                    <CatSparkline values={card.trendsHistory} wide />
+                  </div>
+                )}
               </div>
               {card.top5.length > 0 && (
                 <div className="px-4 py-2">
