@@ -593,6 +593,29 @@ def run_daily_refresh(tenant_id: str = "dev_tenant", terms: Optional[list[str]] 
         _RUN_LOCK.release()
 
 
+def has_fresh_data(tenant_id: str = "dev_tenant", max_age_hours: int = 24) -> bool:
+    """检查数据库中是否有新鲜的品类数据（< max_age_hours 小时内）。
+    用于启动时决定是否需要重新从 TikHub 获取数据。有新鲜数据就跳过，节省 API 成本。"""
+    from datetime import timedelta
+    try:
+        from backend.storage import SessionLocal, DataSnapshot
+        with SessionLocal() as s:
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
+            count = (s.query(DataSnapshot)
+                     .filter(DataSnapshot.tenant_id == tenant_id,
+                             DataSnapshot.source == "category_rank",
+                             DataSnapshot.real_data == True,
+                             DataSnapshot.captured_at >= cutoff)
+                     .count())
+            if count > 0:
+                logger.info(f"数据库中有 {count} 条新鲜品类数据（{max_age_hours}h 内），跳过 TikHub 重复抓取")
+                return True
+            return False
+    except Exception as e:
+        logger.warning(f"检查新鲜数据出错: {e}")
+        return False
+
+
 def run_in_background(tenant_id: str = "dev_tenant", terms: Optional[list[str]] = None,
                       geo: str = "US", geos: Optional[list[str]] = None,
                       trigger: str = "manual") -> bool:
