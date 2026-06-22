@@ -171,9 +171,9 @@ export function DailyDataPanel() {
             每 2 小时自动刷新一次：TikTok Shop 实时商品 + 社媒趋势（TikTok/X/Lemon8）+ Google Trends 搜索热度，落库作为选品与调研的底子。
           </p>
         </div>
-        <Button size="sm" loading={running} onClick={onRefresh} className="flex-shrink-0">
-          <RefreshCw className="h-3.5 w-3.5" />立即刷新
-        </Button>
+        <span className="flex items-center gap-1.5 rounded-md bg-[var(--gray-3)] px-2.5 py-1 text-xs text-[var(--gray-9)]">
+          <Clock className="h-3.5 w-3.5" />定时自动刷新
+        </span>
       </div>
       <div className="p-5">
       {loading ? (
@@ -241,7 +241,7 @@ export function DailyDataPanel() {
             <EmptyState
               icon={<Database className="h-6 w-6" />}
               title="还没有数据快照"
-              hint="点击右上角「立即刷新」获取一次真实数据，或等待每 2 小时一次的自动刷新。"
+              hint="数据每 2 小时自动刷新一次，请耐心等待下一次定时刷新。"
             />
           ) : (
             <div className="space-y-3">
