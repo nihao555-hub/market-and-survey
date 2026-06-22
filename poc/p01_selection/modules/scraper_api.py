@@ -362,7 +362,9 @@ def search_products_via_scraperapi(platform: str, keyword: str, limit: int = 20)
         if isinstance(data, list):
             search_results = data
         elif isinstance(data, dict):
-            search_results = data.get("results") or data.get("search_results") or data.get("organic_results") or []
+            search_results = (data.get("results") or data.get("search_results") or
+                              data.get("organic_results") or data.get("items") or
+                              data.get("products") or [])
         else:
             search_results = []
         for item in search_results[:limit]:
