@@ -14,8 +14,8 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
-from sqlalchemy import (create_engine, Column, Integer, String, Float, DateTime,
-                         JSON, ForeignKey, Boolean, text)
+from sqlalchemy import (create_engine, Column, Integer, Float, DateTime,
+                         JSON, ForeignKey, Boolean, text, Text, String)
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from dotenv import load_dotenv
 
@@ -31,17 +31,17 @@ DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 class Thread(Base):
     __tablename__ = "threads"
-    id = Column(String, primary_key=True)  # uuid
-    tenant_id = Column(String, default="dev_tenant", index=True)  # 多租户隔离
-    title = Column(String, default="")
-    active_stream_id = Column(String, nullable=True)
+    id = Column(String(64), primary_key=True)  # uuid
+    tenant_id = Column(String(64), default="dev_tenant", index=True)  # 多租户隔离
+    title = Column(String(500), default="")
+    active_stream_id = Column(String(64), nullable=True)
     conversation_size = Column(Integer, default=0)
     context_window_tokens = Column(Integer, default=128000)
     total_input_tokens = Column(Integer, default=0)
     total_output_tokens = Column(Integer, default=0)
     total_input_credits = Column(Float, default=0)
     total_output_credits = Column(Float, default=0)
-    kind = Column(String, default="general", index=True)  # 调研类型：market/trend/competitor/audience/opportunity/general
+    kind = Column(String(32), default="general", index=True)  # 调研类型：market/trend/competitor/audience/opportunity/general
     is_favorite = Column(Boolean, default=False)        # 收藏夹
     deleted_at = Column(DateTime, nullable=True)        # 软删除（回收站）
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -51,32 +51,32 @@ class Thread(Base):
 
 class Message(Base):
     __tablename__ = "messages"
-    id = Column(String, primary_key=True)
-    thread_id = Column(String, ForeignKey("threads.id"), index=True)
-    role = Column(String)  # user / assistant / system / tool
+    id = Column(String(64), primary_key=True)
+    thread_id = Column(String(64), ForeignKey("threads.id"), index=True)
+    role = Column(String(32))  # user / assistant / system / tool
     parts = Column(JSON)   # UIMessagePart[] 直接持久化
-    status = Column(String, default="sent")  # queued / sent
-    turn_id = Column(String, nullable=True)
-    tool_call_id = Column(String, nullable=True)
+    status = Column(String(32), default="sent")  # queued / sent
+    turn_id = Column(String(64), nullable=True)
+    tool_call_id = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     thread = relationship("Thread", back_populates="messages")
 
 
 class GlobalConfig(Base):
     __tablename__ = "global_config"
-    key = Column(String, primary_key=True)
+    key = Column(String(255), primary_key=True)
     value = Column(JSON)
 
 
 class DataSource(Base):
     """数据源管理：调研依赖的外部数据源与连接状态。"""
     __tablename__ = "data_sources"
-    id = Column(String, primary_key=True)
-    tenant_id = Column(String, default="dev_tenant", index=True)
-    name = Column(String)
-    description = Column(String, default="")
-    kind = Column(String, default="trends")     # 用于前端选图标
-    frequency = Column(String, default="每日")    # 实时 / 每日 / 每周
+    id = Column(String(64), primary_key=True)
+    tenant_id = Column(String(64), default="dev_tenant", index=True)
+    name = Column(String(255))
+    description = Column(String(500), default="")
+    kind = Column(String(32), default="trends")     # 用于前端选图标
+    frequency = Column(String(32), default="每日")    # 实时 / 每日 / 每周
     connected = Column(Boolean, default=False)
     builtin = Column(Boolean, default=False)     # 预置源不可删除
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -86,12 +86,12 @@ class DataSource(Base):
 class Monitor(Base):
     """监控与订阅：品类/竞品/价格的自动监控规则。"""
     __tablename__ = "monitors"
-    id = Column(String, primary_key=True)
-    tenant_id = Column(String, default="dev_tenant", index=True)
-    name = Column(String)
-    description = Column(String, default="")
-    kind = Column(String, default="trend")       # trend / competitor / price
-    cadence = Column(String, default="每日")       # 实时 / 每日 / 每周
+    id = Column(String(64), primary_key=True)
+    tenant_id = Column(String(64), default="dev_tenant", index=True)
+    name = Column(String(255))
+    description = Column(String(500), default="")
+    kind = Column(String(32), default="trend")       # trend / competitor / price
+    cadence = Column(String(32), default="每日")       # 实时 / 每日 / 每周
     enabled = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -99,12 +99,12 @@ class Monitor(Base):
 class ApiKey(Base):
     """API 接入：租户 API Key（仅存哈希，明文只在创建时返回一次）。"""
     __tablename__ = "api_keys"
-    id = Column(String, primary_key=True)
-    tenant_id = Column(String, default="dev_tenant", index=True)
-    name = Column(String, default="默认 Key")
-    prefix = Column(String)        # 展示用前缀，如 msk_live_
-    last4 = Column(String)         # 展示用后四位
-    token_hash = Column(String)    # sha256(明文)
+    id = Column(String(64), primary_key=True)
+    tenant_id = Column(String(64), default="dev_tenant", index=True)
+    name = Column(String(128), default="默认 Key")
+    prefix = Column(String(32))        # 展示用前缀，如 msk_live_
+    last4 = Column(String(8))         # 展示用后四位
+    token_hash = Column(String(128))    # sha256(明文)
     revoked = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_used_at = Column(DateTime, nullable=True)
@@ -118,24 +118,25 @@ class DataSnapshot(Base):
     - tier=2：需美国代理或付费 API（Amazon/Walmart 等商品级 BSR/价格/评论）
     """
     __tablename__ = "data_snapshots"
-    id = Column(String, primary_key=True)
-    tenant_id = Column(String, default="dev_tenant", index=True)
-    run_id = Column(String, index=True)            # 同一次刷新批次
-    term = Column(String, index=True)              # 追踪词 / 品类
-    source = Column(String, index=True)            # amazon_keywords / google_trends / seasonality / bestsellers / products
-    geo = Column(String, default="US")
+    id = Column(String(64), primary_key=True)
+    tenant_id = Column(String(64), default="dev_tenant", index=True)
+    run_id = Column(String(64), index=True)            # 同一次刷新批次
+    term = Column(String(255), index=True)              # 追踪词 / 品类
+    source = Column(String(64), index=True)            # amazon_keywords / google_trends / seasonality / bestsellers / products
+    geo = Column(String(8), default="US")
     tier = Column(Integer, default=1)              # 1=免代理可得 2=需代理/付费
-    status = Column(String, default="ok")          # ok / empty / error / unavailable
+    status = Column(String(32), default="ok")          # ok / empty / error / unavailable
     real_data = Column(Boolean, default=False)     # 是否真实抓到（反幻觉标记）
-    summary = Column(String, default="")           # 简短人类可读摘要
+    summary = Column(Text, default="")           # 简短人类可读摘要
     payload = Column(JSON)                          # 结构化原始结果
     captured_at = Column(DateTime, default=datetime.utcnow, index=True)
 
 
 def _resolve_db_url() -> tuple[str, bool]:
-    """选库：设了 DATABASE_URL（如 Supabase Postgres）就用它，否则回落本地 SQLite。
+    """选库：设了 DATABASE_URL（如 Supabase Postgres / MySQL / OceanBase）就用它，否则回落本地 SQLite。
 
     返回 (sqlalchemy_url, is_sqlite)。把裸 postgres:// 归一到 psycopg(v3) 方言。
+    支持 mysql:// 和 mysql+pymysql:// 用于 OceanBase/MySQL。
     """
     url = (os.getenv("DATABASE_URL") or "").strip()
     if not url:
@@ -144,6 +145,8 @@ def _resolve_db_url() -> tuple[str, bool]:
         url = "postgresql+psycopg://" + url[len("postgres://"):]
     elif url.startswith("postgresql://"):
         url = "postgresql+psycopg://" + url[len("postgresql://"):]
+    elif url.startswith("mysql://"):
+        url = "mysql+pymysql://" + url[len("mysql://"):]
     return url, url.startswith("sqlite")
 
 

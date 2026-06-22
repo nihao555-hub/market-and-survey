@@ -14,9 +14,11 @@ strawberry-graphql==0.317.1
 redis==8.0.0
 dramatiq[redis]==2.2.0
 
-# 持久化：默认 SQLite；设了 DATABASE_URL（如 Supabase Postgres）时走 psycopg(v3)。
+# 持久化：默认 SQLite；设了 DATABASE_URL 时走 Postgres/MySQL/OceanBase。
 SQLAlchemy==2.0.51
 psycopg[binary]==3.2.3
+PyMySQL==1.1.1
+cryptography==44.0.3
 
 # 每日定时刷新（北京 0 点 = UTC 16:00 的 cron 调度）
 APScheduler==3.11.2
