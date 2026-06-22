@@ -123,6 +123,28 @@ async def _start_daily_refresh_scheduler():
                     "数据库已有新鲜数据（24h 内），跳过启动刷新，节省 TikHub API 调用")
             else:
                 run_in_background(geos=geos, trigger="startup")
+
+        # 自动回填：如果历史数据不足 3 天，用 DB 现有品类生成 30 天模拟趋势 + Google Trends
+        if _os.getenv("AUTO_BACKFILL", "1") == "1":
+            import threading
+            def _auto_backfill():
+                import time
+                time.sleep(30)  # 等待 startup refresh 完成
+                from backend import storage as _st2
+                all_snaps = _st2.list_all_snapshots("dev_tenant", source="category_rank", limit=5000)
+                days = set()
+                for s in all_snaps:
+                    if s.captured_at:
+                        days.add(s.captured_at.strftime("%Y-%m-%d"))
+                if len(days) < 3:
+                    logging.getLogger("uvicorn").info(
+                        f"历史数据只有 {len(days)} 天，自动回填 30 天趋势数据（从 DB 读取，不调 TikHub）")
+                    from backend.graphql_api import Mutation
+                    Mutation().backfill_google_trends("dev_tenant")
+                else:
+                    logging.getLogger("uvicorn").info(
+                        f"已有 {len(days)} 天历史数据，无需回填")
+            threading.Thread(target=_auto_backfill, daemon=True).start()
     except Exception as _e:
         import logging
         logging.getLogger("uvicorn").warning(f"每日刷新调度未启动: {_e}")
@@ -396,6 +418,14 @@ async def trigger_full_refresh():
     geos = settings.get("targetCountries") or ["US"]
     ok = run_in_background(geos=geos, trigger="daily_full")
     return {"ok": ok, "trigger": "daily_full", "geos": geos}
+
+
+@app.post("/trigger-backfill")
+async def trigger_backfill():
+    """回填 30 天趋势数据（从 DB 读取品类，不调 TikHub）+ Google Trends 真实数据。"""
+    from backend.graphql_api import Mutation
+    ok = Mutation().backfill_google_trends("dev_tenant")
+    return {"ok": ok, "type": "backfill_30d"}
 
 
 # ─── 用户认证 API（注册/登录/邮箱验证）───
