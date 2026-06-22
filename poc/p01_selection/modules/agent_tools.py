@@ -28,7 +28,7 @@ from modules.platforms import PLATFORMS, REGIONS, CONTINENTS, list_platforms_by_
 from modules import paid_apis
 from modules.scraper_api import (scraperapi_available, scraperapi_status,
                                   search_products_via_scraperapi, fetch_via_scraperapi,
-                                  PLATFORM_SCRAPERAPI_CONFIG)
+                                  PLATFORM_SCRAPERAPI_CONFIG, SCRAPERAPI_SUPPORTED_COUNTRIES)
 from modules.keepa_graph import get_keepa_price_history_chart, get_keepa_charts_batch
 from modules.keepa_session import get_keepa_product_data, keepa_session_available
 from modules.keepa_chart_reader import read_keepa_chart
@@ -3174,7 +3174,7 @@ TOOLS_SCHEMA = [
         }, "required": ["platform", "keyword"]}}},
     {"type": "function", "function": {
         "name": "scraperapi_status",
-        "description": "查询 ScraperAPI 可用性、额度余量、支持的平台列表。开局调一次确认是否有 ScraperAPI 额度，决定是否可以抓 blocked 平台。",
+        "description": "查询 ScraperAPI 可用性、额度余量、支持平台 + 支持国家列表（95+ 国家地理定位）。开局调一次确认是否有 ScraperAPI 额度，决定是否可以抓 blocked 平台。返回 supported_countries 含所有支持的国家代码和中文名。",
         "parameters": {"type": "object", "properties": {}}}},
     {"type": "function", "function": {
         "name": "search_global_platforms",
