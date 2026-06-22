@@ -2,7 +2,7 @@
 import React from "react";
 import {
   LayoutList, RefreshCw, Clock, ShoppingCart, Star, Store, Flame, Hash,
-  TrendingUp, Package, Users, Search, X, Filter, ArrowUpDown, ChevronDown,
+  TrendingUp, Package, Users, Search, X, Filter, ChevronDown,
 } from "lucide-react";
 import { zhCat, matchCategory } from "@/lib/category-i18n";
 import {
@@ -22,10 +22,19 @@ import { CategoryDetailModal } from "./CategoryDetailModal";
 
 // ─── Per-category sparkline (SVG) ───
 function CatSparkline({ values }: { values: number[] }) {
-  if (values.length < 2) return null;
+  if (values.length === 0) return null;
+  const W = 100, H = 28;
+  // Single point: show a dot + flat line
+  if (values.length === 1) {
+    return (
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-7 w-[100px]" preserveAspectRatio="none">
+        <line x1="0" y1={H / 2} x2={W} y2={H / 2} stroke="#a1a1aa" strokeWidth="1" strokeDasharray="3,3" />
+        <circle cx={W / 2} cy={H / 2} r="3" fill="#6366f1" />
+      </svg>
+    );
+  }
   const max = Math.max(...values), min = Math.min(...values);
   const span = max - min || 1;
-  const W = 100, H = 28;
   const pts = values.map((v, i) => {
     const x = (i / (values.length - 1)) * W;
     const y = H - ((v - min) / span) * (H - 4) - 2;
@@ -39,6 +48,34 @@ function CatSparkline({ values }: { values: number[] }) {
   );
 }
 
+/** Mini price distribution bar chart (5 buckets) */
+function PriceDistBar({ products }: { products: ShopProduct[] }) {
+  const prices = products.map((p) => p.price).filter((v): v is number => typeof v === "number" && v > 0);
+  if (prices.length < 3) return null;
+  const buckets = [0, 0, 0, 0, 0]; // $0-10, $10-25, $25-50, $50-100, $100+
+  for (const p of prices) {
+    if (p <= 10) buckets[0]++;
+    else if (p <= 25) buckets[1]++;
+    else if (p <= 50) buckets[2]++;
+    else if (p <= 100) buckets[3]++;
+    else buckets[4]++;
+  }
+  const maxB = Math.max(...buckets) || 1;
+  const labels = ["≤10", "10-25", "25-50", "50-100", "100+"];
+  return (
+    <div className="flex items-end gap-[2px] h-5">
+      {buckets.map((b, i) => (
+        <div key={i} className="flex flex-col items-center gap-0" title={`$${labels[i]}: ${b}件`}>
+          <div
+            className="w-[10px] rounded-t-sm bg-indigo-400/70"
+            style={{ height: `${Math.max(2, (b / maxB) * 18)}px` }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 interface CatCardData {
   name: string;
   catId: string;
@@ -49,6 +86,7 @@ interface CatCardData {
   countHistory: number[];
   ratingHistory: number[];
   top5: Array<{ title: string; price: number; sold: number; rating: number; image?: string }>;
+  allProducts: ShopProduct[];
 }
 
 /** Extract stats from a single snapshot — handles both live (products[]) and backfill (avg_price/product_count/avg_rating) */
@@ -137,6 +175,7 @@ function buildPerCatCards(latestSnaps: DataSnapshot[], historySnaps: DataSnapsho
       name, catId,
       latestAvgPrice, latestCount, latestAvgRating,
       priceHistory, countHistory, ratingHistory, top5,
+      allProducts: prods,
     });
   }
   return cards.sort((a, b) => b.latestCount - a.latestCount);
@@ -184,6 +223,7 @@ function buildPerCatCardsFromSpark(latestSnaps: DataSnapshot[], sparkData: Categ
       catId: spark?.categoryId || (latestSnap?.payload?.category_id as string) || "",
       latestAvgPrice, latestCount, latestAvgRating,
       priceHistory, countHistory, ratingHistory, top5,
+      allProducts: prods,
     });
   }
   return cards.sort((a, b) => b.latestCount - a.latestCount);
@@ -354,6 +394,7 @@ function PerCategoryCards({ latestSnaps, sparkData, onSelectCat }: {
                     <span className="font-medium text-[var(--gray-12)]">{card.latestAvgRating}</span>
                     <CatSparkline values={card.ratingHistory} />
                   </div>
+                  <PriceDistBar products={card.allProducts} />
                 </div>
               </div>
               {card.top5.length > 0 && (
@@ -491,7 +532,7 @@ interface Hashtag {
   top_creators?: Creator[];
 }
 
-type Tab = "category" | "hot" | "hashtag";
+type Tab = "category" | "hot" | "hashtag" | "trends";
 
 function fmtInt(n?: number | null): string {
   if (typeof n !== "number" || !isFinite(n) || n <= 0) return "—";
@@ -606,6 +647,104 @@ function Sparkline({ curve, className }: { curve: CurvePoint[]; className?: stri
   );
 }
 
+/** Google Trends 搜索热度展示组件 */
+function GoogleTrendsSection({ items }: { items: { keyword: string; direction: string; value: number; ts: string }[] }) {
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        icon={<TrendingUp className="h-6 w-6" />}
+        title="暂无 Google Trends 数据"
+        hint="等待每日自动刷新收集搜索热度数据，或在工作台页面点击「回填趋势」。"
+      />
+    );
+  }
+
+  // Group by keyword and compute time series
+  const byKw = new Map<string, { ts: string; val: number }[]>();
+  for (const it of items) {
+    if (!byKw.has(it.keyword)) byKw.set(it.keyword, []);
+    byKw.get(it.keyword)!.push({ ts: it.ts, val: it.value });
+  }
+  // Sort each keyword's points by time
+  for (const pts of byKw.values()) {
+    pts.sort((a, b) => a.ts.localeCompare(b.ts));
+  }
+  // Compute latest value and trend direction for each keyword
+  const kwStats = [...byKw.entries()].map(([kw, pts]) => {
+    const latest = pts[pts.length - 1]?.val ?? 0;
+    const first = pts[0]?.val ?? 0;
+    const direction = latest > first ? "上升" : latest < first ? "下降" : "平稳";
+    const pctChange = first > 0 ? ((latest - first) / first) * 100 : 0;
+    return { keyword: kw, pts, latest, direction, pctChange };
+  }).sort((a, b) => b.latest - a.latest);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 text-xs text-[var(--gray-9)]">
+        <TrendingUp className="h-3.5 w-3.5 text-[var(--gray-12)]" />
+        <span className="font-medium text-[var(--gray-12)]">Google 搜索热度</span>
+        <span>· {kwStats.length} 个关键词</span>
+      </div>
+
+      {/* Keyword cards with sparkline */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {kwStats.map(({ keyword, pts, latest, direction, pctChange }) => {
+          const values = pts.map((p) => p.val);
+          const max = Math.max(...values);
+          const min = Math.min(...values);
+          const range = max - min || 1;
+          const W = 160, H = 40;
+          const svgPts = values.length >= 2
+            ? values.map((v, i) => {
+                const x = (i / (values.length - 1)) * W;
+                const y = H - ((v - min) / range) * (H - 4) - 2;
+                return `${x.toFixed(1)},${y.toFixed(1)}`;
+              })
+            : null;
+          const rising = direction === "上升";
+          const color = rising ? "#10b981" : direction === "下降" ? "#f43f5e" : "#6366f1";
+
+          return (
+            <div key={keyword} className="rounded-lg border border-[var(--gray-5)] bg-[var(--gray-1)] p-3">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="text-xs font-medium text-[var(--gray-12)] truncate">{keyword}</span>
+                <span className={cn(
+                  "inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold",
+                  rising ? "bg-emerald-50 text-emerald-600" : direction === "下降" ? "bg-rose-50 text-rose-600" : "bg-[var(--gray-4)] text-[var(--gray-9)]",
+                )}>
+                  {rising ? <TrendingUp className="h-2.5 w-2.5" /> : direction === "下降" ? <TrendingUp className="h-2.5 w-2.5 rotate-180" /> : null}
+                  {direction}
+                  {Math.abs(pctChange) > 1 && ` ${pctChange > 0 ? "+" : ""}${pctChange.toFixed(0)}%`}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-lg font-bold text-[var(--gray-12)] tabular-nums">{latest.toFixed(0)}</div>
+                {svgPts ? (
+                  <svg viewBox={`0 0 ${W} ${H}`} className="h-8 w-[120px] flex-shrink-0" preserveAspectRatio="none">
+                    <polyline points={svgPts.join(" ")} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                ) : (
+                  <div className="flex items-center h-8 w-[120px]">
+                    <svg viewBox={`0 0 ${W} ${H}`} className="h-8 w-full" preserveAspectRatio="none">
+                      <line x1="0" y1={H / 2} x2={W} y2={H / 2} stroke="#a1a1aa" strokeWidth="1" strokeDasharray="3,3" />
+                      <circle cx={W / 2} cy={H / 2} r="4" fill={color} />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              {pts.length > 1 && (
+                <div className="mt-1.5 text-[10px] text-[var(--gray-7)]">
+                  {pts.length} 个数据点 · {pts[0].ts.slice(0, 10)} ~ {pts[pts.length - 1].ts.slice(0, 10)}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function CategoryRankPage() {
   const [status, setStatus] = React.useState<RefreshStatus | null>(null);
   const [cats, setCats] = React.useState<DataSnapshot[]>([]);
@@ -620,6 +759,7 @@ export function CategoryRankPage() {
   const [selectedCatDetail, setSelectedCatDetail] = React.useState<DataSnapshot | null>(null);
   const [catHistory, setCatHistory] = React.useState<DataSnapshot[]>([]);
   const [sparkData, setSparkData] = React.useState<CategorySparkData[]>([]);
+  const [googleTrendsSnaps, setGoogleTrendsSnaps] = React.useState<DataSnapshot[]>([]);
 
   const q = query.trim().toLowerCase();
 
@@ -630,12 +770,13 @@ export function CategoryRankPage() {
   const reload = React.useCallback(async () => {
     setReloading(true);
     try {
-      const [st, catSnaps, hotSnaps, htSnaps, sparks] = await Promise.all([
+      const [st, catSnaps, hotSnaps, htSnaps, sparks, gtSnaps] = await Promise.all([
         fetchDailyRefreshStatus(),
         fetchDataSnapshots({ source: "category_rank", limit: 300 }),
         fetchDataSnapshots({ term: HOT_SELLING_TERM, limit: 1 }),
         fetchDataSnapshots({ term: HASHTAG_TREND_TERM, limit: 1 }),
         fetchCategorySparklines(),
+        fetchAllSnapshots({ source: "google_trends", limit: 200 }),
       ]);
       setStatus(st);
       const okCats = catSnaps.filter((s) => s.realData && ((s.payload?.products?.length ?? 0) > 0 || typeof s.payload?.product_count === "number"));
@@ -643,6 +784,7 @@ export function CategoryRankPage() {
       setHot(hotSnaps[0] ?? null);
       setHashtagSnap(htSnaps[0] ?? null);
       setSparkData(sparks);
+      setGoogleTrendsSnaps(gtSnaps);
       setCatHistory([]);  // no longer needed for sparklines
       setActiveCat((prev) => prev ?? okCats[0]?.payload?.category_id ?? null);
     } catch { /* 静默 */ }
@@ -683,13 +825,37 @@ export function CategoryRankPage() {
 
 
 
+  // Google Trends parsed data
+  const googleTrendsItems = React.useMemo(() => {
+    const items: { keyword: string; direction: string; value: number; ts: string }[] = [];
+    for (const s of googleTrendsSnaps) {
+      // Individual point snapshot (from backfill)
+      if (s.payload?.keyword) {
+        items.push({
+          keyword: s.payload.keyword as string,
+          direction: (s.payload.direction as string) || "",
+          value: (s.payload.late_avg as number) || 0,
+          ts: (s.payload.backfill_ts as string) || s.capturedAt || "",
+        });
+        continue;
+      }
+      // Batch snapshot with keywords array
+      const kws = (s.payload?.keywords || []) as Array<{ keyword?: string; direction?: string; recent_3m_avg?: number }>;
+      for (const k of kws) {
+        if (k.keyword) items.push({ keyword: k.keyword, direction: k.direction || "", value: k.recent_3m_avg || 0, ts: s.capturedAt || "" });
+      }
+    }
+    return items;
+  }, [googleTrendsSnaps]);
+
   const channelOk = status?.tier2ChannelOk ?? false;
-  const hasAny = cats.length > 0 || hotProducts.length > 0 || hashtags.length > 0;
+  const hasAny = cats.length > 0 || hotProducts.length > 0 || hashtags.length > 0 || googleTrendsItems.length > 0;
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: "category", label: "品类 Top", count: searching ? crossCatHits.length : cats.length },
     { key: "hot", label: "实时热销榜", count: hotFiltered.length },
     { key: "hashtag", label: "热门话题", count: hashtagsFiltered.length },
+    { key: "trends", label: "Google Trends", count: googleTrendsItems.length > 0 ? new Set(googleTrendsItems.map((i) => i.keyword)).size : 0 },
   ];
 
   return (
@@ -714,11 +880,12 @@ export function CategoryRankPage() {
         </div>
       ) : (
         <>
-          <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
             <StatTile label="最近更新" value={fmtTime(status?.finishedAt)} icon={<Clock className="h-4 w-4" />} />
             <StatTile label="覆盖品类" value={String(cats.length)} icon={<Package className="h-4 w-4" />} />
             <StatTile label="热销商品" value={String(hotProducts.length)} icon={<Flame className="h-4 w-4" />} />
             <StatTile label="热门话题" value={String(hashtags.length)} icon={<Hash className="h-4 w-4" />} />
+            <StatTile label="搜索趋势" value={String(new Set(googleTrendsItems.map((i) => i.keyword)).size)} icon={<TrendingUp className="h-4 w-4" />} />
           </div>
 
           {!channelOk && (
@@ -915,6 +1082,11 @@ export function CategoryRankPage() {
                     ))}
                   </div>
                 )
+              )}
+
+              {/* Google Trends 搜索热度 */}
+              {tab === "trends" && (
+                <GoogleTrendsSection items={googleTrendsItems} />
               )}
             </>
           )}
