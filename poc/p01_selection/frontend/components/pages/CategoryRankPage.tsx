@@ -865,9 +865,9 @@ export function CategoryRankPage() {
         title="品类榜单"
         subtitle="TikTok Shop 按品类实时 Top 商品 + 全站热销榜 + 热门话题声量曲线，作为选品与机会挖掘的实时榜单底盘。"
         actions={
-          <Button variant="secondary" size="sm" loading={reloading} onClick={reload}>
-            <RefreshCw className="h-3.5 w-3.5" />刷新
-          </Button>
+          <span className="flex items-center gap-1.5 rounded-md bg-[var(--gray-3)] px-2.5 py-1 text-xs text-[var(--gray-9)]">
+            <Clock className="h-3.5 w-3.5" />每日自动刷新
+          </span>
         }
       />
 
@@ -909,7 +909,7 @@ export function CategoryRankPage() {
             <EmptyState
               icon={<LayoutList className="h-6 w-6" />}
               title="还没有榜单数据"
-              hint="等待每日自动刷新，或点击「立即刷新」获取一次真实榜单数据。"
+              hint="品类数据每天 EST 0:00 自动全量刷新，请耐心等待。"
             />
           ) : (
             <>

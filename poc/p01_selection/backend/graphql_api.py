@@ -546,7 +546,8 @@ class Mutation:
 
     @strawberry.mutation
     def backfill_google_trends(self, tenant_id: str = "dev_tenant") -> bool:
-        """回填过去一个月的全部趋势数据（品类+社媒+Google Trends）。后台线程运行，立即返回。"""
+        """回填过去一个月的全部趋势数据（品类+社媒+Google Trends）。后台线程运行，立即返回。
+        优化：品类回填使用 DB 现有数据（不调 TikHub），只有 Google Trends 需要网络请求。"""
         import threading
 
         def _do_backfill():
@@ -554,7 +555,7 @@ class Mutation:
             from pathlib import Path
             sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
             from backend.daily_refresh import (DEFAULT_SEED_TERMS, SOCIAL_TREND_TERM,
-                                                _collect_category_rankings, _collect_social_trends)
+                                                _collect_social_trends)
             from datetime import datetime, timezone, timedelta
             from loguru import logger
 
@@ -562,23 +563,21 @@ class Mutation:
             now = datetime.now(timezone.utc)
             logger.info(f"全量趋势回填开始: run_id={run_id}")
 
-            # ── 1. 品类趋势回填：取当前品类数据，生成 30 天模拟历史 ──
+            # ── 1. 品类趋势回填：从 DB 读取现有品类数据，生成 30 天模拟历史（不调 TikHub） ──
             try:
-                live_cats = _collect_category_rankings("US")
-                ok_cats = [c for c in live_cats if c.get("real_data") and c.get("status") == "ok"]
-                logger.info(f"品类回填: {len(ok_cats)} 个品类")
+                existing_cats = st.list_latest_snapshots(tenant_id, source="category_rank", limit=500)
+                ok_cats = [c for c in existing_cats if c.real_data and c.payload]
+                logger.info(f"品类回填: 从 DB 取到 {len(ok_cats)} 个品类（不调 TikHub）")
                 for day_offset in range(30, 0, -1):
                     ts = now - timedelta(days=day_offset)
                     day_run = f"{run_id}_cat_d{day_offset}"
-                    for cat_row in ok_cats:
-                        payload = dict(cat_row.get("payload") or {})
+                    for cat_snap in ok_cats:
+                        payload = dict(cat_snap.payload or {})
                         prods = payload.get("products") or []
-                        # Generate summary stats with small random variations
                         prices = [p.get("price") for p in prods if isinstance(p.get("price"), (int, float)) and p["price"] > 0]
                         ratings = [p.get("rating") for p in prods if isinstance(p.get("rating"), (int, float)) and p["rating"] > 0]
                         avg_price = sum(prices) / len(prices) if prices else 0
                         avg_rating = sum(ratings) / len(ratings) if ratings else 0
-                        # Add random variation (±8% price, ±3 count, ±0.15 rating)
                         varied_price = round(avg_price * (1 + random.uniform(-0.08, 0.08)), 2)
                         varied_count = max(1, len(prods) + random.randint(-3, 3))
                         varied_rating = round(max(1.0, min(5.0, avg_rating + random.uniform(-0.15, 0.15))), 1)
