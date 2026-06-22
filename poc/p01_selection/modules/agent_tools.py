@@ -29,6 +29,7 @@ from modules import paid_apis
 from modules.scraper_api import (scraperapi_available, scraperapi_status,
                                   search_products_via_scraperapi, fetch_via_scraperapi,
                                   PLATFORM_SCRAPERAPI_CONFIG, SCRAPERAPI_SUPPORTED_COUNTRIES)
+from modules import scraperapi_structured as sde  # Structured Data Endpoints
 from modules.keepa_graph import get_keepa_price_history_chart, get_keepa_charts_batch
 from modules.keepa_session import get_keepa_product_data, keepa_session_available
 from modules.keepa_chart_reader import read_keepa_chart
@@ -3188,6 +3189,102 @@ TOOLS_SCHEMA = [
             "limit_per_platform": {"type": "integer", "default": 50,
                                     "description": "每个平台抓取的最大商品数（默认 50，按销量排序）"}
         }, "required": ["keyword"]}}},
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # ScraperAPI 结构化数据端点（SDE）— 直接返回 JSON，替代 RapidAPI
+    # ═══════════════════════════════════════════════════════════════════════════
+    {"type": "function", "function": {
+        "name": "sde_amazon_product",
+        "description": "【ScraperAPI 结构化】Amazon 商品完整详情：BSR/月销/评分分布/品牌/重量/尺寸/上架日期/评论/变体。覆盖全球 22 个 Amazon 站点（US/UK/DE/FR/JP/IN/AU/BR/MX/CA/IT/ES/NL/SE/PL/AE/SA/SG/TR/IE/ZA/CN）。**替代 RapidAPI，推荐深度分析竞品时使用**。",
+        "parameters": {"type": "object", "properties": {
+            "asin": {"type": "string", "description": "Amazon ASIN（如 B0CL9D9HM4）"},
+            "geo": {"type": "string", "default": "US", "description": "目标站点：US/UK/DE/FR/JP/IN/AU/BR/MX/CA/IT/ES/NL/SE/PL/AE/SA 等"}
+        }, "required": ["asin"]}}},
+    {"type": "function", "function": {
+        "name": "sde_amazon_search",
+        "description": "【ScraperAPI 结构化】Amazon 搜索，直接返回 JSON 商品列表（含 ASIN/价格/评分/月销/Prime/Best Seller 标签）。覆盖全球 22 个 Amazon 站点。比 autoparse 更精确。",
+        "parameters": {"type": "object", "properties": {
+            "query": {"type": "string", "description": "搜索关键词"},
+            "geo": {"type": "string", "default": "US", "description": "目标站点"},
+            "page": {"type": "integer", "default": 1, "description": "页码"}
+        }, "required": ["query"]}}},
+    {"type": "function", "function": {
+        "name": "sde_amazon_offers",
+        "description": "【ScraperAPI 结构化】Amazon 某 ASIN 所有卖家报价（价格/运费/卖家名/评分/FBA 标识）。用于分析竞争卖家数量和定价策略。",
+        "parameters": {"type": "object", "properties": {
+            "asin": {"type": "string", "description": "Amazon ASIN"},
+            "geo": {"type": "string", "default": "US", "description": "目标站点"}
+        }, "required": ["asin"]}}},
+    {"type": "function", "function": {
+        "name": "sde_amazon_products_batch",
+        "description": "【ScraperAPI 结构化】批量获取多个 ASIN 的完整详情（最多 20 个）。适合对 Top 10-20 竞品做深度对比分析。每个返回 BSR/月销/评分/品牌/重量/评论。",
+        "parameters": {"type": "object", "properties": {
+            "asins": {"type": "array", "items": {"type": "string"}, "description": "ASIN 列表（最多 20 个）"},
+            "geo": {"type": "string", "default": "US", "description": "目标站点"}
+        }, "required": ["asins"]}}},
+    {"type": "function", "function": {
+        "name": "sde_walmart_product",
+        "description": "【ScraperAPI 结构化】Walmart 商品详情（价格/评分/评论数/品牌/卖家/规格/库存）。支持 US/CA。",
+        "parameters": {"type": "object", "properties": {
+            "product_id": {"type": "string", "description": "Walmart Product ID（如 5253396052）"},
+            "geo": {"type": "string", "default": "US", "description": "US 或 CA"}
+        }, "required": ["product_id"]}}},
+    {"type": "function", "function": {
+        "name": "sde_walmart_search",
+        "description": "【ScraperAPI 结构化】Walmart 搜索，返回 JSON 商品列表（标题/价格/评分/评论数/卖家）。支持 US/CA。比 autoparse 更稳定。",
+        "parameters": {"type": "object", "properties": {
+            "query": {"type": "string", "description": "搜索关键词"},
+            "geo": {"type": "string", "default": "US", "description": "US 或 CA"},
+            "page": {"type": "integer", "default": 1, "description": "页码"}
+        }, "required": ["query"]}}},
+    {"type": "function", "function": {
+        "name": "sde_walmart_reviews",
+        "description": "【ScraperAPI 结构化】Walmart 商品评论（支持分页/排序/评分筛选）。返回评论全文+评分+日期+作者+验证购买标识。**Walmart 评论分析的唯一数据源**。",
+        "parameters": {"type": "object", "properties": {
+            "product_id": {"type": "string", "description": "Walmart Product ID"},
+            "geo": {"type": "string", "default": "US"},
+            "page": {"type": "integer", "default": 1},
+            "sort": {"type": "string", "default": "relevancy", "description": "排序：relevancy/helpful/submission-desc/rating-desc/rating-asc"},
+            "ratings": {"type": "string", "description": "筛选星级：如 '1,2' 只看差评，'4,5' 只看好评"}
+        }, "required": ["product_id"]}}},
+    {"type": "function", "function": {
+        "name": "sde_walmart_category",
+        "description": "【ScraperAPI 结构化】Walmart 品类浏览，按类目获取商品列表。用于了解某品类的 Top 卖家和价格带。",
+        "parameters": {"type": "object", "properties": {
+            "category_id": {"type": "string", "description": "Walmart 品类 ID"},
+            "geo": {"type": "string", "default": "US"},
+            "page": {"type": "integer", "default": 1}
+        }, "required": ["category_id"]}}},
+    {"type": "function", "function": {
+        "name": "sde_ebay_product",
+        "description": "【ScraperAPI 结构化】eBay 商品详情（价格/卖家评分/已售数量/库存/观察人数/运费/位置/规格）。用于分析 eBay 竞品深度数据。",
+        "parameters": {"type": "object", "properties": {
+            "product_id": {"type": "string", "description": "eBay Item ID"},
+            "geo": {"type": "string", "default": "US"}
+        }, "required": ["product_id"]}}},
+    {"type": "function", "function": {
+        "name": "sde_ebay_search",
+        "description": "【ScraperAPI 结构化】eBay 搜索，返回 JSON 商品列表（标题/价格/卖家/已售数/条件/运费）。支持全球地理定位。",
+        "parameters": {"type": "object", "properties": {
+            "query": {"type": "string", "description": "搜索关键词"},
+            "geo": {"type": "string", "default": "US"},
+            "page": {"type": "integer", "default": 1}
+        }, "required": ["query"]}}},
+    {"type": "function", "function": {
+        "name": "sde_google_shopping",
+        "description": "【ScraperAPI 结构化】Google Shopping 搜索 — **跨平台价格对比利器**。返回 Amazon/Walmart/Target/BestBuy/eBay 等多平台同款商品的价格+来源+配送信息。用于快速了解全网价格格局。",
+        "parameters": {"type": "object", "properties": {
+            "query": {"type": "string", "description": "搜索关键词"},
+            "geo": {"type": "string", "default": "US", "description": "目标国家（影响展示的商家和价格）"},
+            "page": {"type": "integer", "default": 1}
+        }, "required": ["query"]}}},
+    {"type": "function", "function": {
+        "name": "sde_cross_platform_price",
+        "description": "【一键跨平台价格对比】自动查询 Google Shopping + Amazon + Walmart 三个渠道，返回每个平台的价格区间和中位价。快速判断定价空间。",
+        "parameters": {"type": "object", "properties": {
+            "keyword": {"type": "string", "description": "商品关键词"},
+            "geo": {"type": "string", "default": "US"}
+        }, "required": ["keyword"]}}},
 ]
 
 TOOL_IMPL = {
@@ -3262,4 +3359,17 @@ TOOL_IMPL = {
     "scraperapi_search": tool_scraperapi_search,
     "scraperapi_status": tool_scraperapi_status,
     "search_global_platforms": tool_search_global_platforms,
+    # ═══ ScraperAPI 结构化端点（SDE）═══
+    "sde_amazon_product": lambda asin, geo="US": sde.amazon_product(asin, geo),
+    "sde_amazon_search": lambda query, geo="US", page=1: sde.amazon_search(query, geo, page),
+    "sde_amazon_offers": lambda asin, geo="US": sde.amazon_offers(asin, geo),
+    "sde_amazon_products_batch": lambda asins, geo="US": sde.amazon_products_batch(asins, geo),
+    "sde_walmart_product": lambda product_id, geo="US": sde.walmart_product(product_id, geo),
+    "sde_walmart_search": lambda query, geo="US", page=1: sde.walmart_search(query, geo, page),
+    "sde_walmart_reviews": lambda product_id, geo="US", page=1, sort="relevancy", ratings=None: sde.walmart_reviews(product_id, geo, page, sort, ratings),
+    "sde_walmart_category": lambda category_id, geo="US", page=1: sde.walmart_category(category_id, geo, page),
+    "sde_ebay_product": lambda product_id, geo="US": sde.ebay_product(product_id, geo),
+    "sde_ebay_search": lambda query, geo="US", page=1: sde.ebay_search(query, geo, page),
+    "sde_google_shopping": lambda query, geo="US", page=1: sde.google_shopping(query, geo, page),
+    "sde_cross_platform_price": lambda keyword, geo="US": sde.cross_platform_price_compare(keyword, geo),
 }
