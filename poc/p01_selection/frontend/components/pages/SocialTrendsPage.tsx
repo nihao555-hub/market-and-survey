@@ -191,9 +191,9 @@ export function SocialTrendsPage() {
         title="社媒趋势"
         subtitle="8 大平台热搜走势 · 像看K线一样看热搜趋势 · 每 2 小时自动刷新"
         actions={
-          <Button variant="secondary" size="sm" loading={reloading} onClick={reload}>
-            <RefreshCw className="h-3.5 w-3.5" />刷新
-          </Button>
+          <span className="flex items-center gap-1.5 rounded-md bg-[var(--gray-3)] px-2.5 py-1 text-xs text-[var(--gray-9)]">
+            <Clock className="h-3.5 w-3.5" />每 2 小时自动刷新
+          </span>
         }
       />
 
@@ -266,7 +266,7 @@ export function SocialTrendsPage() {
             <EmptyState
               icon={<Flame className="h-6 w-6" />}
               title="还没有社媒趋势数据"
-              hint="等待每 2 小时一次的自动刷新，或点击「立即刷新」获取一次真实数据。"
+              hint="社媒趋势每 2 小时自动刷新一次，请耐心等待。"
             />
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">

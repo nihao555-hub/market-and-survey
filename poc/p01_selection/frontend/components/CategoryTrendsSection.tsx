@@ -837,14 +837,9 @@ export function CategoryTrendsSection() {
               {backfilling ? "回填中…" : "回填近1月"}
             </button>
           )}
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex h-7 items-center gap-1 rounded-[4px] border border-[var(--gray-5)] bg-[var(--gray-1)] px-2.5 text-[12px] font-medium text-[var(--gray-11)] transition-colors hover:bg-[var(--bg-transparent-light)] disabled:opacity-40"
-          >
-            <RefreshCw className={cn("h-3 w-3", refreshing && "animate-spin")} />
-            {refreshing ? "刷新中…" : "立即刷新"}
-          </button>
+          <span className="flex h-7 items-center gap-1 rounded-[4px] bg-[var(--gray-3)] px-2.5 text-[12px] text-[var(--gray-9)]">
+            <Clock className="h-3 w-3" />定时自动刷新
+          </span>
         </div>
       </div>
 
@@ -870,7 +865,7 @@ export function CategoryTrendsSection() {
           </span>
           <div className="mt-3 text-[13px] font-medium text-[var(--gray-12)]">还没有趋势数据</div>
           <div className="mt-1 max-w-sm text-[12px] text-[var(--gray-9)]">
-            点击「立即刷新」获取第一批数据。随着数据积累，这里将展示品类和社媒的时间序列趋势图表。
+            数据每 2 小时自动刷新。随着数据积累，这里将展示品类和社媒的时间序列趋势图表。
           </div>
         </div>
       ) : (
@@ -940,7 +935,7 @@ export function CategoryTrendsSection() {
                       数据积累中…至少需要 2 次刷新才能生成趋势图表
                     </div>
                     <div className="mt-1 text-[11px] text-[var(--gray-8)]">
-                      （每 2 小时自动刷新一次，或手动点击「立即刷新」）
+                      （每 2 小时自动刷新一次）
                     </div>
                   </div>
                 )}
