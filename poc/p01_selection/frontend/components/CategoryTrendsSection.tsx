@@ -818,7 +818,7 @@ export function CategoryTrendsSection() {
             实时趋势
           </h2>
           <p className="mt-0.5 text-[12px] text-[var(--gray-9)]">
-            TikTok Shop 品类 + 跨平台社媒热搜 + Google Trends 搜索热度，每 2 小时刷新，像看K线一样看品类走势
+            TikTok Shop 品类销量趋势 + 跨平台社媒热搜 + 搜索热度，每 2 小时刷新，像看K线一样看品类走势
           </p>
         </div>
         <div className="flex flex-shrink-0 items-center gap-2">
@@ -907,7 +907,7 @@ export function CategoryTrendsSection() {
                 )}
               >
                 <Globe className="mr-1 inline h-3 w-3" />
-                Google Trends
+                搜索趋势
               </button>
             </div>
 
@@ -917,6 +917,13 @@ export function CategoryTrendsSection() {
           {/* Content area */}
           {tab === "category" ? (
             <div className="p-4">
+              {/* Trend line chart at top */}
+              {googleItems.length > 0 && (
+                <div className="mb-4">
+                  <div className="mb-2 text-[11px] font-medium text-[var(--gray-9)]">品类搜索热度走势（近30天）</div>
+                  <MiniChart option={googleChartOpt} height={260} />
+                </div>
+              )}
               <CategoryCards latestSnaps={latestCats} sparkData={catSparks} />
             </div>
           ) : (

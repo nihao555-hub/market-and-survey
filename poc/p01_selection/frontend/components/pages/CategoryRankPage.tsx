@@ -453,7 +453,7 @@ function PerCategoryCards({ latestSnaps, sparkData, googleTrendsSnaps, onSelectC
                 {card.trendsHistory.length >= 2 && (
                   <div className="mt-2 flex items-center gap-2 px-0">
                     <TrendingUp className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
-                    <span className="text-[10px] text-blue-600 font-medium flex-shrink-0">Google趋势</span>
+                    <span className="text-[10px] text-blue-600 font-medium flex-shrink-0">销量趋势</span>
                     <CatSparkline values={card.trendsHistory} wide />
                   </div>
                 )}
