@@ -1081,6 +1081,54 @@ def tool_search_products(platform: str, keyword: str, limit: int = 50,
                       f"建议换平台（pick_platforms_for_market 给出的 verified 列表）",
             "platform_status": p.get("status"),
         }
+    # ═══ ScraperAPI SDE 优先路径（Amazon/Walmart/eBay 有结构化 API）═══
+    _SDE_PLATFORMS = {
+        "amazon": "amazon", "amazon_us": "amazon", "amazon_uk": "amazon",
+        "amazon_de": "amazon", "amazon_fr": "amazon", "amazon_jp": "amazon",
+        "amazon_in": "amazon", "amazon_au": "amazon", "amazon_ca": "amazon",
+        "amazon_it": "amazon", "amazon_es": "amazon", "amazon_br": "amazon",
+        "amazon_mx": "amazon", "amazon_nl": "amazon", "amazon_se": "amazon",
+        "amazon_pl": "amazon", "amazon_ae": "amazon", "amazon_sa": "amazon",
+        "amazon_sg": "amazon", "amazon_tr": "amazon",
+        "walmart": "walmart", "walmart_ca": "walmart",
+        "ebay": "ebay", "ebay_uk": "ebay", "ebay_de": "ebay", "ebay_au": "ebay",
+    }
+    sde_type = _SDE_PLATFORMS.get(platform)
+    if sde_type:
+        try:
+            # 解析地区码
+            geo_code = (p.get("region") or "US").upper()
+            if "_" in platform:
+                suffix = platform.split("_", 1)[1].upper()
+                if len(suffix) == 2:
+                    geo_code = suffix
+            
+            if sde_type == "amazon":
+                sde_result = sde.amazon_search(keyword, geo=geo_code, page=1)
+            elif sde_type == "walmart":
+                sde_result = sde.walmart_search(keyword, geo=geo_code, page=1)
+            elif sde_type == "ebay":
+                sde_result = sde.ebay_search(keyword, geo=geo_code, page=1)
+            else:
+                sde_result = None
+            
+            if sde_result and sde_result.get("available") and sde_result.get("products"):
+                prods = sde_result["products"][:limit]
+                logger.info(f"[{platform}] ScraperAPI SDE 成功 → {len(prods)} products")
+                if "amazon" in platform:
+                    POOL.add_batch([pr for pr in prods if pr.get("asin")])
+                return {
+                    "platform": platform, "platform_name": p.get("name"),
+                    "url": sde_result.get("url") or f"ScraperAPI SDE {sde_type}",
+                    "count": len(prods), "products": prods,
+                    "pool_size_after": POOL.size(),
+                    "platform_status": p.get("status"),
+                    "_attempts": 1, "_extraction": "scraperapi_sde",
+                    "success": True,
+                }
+        except Exception as e:
+            logger.warning(f"[{platform}] ScraperAPI SDE 异常，降级到本地代理: {str(e)[:100]}")
+
     url_template = p.get("search_url") or p.get("url")
     if not url_template:
         return {"platform": platform, "error": "no search_url in PLATFORMS", "products": []}
@@ -3086,10 +3134,10 @@ TOOLS_SCHEMA = [
         }, "required": ["keywords"]}}},
     {"type": "function", "function": {
         "name": "get_amazon_product_details_api",
-        "description": "**真实商品详情 API**（RapidAPI Real-Time Amazon Data）：真实 BSR/月销 sales_volume/评分/评论数/价格。需配 RAPIDAPI_KEY（免费档~100-500次/月）；未配置返回 available=False，改用 capture_evidence 获取。利润测算需要真实月销时用本工具。",
+        "description": "**真实商品详情 API**（优先 ScraperAPI SDE，降级到 RapidAPI）：真实 BSR/月销/评分分布/评论数/价格/品牌/重量。覆盖全球 22 个 Amazon 站点。利润测算需要真实月销时用本工具。注意：sde_amazon_product 是同一数据源的直接调用，推荐用那个更灵活。",
         "parameters": {"type": "object", "properties": {
             "asin": {"type": "string"},
-            "geo": {"type": "string", "default": "US"}
+            "geo": {"type": "string", "default": "US", "description": "US/UK/DE/FR/JP/IN/AU/BR/MX/CA/IT/ES/NL/SE/PL/AE/SA/SG/TR 等"}
         }, "required": ["asin"]}}},
     {"type": "function", "function": {
         "name": "api_status",
