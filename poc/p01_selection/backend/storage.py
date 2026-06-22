@@ -566,23 +566,121 @@ def latest_run_id(tenant_id: str = "dev_tenant") -> Optional[str]:
         return row.run_id if row else None
 
 
+def _best_run_for_source(tenant_id: str, source: str) -> Optional[str]:
+    """找到某个 source 数据量最多的 run_id（优先最近 48h 内的）。
+
+    用于 category_rank 等批量数据源：full refresh 有 220+ 条而 startup 只有 28 条，
+    应返回 full refresh 的 run_id，即使它不是最近的 run。
+    """
+    from sqlalchemy import func
+    from datetime import timedelta
+    with SessionLocal() as s:
+        cutoff = datetime.utcnow() - timedelta(hours=48)
+        rows = (s.query(DataSnapshot.run_id,
+                        func.count(DataSnapshot.id).label("cnt"))
+                .filter(DataSnapshot.tenant_id == tenant_id,
+                        DataSnapshot.source == source,
+                        DataSnapshot.real_data == True,
+                        DataSnapshot.captured_at >= cutoff)
+                .group_by(DataSnapshot.run_id)
+                .order_by(func.count(DataSnapshot.id).desc())
+                .limit(1)
+                .all())
+        return rows[0][0] if rows else None
+
+
 def list_latest_snapshots(tenant_id: str = "dev_tenant", *,
                           term: Optional[str] = None,
                           source: Optional[str] = None,
                           run_id: Optional[str] = None,
                           limit: int = 200) -> list[DataSnapshot]:
-    """列出最近一次刷新批次的快照（或指定 run_id），可按 term/source 过滤。"""
-    rid = run_id or latest_run_id(tenant_id)
-    if not rid:
+    """列出最新数据快照，智能选择最佳 run_id。
+
+    核心改进：对于 category_rank 等批量数据，选择数据量最多的 run_id
+    （而非最新的），防止 startup refresh（28 条）覆盖 full refresh（220+）。
+    对于其他 source，按 (term, source) 聚合取最新。
+    """
+    if run_id:
+        with SessionLocal() as s:
+            q = (s.query(DataSnapshot)
+                 .filter(DataSnapshot.tenant_id == tenant_id,
+                         DataSnapshot.run_id == run_id))
+            if term:
+                q = q.filter(DataSnapshot.term == term)
+            if source:
+                q = q.filter(DataSnapshot.source == source)
+            return list(q.order_by(DataSnapshot.captured_at.asc()).limit(limit).all())
+
+    # 批量数据源（同一 term 下有多条记录按 category 区分）使用数据量最多的 run_id
+    _batch_sources = {"category_rank", "hot_selling", "hashtag_trends"}
+    if source in _batch_sources:
+        best_rid = _best_run_for_source(tenant_id, source)
+        if best_rid:
+            with SessionLocal() as s:
+                q = (s.query(DataSnapshot)
+                     .filter(DataSnapshot.tenant_id == tenant_id,
+                             DataSnapshot.run_id == best_rid,
+                             DataSnapshot.source == source,
+                             DataSnapshot.real_data == True))
+                if term:
+                    q = q.filter(DataSnapshot.term == term)
+                return list(q.order_by(DataSnapshot.captured_at.asc()).limit(limit).all())
         return []
+
+    # 非批量 source 或无 source 过滤：对每个 (term, source) 取最新的一条
+    from sqlalchemy import func
     with SessionLocal() as s:
+        base = s.query(DataSnapshot).filter(
+            DataSnapshot.tenant_id == tenant_id,
+            DataSnapshot.real_data == True,
+        )
+        if term:
+            base = base.filter(DataSnapshot.term == term)
+        if source:
+            base = base.filter(DataSnapshot.source == source)
+        else:
+            # 无 source 过滤时，排除批量数据源（它们由上面的路径处理）
+            base = base.filter(DataSnapshot.source.notin_(_batch_sources))
+
+        sub = (base.with_entities(
+            DataSnapshot.term,
+            DataSnapshot.source,
+            func.max(DataSnapshot.captured_at).label("max_ts"),
+        ).group_by(DataSnapshot.term, DataSnapshot.source)
+         .subquery())
+
         q = (s.query(DataSnapshot)
-             .filter(DataSnapshot.tenant_id == tenant_id, DataSnapshot.run_id == rid))
+             .join(sub, (DataSnapshot.term == sub.c.term) &
+                        (DataSnapshot.source == sub.c.source) &
+                        (DataSnapshot.captured_at == sub.c.max_ts))
+             .filter(DataSnapshot.tenant_id == tenant_id,
+                     DataSnapshot.real_data == True))
         if term:
             q = q.filter(DataSnapshot.term == term)
         if source:
             q = q.filter(DataSnapshot.source == source)
-        return list(q.order_by(DataSnapshot.captured_at.asc()).limit(limit).all())
+        else:
+            q = q.filter(DataSnapshot.source.notin_(_batch_sources))
+        results = list(q.order_by(DataSnapshot.captured_at.desc()).limit(limit).all())
+
+        # 无 source 过滤时，补充批量数据源的最佳数据
+        if not source:
+            remaining = limit - len(results)
+            if remaining > 0:
+                for bs in _batch_sources:
+                    best_rid = _best_run_for_source(tenant_id, bs)
+                    if best_rid:
+                        batch = (s.query(DataSnapshot)
+                                 .filter(DataSnapshot.tenant_id == tenant_id,
+                                         DataSnapshot.run_id == best_rid,
+                                         DataSnapshot.source == bs,
+                                         DataSnapshot.real_data == True)
+                                 .limit(remaining).all())
+                        results.extend(batch)
+                        remaining -= len(batch)
+                    if remaining <= 0:
+                        break
+        return results
 
 
 def list_all_snapshots(tenant_id: str = "dev_tenant", *,
