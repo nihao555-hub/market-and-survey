@@ -57,7 +57,7 @@ export default function RegisterPage() {
     const json = await res.json();
     if (!res.ok) throw new Error(json.detail || "验证失败");
     saveAuth(json.token, json.email || email, json.plan || "free");
-    router.push("/");
+    router.push("/dashboard");
   };
 
   return (

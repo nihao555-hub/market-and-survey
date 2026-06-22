@@ -128,10 +128,23 @@ _COUNTRY_MAP = {"US": "US", "UK": "GB", "GB": "GB", "DE": "DE", "FR": "FR",
 def get_amazon_product_details(asin: str, geo: str = "US") -> dict:
     """
     真实商品详情：BSR / 月销（sales_volume）/ 评分 / 评论数 / 价格。
-    返回 available=False 时调用方降级到 scraper 获取。
+    优先级：ScraperAPI SDE > RapidAPI > 返回 available=False
     """
+    # ═══ 优先尝试 ScraperAPI 结构化端点（SDE）═══
+    try:
+        from modules.scraperapi_structured import amazon_product as sde_amazon_product
+        sde_result = sde_amazon_product(asin, geo)
+        if sde_result.get("available"):
+            logger.info(f"[get_amazon_product_details] ScraperAPI SDE 成功 asin={asin} geo={geo}")
+            return sde_result
+        elif sde_result.get("error") != "SCRAPERAPI_KEY 未配置":
+            logger.warning(f"[get_amazon_product_details] ScraperAPI SDE 失败: {sde_result.get('error')}, 尝试 RapidAPI fallback")
+    except Exception as e:
+        logger.warning(f"[get_amazon_product_details] ScraperAPI SDE 异常: {e}, 降级到 RapidAPI")
+
+    # ═══ 降级到 RapidAPI ═══
     if not rapidapi_amazon_available():
-        return {"available": False, "reason": "no_rapidapi_key"}
+        return {"available": False, "reason": "no_rapidapi_key_and_scraperapi_failed"}
     country = _COUNTRY_MAP.get(geo.upper(), "US")
     url = f"https://{RAPIDAPI_AMAZON_HOST}/product-details"
     try:
@@ -141,10 +154,8 @@ def get_amazon_product_details(asin: str, geo: str = "US") -> dict:
             return {"available": True, "error": f"http_{resp.status_code}",
                     "detail": resp.text[:200]}
         data = resp.json().get("data", {}) or {}
-        # BSR 在 product_information["Best Sellers Rank"] 里（非顶层字段）
         pinfo = data.get("product_information", {}) or {}
         bsr_raw = pinfo.get("Best Sellers Rank") or data.get("sales_rank") or data.get("best_seller_rank")
-        # 重量/尺寸（喂头程成本计算）
         weight = pinfo.get("Item Weight")
         dims = pinfo.get("Product Dimensions")
         return {
@@ -155,10 +166,10 @@ def get_amazon_product_details(asin: str, geo: str = "US") -> dict:
             "currency": data.get("currency"),
             "rating": data.get("product_star_rating"),
             "review_count": data.get("product_num_ratings"),
-            "rating_distribution": data.get("rating_distribution"),  # 1-5星分布
+            "rating_distribution": data.get("rating_distribution"),
             "bsr": bsr_raw,
-            "sales_volume": data.get("sales_volume"),  # "2K+ bought in past month"
-            "num_offers": data.get("product_num_offers"),  # 卖家数
+            "sales_volume": data.get("sales_volume"),
+            "num_offers": data.get("product_num_offers"),
             "is_best_seller": data.get("is_best_seller"),
             "is_amazon_choice": data.get("is_amazon_choice"),
             "is_prime": data.get("is_prime"),
@@ -166,10 +177,10 @@ def get_amazon_product_details(asin: str, geo: str = "US") -> dict:
             "category": data.get("category"),
             "weight": weight, "dimensions": dims,
             "brand": pinfo.get("Manufacturer") or (data.get("product_details") or {}).get("Brand"),
-            "date_first_available": pinfo.get("Date First Available"),  # 上架时间（判断新老品）
+            "date_first_available": pinfo.get("Date First Available"),
             "image_url": data.get("product_photo"),
             "url": data.get("product_url"),
-            "_source": "RapidAPI Real-Time Amazon Data（真实第一方数据）",
+            "_source": "RapidAPI Real-Time Amazon Data（ScraperAPI 降级后使用）",
             "_real_data": True,
         }
     except Exception as e:
@@ -179,9 +190,21 @@ def get_amazon_product_details(asin: str, geo: str = "US") -> dict:
 def search_amazon_products(keyword: str, geo: str = "US", page: int = 1) -> dict:
     """
     真实搜索结果（含每个商品的 sales_volume 月销标签 + BSR + 评分）。
+    优先级：ScraperAPI SDE > RapidAPI > 返回 available=False
     """
+    # ═══ 优先尝试 ScraperAPI SDE ═══
+    try:
+        from modules.scraperapi_structured import amazon_search as sde_amazon_search
+        sde_result = sde_amazon_search(keyword, geo, page)
+        if sde_result.get("available") and sde_result.get("products"):
+            logger.info(f"[search_amazon_products] ScraperAPI SDE 成功 keyword={keyword} geo={geo}")
+            return sde_result
+    except Exception as e:
+        logger.warning(f"[search_amazon_products] ScraperAPI SDE 异常: {e}")
+
+    # ═══ 降级到 RapidAPI ═══
     if not rapidapi_amazon_available():
-        return {"available": False, "reason": "no_rapidapi_key"}
+        return {"available": False, "reason": "no_rapidapi_key_and_scraperapi_failed"}
     country = _COUNTRY_MAP.get(geo.upper(), "US")
     url = f"https://{RAPIDAPI_AMAZON_HOST}/search"
     try:
@@ -217,11 +240,22 @@ def search_amazon_products(keyword: str, geo: str = "US", page: int = 1) -> dict
 
 def api_status() -> dict:
     """汇报哪些付费 API 已配置可用。"""
+    from modules.tikhub import is_configured as tikhub_configured
+    from modules.scraper_api import scraperapi_available
+    from modules.scraperapi_structured import _key as sde_key_check
+    sde_available = bool(sde_key_check())
     return {
+        "scraperapi_sde": {"available": sde_available,
+                          "use": "【主力】ScraperAPI 结构化端点：Amazon(22站)/Walmart/eBay/Google Shopping 商品详情+搜索+评论+竞价+跨平台比价",
+                          "priority": "最高 — 所有 Amazon/Walmart/eBay 请求优先走此"},
+        "tikhub": {"available": tikhub_configured(),
+                   "use": "TikTok Shop 实时商品/品类/热销榜 + 社媒热搜（必填）"},
+        "scraperapi_proxy": {"available": scraperapi_available(),
+                       "use": "ScraperAPI 代理模式：80+ 平台的 HTML 抓取（Shopee/Coupang/Ozon/MercadoLibre 等 SDE 不覆盖的平台）"},
         "dataforseo": {"available": dataforseo_available(),
                        "use": "真实绝对搜索量（趋势洞察）"},
         "rapidapi_amazon": {"available": rapidapi_amazon_available(),
-                            "use": "真实月销/BSR/评分（竞品+利润）"},
+                            "use": "降级备用：ScraperAPI SDE 失败时回退到 RapidAPI"},
     }
 
 

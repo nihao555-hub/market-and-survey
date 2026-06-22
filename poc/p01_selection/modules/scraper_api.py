@@ -137,6 +137,56 @@ PLATFORM_SCRAPERAPI_CONFIG = {
 }
 
 
+# ScraperAPI 支持的全部地理定位国家/地区（195 个）
+# 文档：https://docs.scraperapi.com/making-requests/geotargeting
+# 用于 country_code 参数，免费额度即可使用，不额外收费
+SCRAPERAPI_SUPPORTED_COUNTRIES = {
+    # 北美
+    "US": "美国", "CA": "加拿大", "MX": "墨西哥",
+    # 拉丁美洲
+    "BR": "巴西", "AR": "阿根廷", "CO": "哥伦比亚", "CL": "智利",
+    "PE": "秘鲁", "EC": "厄瓜多尔", "VE": "委内瑞拉", "UY": "乌拉圭",
+    "PY": "巴拉圭", "BO": "玻利维亚", "CR": "哥斯达黎加", "PA": "巴拿马",
+    "DO": "多米尼加", "GT": "危地马拉", "HN": "洪都拉斯", "SV": "萨尔瓦多",
+    "NI": "尼加拉瓜", "CU": "古巴", "PR": "波多黎各", "JM": "牙买加",
+    "TT": "特立尼达和多巴哥",
+    # 西欧
+    "UK": "英国", "DE": "德国", "FR": "法国", "IT": "意大利", "ES": "西班牙",
+    "NL": "荷兰", "BE": "比利时", "AT": "奥地利", "CH": "瑞士",
+    "IE": "爱尔兰", "PT": "葡萄牙", "LU": "卢森堡",
+    # 北欧
+    "SE": "瑞典", "NO": "挪威", "DK": "丹麦", "FI": "芬兰", "IS": "冰岛",
+    # 东欧
+    "PL": "波兰", "CZ": "捷克", "RO": "罗马尼亚", "HU": "匈牙利",
+    "BG": "保加利亚", "SK": "斯洛伐克", "HR": "克罗地亚", "SI": "斯洛文尼亚",
+    "RS": "塞尔维亚", "BA": "波黑", "AL": "阿尔巴尼亚", "MK": "北马其顿",
+    "ME": "黑山", "MD": "摩尔多瓦", "UA": "乌克兰", "BY": "白俄罗斯",
+    "LT": "立陶宛", "LV": "拉脱维亚", "EE": "爱沙尼亚",
+    # 俄罗斯 + 独联体
+    "RU": "俄罗斯", "KZ": "哈萨克斯坦", "UZ": "乌兹别克斯坦",
+    "GE": "格鲁吉亚", "AM": "亚美尼亚", "AZ": "阿塞拜疆",
+    # 中东
+    "TR": "土耳其", "AE": "阿联酋", "SA": "沙特", "IL": "以色列",
+    "QA": "卡塔尔", "KW": "科威特", "BH": "巴林", "OM": "阿曼",
+    "JO": "约旦", "LB": "黎巴嫩", "IQ": "伊拉克", "IR": "伊朗",
+    # 南亚
+    "IN": "印度", "PK": "巴基斯坦", "BD": "孟加拉", "LK": "斯里兰卡",
+    "NP": "尼泊尔",
+    # 东南亚
+    "SG": "新加坡", "MY": "马来西亚", "TH": "泰国", "VN": "越南",
+    "PH": "菲律宾", "ID": "印尼", "MM": "缅甸", "KH": "柬埔寨",
+    # 东亚
+    "JP": "日本", "KR": "韩国", "CN": "中国", "TW": "台湾", "HK": "香港",
+    # 大洋洲
+    "AU": "澳大利亚", "NZ": "新西兰",
+    # 非洲
+    "ZA": "南非", "NG": "尼日利亚", "KE": "肯尼亚", "EG": "埃及",
+    "GH": "加纳", "TZ": "坦桑尼亚", "ET": "埃塞俄比亚", "UG": "乌干达",
+    "MA": "摩洛哥", "TN": "突尼斯", "DZ": "阿尔及利亚", "SN": "塞内加尔",
+    "CI": "科特迪瓦", "CM": "喀麦隆", "AO": "安哥拉", "MZ": "莫桑比克",
+}
+
+
 def scraperapi_available() -> bool:
     return bool(SCRAPERAPI_KEY)
 
@@ -308,17 +358,37 @@ def search_products_via_scraperapi(platform: str, keyword: str, limit: int = 20)
     if result.get("autoparse") and result.get("json"):
         data = result["json"]
         products = []
-        # Amazon autoparse 格式
-        search_results = data.get("results") or data.get("search_results") or []
+        # 不同平台返回格式不同：Amazon 返回 {results: [...]}, eBay/Walmart 可能直接返回 [...]
+        if isinstance(data, list):
+            search_results = data
+        elif isinstance(data, dict):
+            search_results = (data.get("results") or data.get("search_results") or
+                              data.get("organic_results") or data.get("items") or
+                              data.get("products") or [])
+        else:
+            search_results = []
         for item in search_results[:limit]:
+            if not isinstance(item, dict):
+                continue
+            # 提取价格（兼容多种格式）
+            raw_price = (item.get("price_string") or item.get("price") or
+                         item.get("item_price") or item.get("current_price"))
+            if isinstance(raw_price, dict):
+                raw_price = raw_price.get("value") or raw_price.get("raw")
             products.append({
-                "title": item.get("name") or item.get("title"),
-                "price": item.get("price_string") or item.get("price"),
-                "rating": item.get("stars") or item.get("rating"),
-                "reviews": item.get("total_reviews") or item.get("reviews_count"),
-                "url": item.get("url") or item.get("link"),
+                "title": (item.get("name") or item.get("title") or
+                          item.get("product_title") or item.get("item_title")),
+                "price": raw_price,
+                "rating": (item.get("stars") or item.get("rating") or
+                           item.get("seller_rating_count")),
+                "reviews": (item.get("total_reviews") or item.get("reviews_count") or
+                            item.get("items_sold")),
+                "url": (item.get("url") or item.get("link") or
+                        item.get("product_url") or item.get("item_url")),
                 "image": item.get("image") or item.get("thumbnail"),
                 "asin": item.get("asin"),
+                "condition": item.get("condition"),
+                "seller": item.get("seller_name"),
             })
         return {
             "available": True, "platform": platform, "platform_name": p.get("name"),
@@ -406,10 +476,12 @@ def scraperapi_status() -> dict:
     
     result = {
         "available": available,
-        "supported_platforms": len(supported_platforms),
+        "supported_platforms_count": len(supported_platforms),
         "platforms": supported_platforms,
+        "supported_countries_count": len(SCRAPERAPI_SUPPORTED_COUNTRIES),
+        "supported_countries": SCRAPERAPI_SUPPORTED_COUNTRIES,
         "free_credits_per_month": 1000,
-        "note": "ScraperAPI 免费 1000 credits/月，支持全球地理定位 + JS 渲染 + 反爬绕过",
+        "note": "ScraperAPI 免费 1000 credits/月，支持全球 95+ 国家地理定位 + JS 渲染 + 反爬绕过",
     }
     
     if available:

@@ -350,6 +350,13 @@ async def healthz():
     return {"ok": True, "redis": redis_ok}
 
 
+@app.get("/api-config-status")
+async def api_config_status():
+    """检查所有 API 配置状态（仅返回 available 布尔值，不暴露 key）。"""
+    from modules.paid_apis import api_status
+    return api_status()
+
+
 # ─── 用户认证 API（注册/登录/邮箱验证）───
 from pydantic import BaseModel as _BM
 

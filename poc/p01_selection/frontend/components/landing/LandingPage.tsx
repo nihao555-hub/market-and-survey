@@ -1,10 +1,16 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowRight, ChevronDown, Menu, X, Search, BarChart3, LineChart, Calculator, Shield, TrendingUp, Bot, Globe2, ShoppingCart, Zap } from "lucide-react";
 
 function Navbar() {
   const [open, setOpen] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setLoggedIn(!!localStorage.getItem("auth_token"));
+  }, []);
+
   return (
     <header className="fixed top-0 inset-x-0 z-50">
       <nav className="mx-auto flex h-[80px] max-w-[1500px] items-center justify-between px-[40px]">
@@ -22,12 +28,20 @@ function Navbar() {
           ))}
         </ul>
         <div className="hidden md:flex items-center gap-1">
-          <Link href="/login" className="flex items-center h-[40px] px-[15px] rounded-[6px] text-[16px] text-[#0f0e0d] hover:bg-[#f5f5f4] transition-colors">
-            登录
-          </Link>
-          <Link href="/register" className="flex items-center h-[40px] px-[15px] rounded-[6px] bg-[#0f0e0d] text-[16px] font-medium text-[#fafaf9] hover:bg-[#262524] transition-colors">
-            免费开始
-          </Link>
+          {loggedIn ? (
+            <Link href="/dashboard" className="flex items-center h-[40px] px-[15px] rounded-[6px] bg-[#0f0e0d] text-[16px] font-medium text-[#fafaf9] hover:bg-[#262524] transition-colors">
+              进入工作台 <ArrowRight className="ml-1 h-4 w-4" />
+            </Link>
+          ) : (
+            <>
+              <Link href="/login" className="flex items-center h-[40px] px-[15px] rounded-[6px] text-[16px] text-[#0f0e0d] hover:bg-[#f5f5f4] transition-colors">
+                登录
+              </Link>
+              <Link href="/register" className="flex items-center h-[40px] px-[15px] rounded-[6px] bg-[#0f0e0d] text-[16px] font-medium text-[#fafaf9] hover:bg-[#262524] transition-colors">
+                免费开始
+              </Link>
+            </>
+          )}
         </div>
         <button className="md:hidden" onClick={() => setOpen(!open)} aria-label="Toggle menu">
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
