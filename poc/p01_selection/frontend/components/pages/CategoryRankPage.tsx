@@ -85,9 +85,30 @@ interface CatCardData {
   priceHistory: number[];
   countHistory: number[];
   ratingHistory: number[];
+  trendsHistory: number[];
   top5: Array<{ title: string; price: number; sold: number; rating: number; image?: string }>;
   allProducts: ShopProduct[];
 }
+
+/** Map Google Trends keywords to their most relevant category slug */
+const KEYWORD_TO_CATEGORY: Record<string, string> = {
+  "garlic press": "kitchenware",
+  "kitchen scale": "kitchenware",
+  "wireless earbuds": "phones-electronics",
+  "bluetooth speaker": "phones-electronics",
+  "phone holder": "phones-electronics",
+  "yoga mat": "sports-outdoor",
+  "resistance bands": "sports-outdoor",
+  "pet hair remover": "pet-supplies",
+  "cat litter mat": "pet-supplies",
+  "jade roller": "beauty-personal-care",
+  "makeup organizer": "beauty-personal-care",
+  "humidifier": "household-appliances",
+  "air purifier": "household-appliances",
+  "desk organizer": "computers-office-equipment",
+  "led strip lights": "home-improvement",
+  "massage gun": "health",
+};
 
 /** Extract stats from a single snapshot — handles both live (products[]) and backfill (avg_price/product_count/avg_rating) */
 function _extractStats(s: DataSnapshot): { avgPrice: number; count: number; avgRating: number } | null {
@@ -182,9 +203,34 @@ function buildPerCatCards(latestSnaps: DataSnapshot[], historySnaps: DataSnapsho
 }
 
 /** Build cards from pre-aggregated sparkline data (server-side). Much faster than raw snapshots. */
-function buildPerCatCardsFromSpark(latestSnaps: DataSnapshot[], sparkData: CategorySparkData[]): CatCardData[] {
+function buildPerCatCardsFromSpark(latestSnaps: DataSnapshot[], sparkData: CategorySparkData[], gtSnaps?: DataSnapshot[]): CatCardData[] {
   const cards: CatCardData[] = [];
   const sparkMap = new Map(sparkData.map((s) => [s.name, s]));
+
+  // Build Google Trends history per category from keyword mapping
+  const catTrendsMap = new Map<string, number[]>();
+  if (gtSnaps && gtSnaps.length > 0) {
+    // Group GT snaps by keyword → time series
+    const kwPoints = new Map<string, { ts: string; val: number }[]>();
+    for (const s of gtSnaps) {
+      const kw = (s.payload?.keyword as string) || "";
+      if (!kw) continue;
+      const val = (s.payload?.late_avg as number) || 0;
+      const ts = (s.payload?.backfill_ts as string) || s.capturedAt || "";
+      if (!kwPoints.has(kw)) kwPoints.set(kw, []);
+      kwPoints.get(kw)!.push({ ts, val });
+    }
+    // Map keywords to categories and aggregate
+    for (const [kw, pts] of kwPoints) {
+      const catSlug = KEYWORD_TO_CATEGORY[kw];
+      if (!catSlug) continue;
+      pts.sort((a, b) => a.ts.localeCompare(b.ts));
+      const existing = catTrendsMap.get(catSlug) || [];
+      if (pts.length > existing.length) {
+        catTrendsMap.set(catSlug, pts.map((p) => p.val));
+      }
+    }
+  }
 
   // Build from sparkData (covers all categories including backfill-only ones)
   const allNames = new Set([
@@ -200,6 +246,9 @@ function buildPerCatCardsFromSpark(latestSnaps: DataSnapshot[], sparkData: Categ
     const priceHistory = spark?.points.map((p) => p.avgPrice) ?? [];
     const countHistory = spark?.points.map((p) => p.productCount) ?? [];
     const ratingHistory = spark?.points.map((p) => p.avgRating) ?? [];
+    // Google Trends sparkline: match category slug from latestSnap or name
+    const catSlug = (latestSnap?.payload?.category_name_en as string) || name;
+    const trendsHistory = catTrendsMap.get(catSlug) || [];
 
     const latestStats = latestSnap ? _extractStats(latestSnap) : null;
     const latestAvgPrice = latestStats?.avgPrice ?? (priceHistory.length ? priceHistory[priceHistory.length - 1] : 0);
@@ -222,7 +271,7 @@ function buildPerCatCardsFromSpark(latestSnaps: DataSnapshot[], sparkData: Categ
       name,
       catId: spark?.categoryId || (latestSnap?.payload?.category_id as string) || "",
       latestAvgPrice, latestCount, latestAvgRating,
-      priceHistory, countHistory, ratingHistory, top5,
+      priceHistory, countHistory, ratingHistory, trendsHistory, top5,
       allProducts: prods,
     });
   }
@@ -237,12 +286,13 @@ function fmtSold(n: number): string {
 
 type CatSortKey = "count" | "price" | "rating" | "name";
 
-function PerCategoryCards({ latestSnaps, sparkData, onSelectCat }: {
+function PerCategoryCards({ latestSnaps, sparkData, googleTrendsSnaps, onSelectCat }: {
   latestSnaps: DataSnapshot[];
   sparkData: CategorySparkData[];
+  googleTrendsSnaps?: DataSnapshot[];
   onSelectCat: (id: string) => void;
 }) {
-  const cards = React.useMemo(() => buildPerCatCardsFromSpark(latestSnaps, sparkData), [latestSnaps, sparkData]);
+  const cards = React.useMemo(() => buildPerCatCardsFromSpark(latestSnaps, sparkData, googleTrendsSnaps), [latestSnaps, sparkData, googleTrendsSnaps]);
   const [catSearch, setCatSearch] = React.useState("");
   const [sortKey, setSortKey] = React.useState<CatSortKey>("count");
   const [viewMode, setViewMode] = React.useState<"card" | "table">("card");
@@ -394,6 +444,12 @@ function PerCategoryCards({ latestSnaps, sparkData, onSelectCat }: {
                     <span className="font-medium text-[var(--gray-12)]">{card.latestAvgRating}</span>
                     <CatSparkline values={card.ratingHistory} />
                   </div>
+                  {card.trendsHistory.length >= 2 && (
+                    <div className="flex items-center gap-1.5">
+                      <TrendingUp className="h-3 w-3 text-blue-500" />
+                      <CatSparkline values={card.trendsHistory} />
+                    </div>
+                  )}
                   <PriceDistBar products={card.allProducts} />
                 </div>
               </div>
@@ -776,7 +832,7 @@ export function CategoryRankPage() {
         fetchDataSnapshots({ term: HOT_SELLING_TERM, limit: 1 }),
         fetchDataSnapshots({ term: HASHTAG_TREND_TERM, limit: 1 }),
         fetchCategorySparklines(),
-        fetchAllSnapshots({ source: "google_trends", limit: 200 }),
+        fetchAllSnapshots({ source: "google_trends", limit: 1000 }),
       ]);
       setStatus(st);
       const okCats = catSnaps.filter((s) => s.realData && ((s.payload?.products?.length ?? 0) > 0 || typeof s.payload?.product_count === "number"));
@@ -898,6 +954,7 @@ export function CategoryRankPage() {
           <PerCategoryCards
             latestSnaps={cats}
             sparkData={sparkData}
+            googleTrendsSnaps={googleTrendsSnaps}
             onSelectCat={(id) => {
               const snap = cats.find((c) => c.payload?.category_id === id);
               if (snap) setSelectedCatDetail(snap);
