@@ -43,11 +43,10 @@ def _scraper_api_trends(keyword: str, geo: str = "US", timeframe: str = "today 1
         return pd.DataFrame()
     try:
         from pytrends.request import TrendReq
-        # 使用 ScraperAPI 代理模式，让 pytrends 请求走 ScraperAPI 的代理
         proxy_url = f"http://scraperapi:{key}@proxy-server.scraperapi.com:8001"
         py = TrendReq(
-            hl="en-US", tz=360, retries=2, backoff_factor=0.5,
-            timeout=(15, 30),
+            hl="en-US", tz=360, retries=1, backoff_factor=0.3,
+            timeout=(8, 15),
             requests_args={"proxies": {"http": proxy_url, "https": proxy_url}}
         )
         py.build_payload([keyword], cat=0, timeframe=timeframe, geo=geo, gprop="")
@@ -65,10 +64,10 @@ def _scraper_api_trends(keyword: str, geo: str = "US", timeframe: str = "today 1
 def get_keyword_trend(keywords: list[str], timeframe: str = "today 12-m",
                       geo: str = "US") -> pd.DataFrame:
     """近一年关键词趋势（0-100 相对热度）。直连失败时回退 ScraperAPI 抓取。"""
-    # 第一步：尝试 pytrends 直连（大多数服务器可用）
+    # 第一步：尝试 pytrends 直连（缩短超时避免阻塞）
     try:
         from pytrends.request import TrendReq
-        py = TrendReq(hl="en-US", tz=360, retries=2, backoff_factor=0.5, timeout=(10, 25))
+        py = TrendReq(hl="en-US", tz=360, retries=1, backoff_factor=0.3, timeout=(5, 12))
         py.build_payload(keywords[:5], cat=0, timeframe=timeframe, geo=geo, gprop="")
         df = py.interest_over_time()
         if df is not None and not df.empty:

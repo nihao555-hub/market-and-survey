@@ -435,6 +435,49 @@ async def trigger_backfill():
     return {"ok": ok, "type": "real_backfill_30d", "purged_simulated": purged}
 
 
+@app.post("/ingest-trends")
+async def ingest_trends(request: _Request):
+    """接收外部推送的真实 Google Trends 数据并存入数据库。
+    用于从 pytrends 可用的环境（本地开发机）推送数据到生产环境。
+    Body: {"keyword": str, "geo": str, "points": [{"date": "YYYY-MM-DD", "value": int}, ...]}
+    """
+    import uuid
+    from datetime import datetime, timezone
+    from backend import storage as _st
+    body = await request.json()
+    keyword = body.get("keyword", "")
+    geo = body.get("geo", "US")
+    points = body.get("points", [])
+    if not keyword or not points:
+        return {"ok": False, "error": "missing keyword or points"}
+    run_id = body.get("run_id") or f"remote_backfill_{uuid.uuid4().hex[:8]}"
+    saved = 0
+    for pt in points:
+        date_str = pt.get("date", "")
+        value = pt.get("value", 0)
+        if not date_str:
+            continue
+        try:
+            ts_dt = datetime.fromisoformat(date_str + "T12:00:00+00:00")
+        except Exception:
+            continue
+        _st.save_snapshot(
+            tenant_id="dev_tenant", run_id=run_id, term=keyword,
+            source="google_trends", geo=geo, tier=1,
+            status="ok", real_data=True,
+            summary=f"Google Trends: {keyword} @ {date_str}",
+            payload={
+                "keyword": keyword, "geo": geo,
+                "late_avg": float(value), "early_avg": float(value),
+                "direction": "real_backfill",
+                "max": float(value), "min": float(value),
+            },
+            captured_at=ts_dt,
+        )
+        saved += 1
+    return {"ok": True, "keyword": keyword, "saved": saved, "run_id": run_id}
+
+
 # ─── 用户认证 API（注册/登录/邮箱验证）───
 from pydantic import BaseModel as _BM
 
