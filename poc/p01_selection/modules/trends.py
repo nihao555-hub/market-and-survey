@@ -2,6 +2,7 @@
 趋势层：Google Trends（pytrends）+ 关键词扩展（thefuzz）
 """
 from __future__ import annotations
+import os
 import pandas as pd
 from loguru import logger
 
@@ -34,23 +35,76 @@ def _patch_urllib3_retry():
 _patch_urllib3_retry()
 
 
-def get_keyword_trend(keywords: list[str], timeframe: str = "today 12-m",
-                      geo: str = "US") -> pd.DataFrame:
-    """近一年关键词趋势（0-100 相对热度）"""
+def _scraper_api_trends(keyword: str, geo: str = "US", timeframe: str = "today 12-m") -> pd.DataFrame:
+    """ScraperAPI 回退：用 ScraperAPI 抓取 Google Trends 页面并解析数据。
+    当 pytrends 直连失败时（如 Render 服务器 IP 被封）走此路径。"""
+    import requests, json
+    key = os.getenv("SCRAPERAPI_KEY", "")
+    if not key:
+        return pd.DataFrame()
     try:
-        from pytrends.request import TrendReq
-        py = TrendReq(hl="en-US", tz=360, retries=2, backoff_factor=0.5)
-        py.build_payload(keywords[:5], cat=0, timeframe=timeframe, geo=geo, gprop="")
-        df = py.interest_over_time()
-        if df is None or df.empty:
+        # Google Trends internal API URL for interest over time
+        tf_param = timeframe.replace(" ", "%20")
+        trends_url = (f"https://trends.google.com/trends/api/widgetdata/multiline?"
+                      f"hl=en-US&tz=360&req=%7B%22time%22%3A%22{tf_param}%22%2C"
+                      f"%22resolution%22%3A%22WEEK%22%2C%22locale%22%3A%22en-US%22%2C"
+                      f"%22comparisonItem%22%3A%5B%7B%22keyword%22%3A%22{keyword}%22%2C"
+                      f"%22geo%22%3A%22{geo}%22%2C%22time%22%3A%22{tf_param}%22%7D%5D%2C"
+                      f"%22requestOptions%22%3A%7B%22property%22%3A%22%22%2C%22backend%22%3A%22IZG%22%2C"
+                      f"%22category%22%3A0%7D%7D&token=APP6_UEAAAAAaPdq")
+        api_url = f"http://api.scraperapi.com?api_key={key}&url={trends_url}&render=true"
+        resp = requests.get(api_url, timeout=30)
+        if resp.status_code != 200:
             return pd.DataFrame()
-        if "isPartial" in df.columns:
-            df = df.drop(columns=["isPartial"])
-        logger.info(f"趋势 OK：{list(df.columns)} ({len(df)} 行)")
+        text = resp.text
+        if text.startswith(")]}'\n"):
+            text = text[5:]
+        data = json.loads(text)
+        timeline = data.get("default", {}).get("timelineData", [])
+        if not timeline:
+            return pd.DataFrame()
+        rows = []
+        for point in timeline:
+            ts = point.get("time")
+            val = point.get("value", [0])[0] if point.get("value") else 0
+            if ts:
+                from datetime import datetime, timezone
+                dt = datetime.fromtimestamp(int(ts), tz=timezone.utc)
+                rows.append({"date": dt, keyword: val})
+        if not rows:
+            return pd.DataFrame()
+        df = pd.DataFrame(rows).set_index("date")
+        logger.info(f"趋势(ScraperAPI回退) OK：{keyword} ({len(df)} 行)")
         return df
     except Exception as e:
-        logger.warning(f"pytrends 失败: {str(e)[:120]}")
+        logger.warning(f"ScraperAPI trends fallback 失败: {str(e)[:120]}")
         return pd.DataFrame()
+
+
+def get_keyword_trend(keywords: list[str], timeframe: str = "today 12-m",
+                      geo: str = "US") -> pd.DataFrame:
+    """近一年关键词趋势（0-100 相对热度）。直连失败时回退 ScraperAPI 抓取。"""
+    # 第一步：尝试 pytrends 直连（大多数服务器可用）
+    try:
+        from pytrends.request import TrendReq
+        py = TrendReq(hl="en-US", tz=360, retries=2, backoff_factor=0.5, timeout=(10, 25))
+        py.build_payload(keywords[:5], cat=0, timeframe=timeframe, geo=geo, gprop="")
+        df = py.interest_over_time()
+        if df is not None and not df.empty:
+            if "isPartial" in df.columns:
+                df = df.drop(columns=["isPartial"])
+            logger.info(f"趋势 OK：{list(df.columns)} ({len(df)} 行)")
+            return df
+    except Exception as e:
+        logger.warning(f"pytrends 直连失败: {str(e)[:100]}，尝试 ScraperAPI 回退...")
+
+    # 第二步：回退 ScraperAPI 抓取（Render 等云服务器 IP 被 Google 封锁时）
+    if keywords:
+        df = _scraper_api_trends(keywords[0], geo=geo, timeframe=timeframe)
+        if not df.empty:
+            return df
+
+    return pd.DataFrame()
 
 
 def get_related_keywords(seed: str, candidates: list[str], top_n: int = 10) -> list[dict]:

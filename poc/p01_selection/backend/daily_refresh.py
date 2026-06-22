@@ -394,12 +394,13 @@ def _fetch_category_products_paged(tikhub, category_id: str, geo: str,
     return out
 
 
-def _collect_category_rankings(geo: str = "US") -> list[dict]:
+def _collect_category_rankings(geo: str = "US", include_subcats: Optional[bool] = None) -> list[dict]:
     """按 TikTok Shop 一级品类（+可选二级子品类）抓实时商品榜。
     
-    一级品类 28 个是 TikTok Shop 的全部顶级分类；二级子品类约 212 个，
-    INCLUDE_SUBCATS=1 时也会抓取，提供更细粒度的品类覆盖。
+    一级品类 28 个是 TikTok Shop 的全部顶级分类；二级子品类约 212 个。
+    include_subcats=True 时抓取全部子品类（约 220+ 个），用于定时全量刷新。
     """
+    _include_subcats = include_subcats if include_subcats is not None else INCLUDE_SUBCATS
     if not _tikhub_ok():
         return [dict(source="category_rank", tier=2, status="unavailable", real_data=False,
                      summary="按品类榜单通道未就绪（需 TIKHUB_API_KEY）", payload={"reason": "no_tikhub_key"})]
@@ -411,15 +412,17 @@ def _collect_category_rankings(geo: str = "US") -> list[dict]:
                      summary=f"品类列表获取失败：{str(e)[:140]}", payload={"error": str(e)[:300]})]
     
     # Build flat list: top-level + optional sub-categories
+    # 定时全量刷新时不限制顶级品类数量，覆盖全部
+    cat_limit = len(cats) if _include_subcats else CATEGORY_MAX
     flat: list[dict] = []
-    for cat in cats[:CATEGORY_MAX]:
+    for cat in cats[:cat_limit]:
         cid = cat.get("category_id")
         cname = cat.get("category_name") or cid
         if not cid:
             continue
         flat.append({"id": cid, "name": cname, "name_en": cat.get("category_name_en"),
                      "parent": None, "top_n": CATEGORY_TOP_N})
-        if INCLUDE_SUBCATS:
+        if _include_subcats:
             for sub in (cat.get("children") or []):
                 sid = sub.get("category_id")
                 sname = sub.get("category_name") or sid
@@ -429,7 +432,9 @@ def _collect_category_rankings(geo: str = "US") -> list[dict]:
     
     rows: list[dict] = []
     t_start = time.time()
-    CATEGORY_TIMEOUT = int(os.getenv("DAILY_REFRESH_CATEGORY_TIMEOUT", "300"))  # 5 min max
+    # 定时全量刷新（含子品类）允许更长超时（30 分钟），startup 保持 5 分钟
+    default_timeout = "1800" if _include_subcats else "300"
+    CATEGORY_TIMEOUT = int(os.getenv("DAILY_REFRESH_CATEGORY_TIMEOUT", default_timeout))
     for entry in flat:
         # 超时保护：品类收集不超过 5 分钟
         if time.time() - t_start > CATEGORY_TIMEOUT:
@@ -554,7 +559,9 @@ def run_daily_refresh(tenant_id: str = "dev_tenant", terms: Optional[list[str]] 
         for current_geo in geo_list:
             logger.info(f"daily_refresh geo={current_geo} collecting...")
             # 按品类榜单 / 实时热销榜 / 热门话题曲线
-            _persist("📦 品类榜单", _collect_category_rankings(current_geo), current_geo)
+            # daily_full（美国 EST 0:00）时抓全部 220+ 子品类；startup/schedule 只抓 28 个顶级品类
+            _include_all_subcats = trigger == "daily_full"
+            _persist("📦 品类榜单", _collect_category_rankings(current_geo, include_subcats=_include_all_subcats), current_geo)
             _persist(HOT_SELLING_TERM, [_collect_hot_selling(current_geo)], current_geo)
             _persist(HASHTAG_TREND_TERM, [_collect_hashtag_trends(current_geo)], current_geo)
 
