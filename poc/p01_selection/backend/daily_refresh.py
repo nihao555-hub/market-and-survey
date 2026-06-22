@@ -188,10 +188,13 @@ def _collect_tier1(term: str, geo: str) -> list[dict]:
         out.append(dict(source="amazon_keywords", tier=1, status="error",
                         real_data=False, summary=str(e)[:160], payload={"error": str(e)[:300]}))
 
-    # 2) Google Trends 趋势方向
+    # 2) Google Trends 趋势方向（带超时保护，避免阻塞 startup）
     try:
+        import concurrent.futures
         from modules.agent_tools import tool_get_trend
-        r = tool_get_trend(term, geo=geo)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(tool_get_trend, term, geo)
+            r = future.result(timeout=20)  # 最多等 20 秒
         ok = (r.get("direction") is not None) and (r.get("trend") != "no data")
         out.append(dict(
             source="google_trends", tier=1, status="ok" if ok else "empty",
@@ -200,14 +203,21 @@ def _collect_tier1(term: str, geo: str) -> list[dict]:
                      if ok else "无趋势数据"),
             payload=r,
         ))
+    except concurrent.futures.TimeoutError:
+        logger.warning(f"Google Trends 超时(20s): {term}")
+        out.append(dict(source="google_trends", tier=1, status="timeout",
+                        real_data=False, summary="Google Trends 请求超时", payload={"timeout": True}))
     except Exception as e:
         out.append(dict(source="google_trends", tier=1, status="error",
                         real_data=False, summary=str(e)[:160], payload={"error": str(e)[:300]}))
 
-    # 3) 季节性（5 年 Google Trends）
+    # 3) 季节性（5 年 Google Trends）— 带超时保护
     try:
+        import concurrent.futures
         from modules.agent_tools import tool_compare_seasonality
-        r = tool_compare_seasonality(term, geo=geo)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(tool_compare_seasonality, term, geo)
+            r = future.result(timeout=20)  # 最多等 20 秒
         ok = "error" not in r
         out.append(dict(
             source="seasonality", tier=1, status="ok" if ok else "empty",
@@ -216,6 +226,10 @@ def _collect_tier1(term: str, geo: str) -> list[dict]:
                      if ok else str(r.get("error", "无数据"))),
             payload=r,
         ))
+    except concurrent.futures.TimeoutError:
+        logger.warning(f"Seasonality 超时(20s): {term}")
+        out.append(dict(source="seasonality", tier=1, status="timeout",
+                        real_data=False, summary="季节性分析请求超时", payload={"timeout": True}))
     except Exception as e:
         out.append(dict(source="seasonality", tier=1, status="error",
                         real_data=False, summary=str(e)[:160], payload={"error": str(e)[:300]}))
