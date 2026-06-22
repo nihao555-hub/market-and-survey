@@ -471,6 +471,7 @@ function buildCatCards(latestSnaps: DataSnapshot[], historySnaps: DataSnapshot[]
       priceHistory,
       countHistory,
       ratingHistory,
+      trendsHistory: [],
       top5,
     });
   }
