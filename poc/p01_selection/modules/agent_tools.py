@@ -1141,6 +1141,29 @@ def tool_search_products(platform: str, keyword: str, limit: int = 50,
         except Exception as e:
             logger.warning(f"[{platform}] ScraperAPI SDE 异常，降级到本地代理: {str(e)[:100]}")
 
+    # ═══ ScraperAPI 通用优先路径（非 SDE 平台但有 ScraperAPI 配置时优先走 ScraperAPI）═══
+    if not sde_type and platform in PLATFORM_SCRAPERAPI_CONFIG and scraperapi_available():
+        try:
+            sa_result = search_products_via_scraperapi(platform, keyword, limit)
+            sa_prods = sa_result.get("products", [])
+            if sa_prods:
+                logger.info(f"[{platform}] ScraperAPI 通用代理成功 → {len(sa_prods)} products")
+                _record_platform_success(platform)
+                return {
+                    "platform": platform, "platform_name": p.get("name"),
+                    "url": sa_result.get("url", f"ScraperAPI {platform}"),
+                    "count": len(sa_prods), "products": sa_prods[:limit],
+                    "pool_size_after": POOL.size(),
+                    "platform_status": p.get("status"),
+                    "_attempts": 1, "_extraction": "scraperapi_proxy",
+                    "success": True,
+                    "credit_cost": sa_result.get("credit_cost"),
+                }
+            else:
+                logger.info(f"[{platform}] ScraperAPI 通用代理返回 0 商品，降级到本地代理")
+        except Exception as e:
+            logger.warning(f"[{platform}] ScraperAPI 通用代理异常，降级到本地代理: {str(e)[:100]}")
+
     url_template = p.get("search_url") or p.get("url")
     if not url_template:
         return {"platform": platform, "error": "no search_url in PLATFORMS", "products": []}

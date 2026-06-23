@@ -18,18 +18,22 @@ export function getToken(): string | null {
   return localStorage.getItem("auth_token");
 }
 
-/** Save auth data to localStorage */
+/** Save auth data to localStorage + cookie (cookie used by Next.js middleware) */
 export function saveAuth(token: string, email: string, plan: string) {
   localStorage.setItem("auth_token", token);
   localStorage.setItem("user_email", email);
   localStorage.setItem("user_plan", plan || "free");
+  // Write cookie so Next.js middleware (Edge Runtime) can check auth
+  document.cookie = `auth_token=${encodeURIComponent(token)}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax`;
 }
 
-/** Clear auth data from localStorage */
+/** Clear auth data from localStorage + cookie */
 export function clearAuth() {
   localStorage.removeItem("auth_token");
   localStorage.removeItem("user_email");
   localStorage.removeItem("user_plan");
+  // Remove cookie
+  document.cookie = "auth_token=; path=/; max-age=0";
 }
 
 /** Check if user is authenticated */

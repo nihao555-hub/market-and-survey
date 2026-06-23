@@ -43,27 +43,10 @@ export function AuthGuard({ children, requiredPlan = "free" }: AuthGuardProps) {
   }
 
   if (status === "no_auth") {
+    router.replace("/login");
     return (
       <div className="flex h-screen items-center justify-center bg-[var(--gray-1)]">
-        <div className="text-center max-w-sm px-6">
-          <div className="mb-4 text-5xl">🔒</div>
-          <h2 className="text-xl font-semibold text-neutral-900 mb-2">请先登录</h2>
-          <p className="text-sm text-neutral-500 mb-6">登录后即可使用 SelectPilot 的全部功能</p>
-          <div className="flex gap-3 justify-center">
-            <button
-              onClick={() => router.push("/login")}
-              className="rounded-full bg-neutral-900 px-6 py-2.5 text-sm font-medium text-white hover:bg-neutral-800"
-            >
-              去登录
-            </button>
-            <button
-              onClick={() => router.push("/register")}
-              className="rounded-full border border-neutral-200 px-6 py-2.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
-            >
-              注册账号
-            </button>
-          </div>
-        </div>
+        <div className="animate-pulse text-neutral-400 text-sm">正在跳转到登录页...</div>
       </div>
     );
   }
