@@ -781,7 +781,7 @@ export function CategoryTrendsSection() {
         fetchDailyRefreshStatus(),
         fetchAllSnapshots({ source: "category_rank", limit: 300 }),
         fetchCategorySparklines(),
-        fetchAllSnapshots({ source: "google_trends", limit: 500 }),
+        fetchAllSnapshots({ source: "google_trends", limit: 5000 }),
         // Fetch each social platform separately
         ...SOCIAL_PLATFORMS.map((p) => fetchAllSnapshots({ source: p.source, limit: 500 })),
       ]);
