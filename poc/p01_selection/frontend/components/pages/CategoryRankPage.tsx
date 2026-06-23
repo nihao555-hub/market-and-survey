@@ -837,7 +837,7 @@ export function CategoryRankPage() {
         fetchDataSnapshots({ term: HOT_SELLING_TERM, limit: 1 }),
         fetchDataSnapshots({ term: HASHTAG_TREND_TERM, limit: 1 }),
         fetchCategorySparklines(),
-        fetchAllSnapshots({ source: "google_trends", limit: 1000 }),
+        fetchAllSnapshots({ source: "google_trends", limit: 5000 }),
       ]);
       setStatus(st);
       const okCats = catSnaps.filter((s) => s.realData && ((s.payload?.products?.length ?? 0) > 0 || typeof s.payload?.product_count === "number"));
