@@ -517,8 +517,10 @@ function buildCatCardsFromSpark(latestSnaps: DataSnapshot[], sparkData: Category
     const ratingHistory = spark?.points.map((p) => p.avgRating) ?? [];
     // Google Trends sparkline: normalize to slug format for matching
     const catNameEn = (latestSnap?.payload?.category_name_en as string) || name;
-    const catSlug = catNameEn.toLowerCase().replace(/[&]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-");
-    const trendsHistory = catTrendsMap.get(catSlug) || catTrendsMap.get(catNameEn) || [];
+    const catSlug = catNameEn.toLowerCase().replace(/[&',]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+    // Also try variant without possessive 's → just s (e.g. Women's → womens)
+    const catSlugAlt = catSlug.replace(/-s-/g, "s-").replace(/-s$/g, "s");
+    const trendsHistory = catTrendsMap.get(catSlug) || catTrendsMap.get(catSlugAlt) || catTrendsMap.get(catNameEn) || catTrendsMap.get(name) || [];
 
     const latestStats = latestSnap ? _extractStats(latestSnap) : null;
     const latestAvgPrice = latestStats?.avgPrice ?? (priceHistory.length ? priceHistory[priceHistory.length - 1] : 0);
