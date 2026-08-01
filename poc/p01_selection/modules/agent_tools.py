@@ -1886,10 +1886,14 @@ def tool_validate_candidate(asin: str) -> dict:
 
 
 # =====================  1688 真实采购成本（仅真实数据，抓不到就明确返回 error）=====================
-def tool_get_real_procurement_cost(category_keyword_zh: str) -> dict:
-    """从 1688 拿真实采购成本。失败明确报错，禁止 LLM 猜数字。"""
-    logger.info(f"🔧 get_real_procurement_cost({category_keyword_zh})")
-    return get_real_procurement_cost(category_keyword_zh, use_proxy=False)
+def tool_get_real_procurement_cost(category_keyword_zh: str,
+                                   product_attrs: dict = None) -> dict:
+    """从 1688 拿真实采购成本。失败明确报错，禁止 LLM 猜数字。
+    提供 product_attrs（材质/容量/型号词）时，DHgate 兜底走型号级匹配，
+    只有 match_level="model" 的结果才允许进入 full_cost_breakdown。"""
+    logger.info(f"🔧 get_real_procurement_cost({category_keyword_zh}, attrs={product_attrs})")
+    return get_real_procurement_cost(category_keyword_zh, use_proxy=False,
+                                     product_attrs=product_attrs)
 
 
 def tool_search_1688(keyword: str, limit: int = 20) -> dict:
@@ -3022,9 +3026,11 @@ TOOLS_SCHEMA = [
         }, "required": ["asin"]}}},
     {"type": "function", "function": {
         "name": "get_real_procurement_cost",
-        "description": "从 1688 真实搜索拿采购成本（USD）。返回真实抓到的供应商列表+价格区间。失败明确报错，禁止凭印象给数字。",
+        "description": "从 1688 真实搜索拿采购成本（USD）。返回真实抓到的供应商列表+价格区间。失败明确报错，禁止凭印象给数字。提供 product_attrs 时 DHgate 兜底走型号级匹配：只有 match_level='model'（标题同时命中类目词+材质/容量等规格词）的结果 usable_for_cost_calc=True，允许进 full_cost_breakdown；泛品类结果（match_level='category'）按零编造铁律禁止用于测算。",
         "parameters": {"type": "object", "properties": {
-            "category_keyword_zh": {"type": "string", "description": "中文品类关键词（蓝牙耳机/智能手表 等）"}        }, "required": ["category_keyword_zh"]}}},
+            "category_keyword_zh": {"type": "string", "description": "中文品类关键词（蓝牙耳机/智能手表 等）"},
+            "product_attrs": {"type": "object", "description": "候选品属性（可选，用于 DHgate 型号级兜底），如 {\"material\": \"stainless steel\", \"capacity\": \"3L\", \"model_terms\": [\"automatic\"]}"}
+        }, "required": ["category_keyword_zh"]}}},
     {"type": "function", "function": {
         "name": "get_supplier_detail_price",
         "description": "**采购价精准突破**：抓供应商商品详情页的 MOQ 阶梯报价（如 100-499件$8.5/500-999件$7.2/1000+件$6.5），按商家实际下单量返回精准单价。比 get_real_procurement_cost 的搜索页区间精准得多。带重试扛 MIC 间歇反爬。从 get_real_procurement_cost 返回的 items[].source_url 取详情页 URL。",

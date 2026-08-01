@@ -269,6 +269,125 @@ def search_dhgate(keyword_en: str, use_proxy: bool = True, limit: int = 20) -> d
     return {"keyword": keyword_en, "url": url, "count": len(items), "items": items}
 
 
+# ════════════════════════════════════════════════════════════════════
+# 型号级匹配（DHgate 兜底防"泛品类中位价"进入测算）
+# ════════════════════════════════════════════════════════════════════
+def build_model_query(category_en: str, attrs: dict | None = None) -> str:
+    """
+    用候选品属性构造型号级英文查询词。
+    例：category_en="pet water fountain",
+        attrs={"material": "stainless steel", "capacity": "3L"}
+        → "stainless steel pet water fountain 3L"
+    attrs 支持键：material / capacity / model_terms(list) / spec_terms(list)。
+    """
+    attrs = attrs or {}
+    parts = []
+    material = (attrs.get("material") or "").strip()
+    if material:
+        parts.append(material)
+    parts.append(category_en.strip())
+    capacity = (attrs.get("capacity") or "").strip()
+    if capacity:
+        parts.append(capacity)
+    for t in (attrs.get("model_terms") or attrs.get("spec_terms") or []):
+        t = str(t).strip()
+        if t and t.lower() not in " ".join(parts).lower():
+            parts.append(t)
+    return " ".join(p for p in parts if p)
+
+
+def _spec_terms(attrs: dict | None) -> list[str]:
+    """从候选品属性提取规格词（材质/容量/自定义型号词）。"""
+    attrs = attrs or {}
+    terms = []
+    for key in ("material", "capacity"):
+        v = (attrs.get(key) or "").strip()
+        if v:
+            terms.append(v)
+    for t in (attrs.get("model_terms") or attrs.get("spec_terms") or []):
+        t = str(t).strip()
+        if t:
+            terms.append(t)
+    return terms
+
+
+def _term_in_title(term: str, title_lower: str) -> bool:
+    """
+    规格词命中判定。容量类（3L/7L/1gal）做去空格子串匹配（兼容 "3 L"/"3.0L"），
+    其余按词匹配（防 "steel" 误中 "stainless" 之外的拼写）。
+    """
+    t = term.lower().strip()
+    if not t:
+        return False
+    # 容量模式：数字+单位（l/ml/oz/gal）
+    if re.fullmatch(r'\d+\.?\d*\s?(l|ml|oz|gal|gallon)s?', t):
+        compact = re.sub(r'\s+', '', t)
+        return compact in re.sub(r'\s+', '', title_lower)
+    words = [w for w in re.findall(r'[a-z0-9]+', t) if w]
+    return all(re.search(rf'\b{re.escape(w)}', title_lower) for w in words)
+
+
+def model_match_items(items: list[dict], category_en: str,
+                      attrs: dict | None = None) -> tuple[list[dict], dict]:
+    """
+    型号级匹配过滤：只有标题同时命中【类目词 + ≥1 个规格词（材质/容量）】的商品
+    才算型号级匹配（match_level="model"），允许进入 full_cost_breakdown。
+    泛品类结果（只中类目词）按数据零编造铁律拒绝用于测算。
+
+    返回 (matched_items, match_info)：
+      match_info = {matched_keywords, confidence, match_level, usable_for_cost_calc}
+    """
+    stop = {"the", "a", "an", "for", "with", "and", "of", "to", "in", "pack", "set",
+            "new", "hot", "sale", "high", "quality", "wholesale", "custom", "oem"}
+    cat_words = [w for w in re.findall(r'[a-z]+', category_en.lower())
+                 if w not in stop and len(w) > 2]
+    specs = _spec_terms(attrs)
+    matched_items = []
+    all_matched_kw: set[str] = set()
+    for it in items:
+        title_lower = (it.get("title") or "").lower()
+        title_words = set(re.findall(r'[a-z]+', title_lower))
+        cat_hit = [w for w in cat_words if w in title_words]
+        spec_hit = [s for s in specs if _term_in_title(s, title_lower)]
+        # 类目词要求命中 ≥2 个（或类目只有 1 个词时命中它），防"pet supplies"泛匹配
+        need_cat = min(2, len(cat_words))
+        if len(cat_hit) >= need_cat and spec_hit:
+            it = dict(it)
+            it["matched_keywords"] = sorted(set(cat_hit) | set(spec_hit))
+            it["match_level"] = "model"
+            matched_items.append(it)
+            all_matched_kw.update(cat_hit + spec_hit)
+    n_spec = len(specs)
+    confidence = round(len(all_matched_kw) / max(1, len(cat_words) + n_spec), 2)
+    info = {
+        "matched_keywords": sorted(all_matched_kw),
+        "confidence": confidence,
+        "spec_terms": specs,
+        "category_terms": cat_words,
+        "match_level": "model" if matched_items else "none",
+        "usable_for_cost_calc": bool(matched_items),
+    }
+    return matched_items, info
+
+
+def search_dhgate_model_level(category_en: str, attrs: dict | None = None,
+                              use_proxy: bool = True, limit: int = 20) -> dict:
+    """
+    DHgate 型号级兜底：用候选品属性（材质/容量/类目）构造型号级查询，
+    只有型号级匹配的结果才返回为可用（usable_for_cost_calc=True）；
+    匹配不到就如实返回 match_level="none"，不编造、不退化用泛品类价。
+    """
+    query = build_model_query(category_en, attrs)
+    raw = search_dhgate(query, use_proxy=use_proxy, limit=limit)
+    if raw.get("error") or not raw.get("items"):
+        return {"query": query, "match_level": "none", "usable_for_cost_calc": False,
+                "items": [], "error": raw.get("error", "no_items_parsed"),
+                "source_url": raw.get("url")}
+    matched, info = model_match_items(raw["items"], category_en, attrs)
+    return {"query": query, "source_url": raw["url"], "count_raw": raw.get("count", 0),
+            "count_matched": len(matched), "items": matched, **info}
+
+
 def _relevance_filter(items: list[dict], keyword_en: str, min_overlap: int = 1) -> list[dict]:
     """
     过滤明显不相关的采购结果（防 Made-in-China 返回『整体橱柜』当『水槽下置物架』）。
@@ -331,10 +450,18 @@ def search_1688(keyword: str, use_proxy: bool = False, limit: int = 20) -> dict:
     return {"keyword": keyword, "url": url, "count": len(items), "items": items}
 
 
-def get_real_procurement_cost(category_keyword_zh: str, use_proxy: bool = False) -> dict:
+def get_real_procurement_cost(category_keyword_zh: str, use_proxy: bool = False,
+                              product_attrs: dict | None = None) -> dict:
     """
-    获取真实采购成本 — 多级备用源（1688 → Made-in-China → Alibaba）。
+    获取真实采购成本 — 多级备用源（1688 → Made-in-China → DHgate → GlobalSources）。
     返回字段含 source_url 用于报告引用。
+
+    product_attrs：候选品属性（{"material": "stainless steel", "capacity": "3L",
+    "model_terms": [...]}）。提供后 DHgate 兜底会先走型号级查询，
+    只有型号级匹配（标题同时命中类目词+规格词）的结果才标注
+    match_level="model" / usable_for_cost_calc=True，允许进入 full_cost_breakdown；
+    泛品类结果（如 "pet supplies" 中位价）一律 usable_for_cost_calc=False，
+    按数据零编造铁律拒绝用于测算。
     """
     # L1: 1688
     r = search_1688(category_keyword_zh, use_proxy=use_proxy)
@@ -368,6 +495,8 @@ def get_real_procurement_cost(category_keyword_zh: str, use_proxy: bool = False)
             "运动": "fitness sport", "露营": "camping gear",
             "健身": "fitness equipment",
             # 宠物
+            "宠物饮水机": "pet water fountain", "宠物饮水": "pet water fountain",
+            "宠物喂食器": "automatic pet feeder",
             "宠物": "pet supplies", "自动喂食": "automatic pet feeder",
             "宠物玩具": "pet toy",
             # 服饰/包
@@ -429,7 +558,41 @@ def get_real_procurement_cost(category_keyword_zh: str, use_proxy: bool = False)
                                  if relevance_low else "")),
                 }
 
-        # L3: DHgate 兜底
+        # L3: DHgate 兜底（有候选品属性时优先型号级查询）
+        r3_model = None
+        if product_attrs:
+            logger.info(f"🏭 Made-in-China 无匹配，DHgate 型号级查询: {keyword_en} attrs={product_attrs}")
+            r3_model = search_dhgate_model_level(keyword_en, product_attrs, use_proxy=use_proxy)
+            if r3_model.get("usable_for_cost_calc"):
+                m_items = r3_model["items"]
+                prices_usd = sorted([it["price_usd"] for it in m_items if it.get("price_usd")])
+                n = len(prices_usd)
+                if n > 0:
+                    return {
+                        "category": category_keyword_zh,
+                        "search_keyword_en": r3_model["query"],
+                        "source": "dhgate.com",
+                        "source_url": r3_model.get("source_url"),
+                        "real_data": True,
+                        "match_level": "model",
+                        "usable_for_cost_calc": True,
+                        "matched_keywords": r3_model["matched_keywords"],
+                        "confidence": r3_model["confidence"],
+                        "samples": n,
+                        "fx_rate_usd_cny": get_usd_cny_rate(),
+                        "min_usd": prices_usd[0],
+                        "p25_usd": prices_usd[max(0, n // 4)],
+                        "median_usd": prices_usd[n // 2],
+                        "p75_usd": prices_usd[min(n - 1, n * 3 // 4)],
+                        "max_usd": prices_usd[-1],
+                        "items": m_items[:10],
+                        "_note": (f"1688 + Made-in-China 均未匹配，DHgate 型号级匹配成功"
+                                  f"（查询词 '{r3_model['query']}'，命中关键词 "
+                                  f"{r3_model['matched_keywords']}，置信度 {r3_model['confidence']}）。"
+                                  f"型号级结果允许进入 full_cost_breakdown，价格含跨境零售加价，仅供参考下限"),
+                    }
+            logger.info(f"🏭 DHgate 型号级无匹配（{r3_model.get('error') or 'no_model_match'}），退回泛品类查询")
+
         logger.info(f"🏭 Made-in-China 无匹配，fallback DHgate: {keyword_en}")
         r3 = search_dhgate(keyword_en, use_proxy=use_proxy)
         r3_items = _relevance_filter(r3.get("items", []), keyword_en, min_overlap=1) or r3.get("items", [])
@@ -443,6 +606,8 @@ def get_real_procurement_cost(category_keyword_zh: str, use_proxy: bool = False)
                     "source": "dhgate.com",
                     "source_url": r3["url"],
                     "real_data": True,
+                    "match_level": "category",
+                    "usable_for_cost_calc": False,
                     "samples": n,
                     "fx_rate_usd_cny": get_usd_cny_rate(),
                     "min_usd": prices_usd[0],
@@ -452,6 +617,10 @@ def get_real_procurement_cost(category_keyword_zh: str, use_proxy: bool = False)
                     "max_usd": prices_usd[-1],
                     "items": r3_items[:10],
                     "_note": "1688 + Made-in-China 均未匹配，fallback DHgate（跨境批发，价格含零售加价，仅供参考下限）",
+                    "_strict_warning": ("⚠️ 此为泛品类结果（match_level=category，如 'pet supplies' 中位价），"
+                                         "非具体型号报价，usable_for_cost_calc=False，**禁止进入 full_cost_breakdown**。"
+                                         "请提供候选品属性（材质/容量）重试型号级匹配，或改用 "
+                                         "get_supplier_detail_price 抓详情页 MOQ 阶梯价 / 请用户提供供应商报价单。"),
                 }
 
         # L4: GlobalSources 兜底
