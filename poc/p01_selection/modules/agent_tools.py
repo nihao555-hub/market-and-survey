@@ -1849,17 +1849,19 @@ def tool_monte_carlo_stress_test(
 # =====================  阶段 7：IP 风险扫描  =====================
 def tool_quick_ip_check(keyword: str, brand_candidate: str = "") -> dict:
     logger.info(f"🔧 quick_ip_check({keyword}, {brand_candidate})")
-    return quick_ip_check(keyword=keyword, brand_candidate=brand_candidate, use_proxy=False)
+    return quick_ip_check(keyword=keyword, brand_candidate=brand_candidate, use_proxy=None)
 
 
 def tool_deep_ip_risk_assessment(category_keyword: str,
                                    brand_candidates: list[str] = None,
                                    max_depth: int = 1) -> dict:
-    """深度 IP 风险评估 — PatentsView 官方 API + 引用链 + 商标"""
+    """深度 IP 风险评估 — PatentsView 官方 API + 引用链 + 商标。
+    自动探测 US_PROXY（可用时优先走代理）；接口全灭时返回 failure_diagnosis
+    结构化原因与补救提示，如实登记 stage7，禁止编造结论。"""
     logger.info(f"🔧 deep_ip_risk_assessment({category_keyword})")
     return deep_ip_risk_assessment(category_keyword,
                                      brand_candidates=brand_candidates or [],
-                                     use_proxy=False, max_depth=max_depth)
+                                     use_proxy=None, max_depth=max_depth)
 
 
 # =====================  ASIN 池 + 候选品强校验  =====================
