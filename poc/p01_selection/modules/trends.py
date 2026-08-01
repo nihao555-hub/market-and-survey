@@ -19,11 +19,15 @@ def _patch_urllib3_retry():
         has_allowed_methods = "allowed_methods" in sig.parameters
         
         def _patched_init(self, *args, **kwargs):
-            # method_whitelist → allowed_methods
+            # method_whitelist → allowed_methods（urllib3>=2）
+            # 老版本 urllib3（无 allowed_methods）则原样保留 method_whitelist 透传
             if "method_whitelist" in kwargs:
                 mw = kwargs.pop("method_whitelist")
-                if has_allowed_methods and "allowed_methods" not in kwargs:
-                    kwargs["allowed_methods"] = mw
+                if has_allowed_methods:
+                    if "allowed_methods" not in kwargs:
+                        kwargs["allowed_methods"] = mw
+                else:
+                    kwargs["method_whitelist"] = mw
             return _orig_init(self, *args, **kwargs)
         
         Retry.__init__ = _patched_init
@@ -35,15 +39,47 @@ def _patch_urllib3_retry():
 _patch_urllib3_retry()
 
 
+# ScraperAPI 代理网关（pytrends 代理回退走这里）
+_SCRAPERAPI_PROXY_HOST = "proxy-server.scraperapi.com"
+_SCRAPERAPI_PROXY_PORT = 8001
+
+
+def _scraperapi_proxy_reachable() -> bool:
+    """
+    自动探测 ScraperAPI 代理网关连通性（3 秒 TCP connect 预检）。
+    沙箱/受限网络下网关不可达时快速跳过，避免 pytrends 请求级长超时挂起。
+
+    环境变量：
+    - TRENDS_PROXY_CHECK_TIMEOUT: 预检超时秒数，默认 3
+    - TRENDS_PROXY_FALLBACK: 兼容旧人工开关。显式设为 0/false/off 时强制禁用回退；
+      其他情况（含未设置）一律走自动探测，不再依赖人工开关。
+    """
+    manual = os.getenv("TRENDS_PROXY_FALLBACK", "").strip().lower()
+    if manual in ("0", "false", "off", "no"):
+        logger.info("TRENDS_PROXY_FALLBACK=off，人工禁用 ScraperAPI 代理回退")
+        return False
+    timeout = float(os.getenv("TRENDS_PROXY_CHECK_TIMEOUT", "3"))
+    from modules.scraper import tcp_reachable
+    ok = tcp_reachable(_SCRAPERAPI_PROXY_HOST, _SCRAPERAPI_PROXY_PORT, timeout=timeout)
+    if not ok:
+        logger.warning(
+            f"ScraperAPI 代理网关 {_SCRAPERAPI_PROXY_HOST}:{_SCRAPERAPI_PROXY_PORT} "
+            f"{timeout}s 内不可达，跳过代理回退（快速失败）")
+    return ok
+
+
 def _scraper_api_trends(keyword: str, geo: str = "US", timeframe: str = "today 12-m") -> pd.DataFrame:
     """ScraperAPI 代理回退：通过 ScraperAPI 代理 pytrends 请求绕过 IP 封锁。
-    当 pytrends 直连失败时（如 Render 服务器 IP 被封）走此路径。"""
+    当 pytrends 直连失败时（如 Render 服务器 IP 被封）走此路径。
+    先做 3 秒连通性预检，不通直接跳过（不再无限挂起）。"""
     key = os.getenv("SCRAPERAPI_KEY", "")
     if not key:
         return pd.DataFrame()
+    if not _scraperapi_proxy_reachable():
+        return pd.DataFrame()
     try:
         from pytrends.request import TrendReq
-        proxy_url = f"http://scraperapi:{key}@proxy-server.scraperapi.com:8001"
+        proxy_url = f"http://scraperapi:{key}@{_SCRAPERAPI_PROXY_HOST}:{_SCRAPERAPI_PROXY_PORT}"
         py = TrendReq(
             hl="en-US", tz=360, retries=1, backoff_factor=0.3,
             timeout=(8, 15),
