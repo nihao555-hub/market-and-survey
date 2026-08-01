@@ -2013,19 +2013,33 @@ def tool_record_stage_status(
              "all_stages_so_far": list(_STAGE_STATUS.keys())}
 
 
+# 阶段缺省补救建议（record_stage_status 未填 needs_user_action 时，summary 统一补 next_action）
+_STAGE_DEFAULT_NEXT_ACTION = {
+    "stage1_trends": "检查网络/代理（US_PROXY）后重跑趋势阶段；ScraperAPI 回退已内置 3 秒连通性预检自动跳过",
+    "stage2_competition": "重跑竞品采集；平台被封时配置 SCRAPERAPI_KEY 或 US_PROXY",
+    "stage3_pain_points": "重试评论分析或减少评论数；抓不到评论时换 ASIN 池内其他商品",
+    "stage4_candidates": "先扩充 ASIN 池（get_bestsellers/search_products），再重新校验候选品",
+    "stage5_profit": "采购成本缺失：提供 product_attrs 走 DHgate 型号级匹配，或 provide_procurement_cost 登记供应商报价单后重测",
+    "stage6_supply": "1688 被云 IP 黑名单拦截时，提供候选品属性（材质/容量）走型号级兜底，或用户提供工厂询价",
+    "stage7_ip_risk": "配置 US_PROXY（美国出口代理）后重试；接口全灭时如实标注'IP 风险未核查'，禁止编造结论",
+    "stage8_decision": "补齐前置阶段缺失数据后重新生成决策",
+}
+
+
 def tool_stage_status_summary() -> dict:
     """
     汇总所有阶段的执行状态。**最终报告生成前必须调用此工具**，确保不漏阶段、不静默跳过。
     返回每个阶段的 status，以及一段格式化的 markdown，可直接贴进报告"执行汇总"章节。
+    skipped/partial/failed 阶段统一附带 next_action（优先 needs_user_action，缺省用内置补救建议）。
     """
     logger.info(f"🔧 stage_status_summary() → {len(_STAGE_STATUS)} 阶段")
-    
+
     expected = ["stage1_trends", "stage2_competition", "stage3_pain_points",
                 "stage4_candidates", "stage5_profit", "stage6_supply",
                 "stage7_ip_risk", "stage8_decision"]
-    
+
     rows = []
-    md_lines = ["| 阶段 | 状态 | 说明 | 用户后续动作 |", "|---|:---:|---|---|"]
+    md_lines = ["| 阶段 | 状态 | 说明 | 下一步动作 |", "|---|:---:|---|---|"]
     icon = {"completed": "✅", "partial": "🟡", "skipped": "⚠️", "failed": "❌"}
     for sid in expected:
         rec = _STAGE_STATUS.get(sid)
@@ -2033,12 +2047,18 @@ def tool_stage_status_summary() -> dict:
             rows.append({"stage_id": sid, "status": "not_run"})
             md_lines.append(f"| {sid} | ⚪ 未执行 | — | — |")
             continue
-        rows.append(rec)
         st = rec["status"]
+        # 统一 next_action：未完成阶段必须有可执行的下一步
+        next_action = ""
+        if st in ("skipped", "partial", "failed"):
+            next_action = (rec.get("needs_user_action", "") or "").strip() \
+                          or _STAGE_DEFAULT_NEXT_ACTION.get(sid, "检查网络/依赖后重试本阶段")
+            rec = {**rec, "next_action": next_action}
+        rows.append(rec)
         md_lines.append(
             f"| {sid} | {icon.get(st, '?')} {st} "
             f"| {rec.get('reason', '') or '—'} "
-            f"| {rec.get('needs_user_action', '') or '—'} |"
+            f"| {next_action or '—'} |"
         )
     
     skipped = [r for r in rows if r.get("status") in ("skipped", "partial", "failed")]
