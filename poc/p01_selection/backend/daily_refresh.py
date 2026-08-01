@@ -185,6 +185,33 @@ def collect_terms(tenant_id: str = "dev_tenant", extra: Optional[list[str]] = No
 
 
 # ─────────── 单词采集 ───────────
+def _run_with_timeout(func, *args, timeout: float = 20.0):
+    """子线程跑 func，超时抛内置 TimeoutError，主流程立即继续、**不等待**卡住的线程。
+
+    直接用 `with ThreadPoolExecutor() + future.result(timeout=...)` 有陷阱：
+    result() 超时后，with 退出时 shutdown(wait=True) 仍会等卡住的线程——超时形同
+    虚设，整个采集被永久阻塞（线上曾因此卡死）。这里用 daemon 线程 + 队列：
+    超时后主流程马上返回，卡住的 daemon 线程不阻塞主流程、也不阻塞进程退出。
+    """
+    import queue as _queue
+    result_q: "_queue.Queue" = _queue.Queue(maxsize=1)
+
+    def _runner():
+        try:
+            result_q.put((True, func(*args)))
+        except Exception as exc:  # noqa: BLE001
+            result_q.put((False, exc))
+
+    threading.Thread(target=_runner, daemon=True).start()
+    try:
+        success, value = result_q.get(timeout=timeout)
+    except _queue.Empty:
+        raise TimeoutError(f"{getattr(func, '__name__', func)} 超时({timeout}s)")
+    if success:
+        return value
+    raise value
+
+
 def _collect_tier1(term: str, geo: str) -> list[dict]:
     """免代理可得的真实数据。返回若干 {source, tier, status, real_data, summary, payload}。"""
     out: list[dict] = []
@@ -210,11 +237,8 @@ def _collect_tier1(term: str, geo: str) -> list[dict]:
 
     # 2) Google Trends 趋势方向（带超时保护，避免阻塞 startup）
     try:
-        import concurrent.futures
         from modules.agent_tools import tool_get_trend
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(tool_get_trend, term, geo)
-            r = future.result(timeout=20)  # 最多等 20 秒
+        r = _run_with_timeout(tool_get_trend, term, geo, timeout=20)  # 最多等 20 秒
         ok = (r.get("direction") is not None) and (r.get("trend") != "no data")
         out.append(dict(
             source="google_trends", tier=1, status="ok" if ok else "empty",
@@ -223,7 +247,7 @@ def _collect_tier1(term: str, geo: str) -> list[dict]:
                      if ok else "无趋势数据"),
             payload=r,
         ))
-    except concurrent.futures.TimeoutError:
+    except TimeoutError:
         logger.warning(f"Google Trends 超时(20s): {term}")
         out.append(dict(source="google_trends", tier=1, status="timeout",
                         real_data=False, summary="Google Trends 请求超时", payload={"timeout": True}))
@@ -233,11 +257,8 @@ def _collect_tier1(term: str, geo: str) -> list[dict]:
 
     # 3) 季节性（5 年 Google Trends）— 带超时保护
     try:
-        import concurrent.futures
         from modules.agent_tools import tool_compare_seasonality
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(tool_compare_seasonality, term, geo)
-            r = future.result(timeout=20)  # 最多等 20 秒
+        r = _run_with_timeout(tool_compare_seasonality, term, geo, timeout=20)  # 最多等 20 秒
         ok = "error" not in r
         out.append(dict(
             source="seasonality", tier=1, status="ok" if ok else "empty",
@@ -246,7 +267,7 @@ def _collect_tier1(term: str, geo: str) -> list[dict]:
                      if ok else str(r.get("error", "无数据"))),
             payload=r,
         ))
-    except concurrent.futures.TimeoutError:
+    except TimeoutError:
         logger.warning(f"Seasonality 超时(20s): {term}")
         out.append(dict(source="seasonality", tier=1, status="timeout",
                         real_data=False, summary="季节性分析请求超时", payload={"timeout": True}))
