@@ -1,24 +1,36 @@
+# Render Blueprint — SelectPilot 后端一键部署
+# 用法：Render Dashboard → New → Blueprint → 选本仓库 → Apply。
+# 注意：每日定时刷新（APScheduler）是进程内调度，要求服务长驻——
+#       免费实例 15 分钟无流量会休眠导致定时任务停摆，请选 Starter($7/月)及以上。
 services:
   - type: web
     name: selectpilot-backend
     runtime: docker
-    dockerfilePath: ./Dockerfile
-    plan: free
+    plan: starter            # 免费 plan 会休眠 → 每日刷新不触发，勿用
+    healthCheckPath: /healthz
     envVars:
-      - key: PORT
-        value: "8001"
       - key: EMBEDDED_REDIS
         value: "1"
       - key: DAILY_REFRESH_ENABLED
         value: "1"
-      - key: BACKEND_AUTH_REQUIRED
-        value: "0"
       - key: DAILY_REFRESH_ON_STARTUP
         value: "1"
+      - key: OPEN_DATASET_ENABLED
+        value: "1"
+      # 每 2 小时普通刷新 + 每天美国东部 0:00 全量刷新（含 220+ 子品类）
+      - key: DAILY_REFRESH_INTERVAL_HOURS
+        value: "2"
+      - key: DAILY_FULL_REFRESH_HOUR_UTC
+        value: "5"
+      # ── 以下密钥请在 Render Dashboard 手动填（sync:false 不进 git）──
       - key: TIKHUB_API_KEY
         sync: false
       - key: DEEPSEEK_API_KEY
         sync: false
       - key: SCRAPERAPI_KEY
         sync: false
-    healthCheckPath: /healthz
+      - key: BACKEND_API_KEYS
+        sync: false
+      # 可选：外部 Postgres（不设则用容器 SQLite，重部署丢历史）
+      # - key: DATABASE_URL
+      #   sync: false
