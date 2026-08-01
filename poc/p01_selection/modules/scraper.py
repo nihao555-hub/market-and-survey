@@ -54,6 +54,31 @@ class FetchFailed(Exception):
     pass
 
 
+def tcp_reachable(host: str, port: int, timeout: float = 3.0) -> bool:
+    """
+    连通性预检：3 秒 TCP connect 检查（默认 timeout=3）。
+    用于代理/回退路径的快速失败——不通直接跳过，避免请求级长超时挂起。
+    """
+    import socket
+    try:
+        s = socket.socket()
+        s.settimeout(timeout)
+        s.connect((host, int(port)))
+        s.close()
+        return True
+    except Exception:
+        return False
+
+
+def proxy_reachable(proxy_url: str, timeout: float = 3.0) -> bool:
+    """解析 http(s)://[user:pass@]host:port 形式的代理 URL 并做 TCP 预检。"""
+    import re as _re
+    m = _re.search(r"@?([a-zA-Z0-9.\-_]+):(\d+)\s*$", proxy_url or "")
+    if not m:
+        return False
+    return tcp_reachable(m.group(1), int(m.group(2)), timeout=timeout)
+
+
 # ─────────────────────────── L1: curl_cffi ───────────────────────────
 def fetch_with_curl_cffi(url: str, proxy: Optional[str] = None) -> Optional[str]:
     try:
@@ -425,16 +450,14 @@ def fetch(url: str, proxy: Optional[str] = None,
     
     # 代理自检：可用则走代理，不可用则降级直连（不再强制失败）
     if eff:
-        import socket, re as _re
-        _m = _re.search(r":(\d+)", eff)
-        _port = int(_m.group(1)) if _m else 10808
-        s = socket.socket(); s.settimeout(2)
-        try:
-            s.connect(("127.0.0.1", _port)); s.close()
-        except Exception:
+        import re as _re
+        _hm = _re.search(r"@?([a-zA-Z0-9.\-_]+):(\d+)\s*$", eff)
+        _host = _hm.group(1) if _hm else "127.0.0.1"
+        _port = int(_hm.group(2)) if _hm else 10808
+        if not tcp_reachable(_host, _port, timeout=2):
             # 代理不可用 → 降级直连（curl_cffi TLS 指纹伪装足以通过 Amazon 等反爬）
             # 云部署环境（Render 等）无 xray 代理，直接降级不浪费 30s 重启超时
-            if _port == 10808:
+            if _host in ("127.0.0.1", "localhost") and _port == 10808:
                 # 仅在有 xray 二进制时尝试重启（避免云环境白等 30 秒）
                 xray_bin = os.path.join(os.path.dirname(__file__), "..", "proxy", "xray")
                 if os.path.isfile(xray_bin):
