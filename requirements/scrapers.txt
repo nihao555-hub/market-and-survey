@@ -4,8 +4,7 @@
 # 想完全复现请在装好后 `pip freeze` 锁定你这套组合。
 # 安装：pip install -r requirements/scrapers.txt
 
-# L1 快速通道：TLS/JA3 指纹伪装
-curl-cffi>=0.7
+# L1 快速通道 curl-cffi 与重试库 tenacity 已并入默认安装（见 backend.txt），此处不再重复。
 # L2 自适应解析 + 反检测
 scrapling>=0.2
 # L3 反检测 Playwright（SPA + 反爬强度高时）
@@ -20,6 +19,5 @@ markitdown>=0.0.1
 # LLM 驱动的结构化抽取（页面结构特殊时再兜底一层）
 scrapegraphai>=1.30
 
-# 编排（生产环境定时刷 BSR/价格 + 失败重试）
+# 编排（生产环境定时刷 BSR/价格）
 apscheduler>=3.10
-tenacity>=8.2
