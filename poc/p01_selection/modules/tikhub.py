@@ -153,45 +153,67 @@ def _normalize_product(p: dict) -> dict:
     }
 
 
+def _dig(node: Any, *paths: str) -> Any:
+    """按多条候选路径（点分隔）依次下探，返回第一个命中的非 None 值。
+
+    TikHub 响应包装层级随端点不同：有的业务数据在 data.data（两层），
+    有的在 data.data.data（三层）——写死层级曾导致全线解析为空（2026-08 修复）。
+    """
+    for path in paths:
+        cur = node
+        ok = True
+        for k in path.split("."):
+            if isinstance(cur, dict) and k in cur:
+                cur = cur[k]
+            else:
+                ok = False
+                break
+        if ok and cur is not None:
+            return cur
+    return None
+
+
 def shop_search(keyword: str, region: str = "US", limit: int = 20) -> list[dict]:
     """实时搜 TikTok Shop 商品。返回归一化商品列表（价格/评分/评论数/销量/店铺/图/链接）。"""
     endpoints = [
-        "/api/v1/tiktok_shop/web/fetch_search_products_list_v2",
+        # 当前有效端点（2026-08 实测 200）；旧 tiktok_shop 命名已 404，移除避免浪费计费请求
         "/api/v1/tiktok/shop/web/fetch_search_products_list_v2",
     ]
-    last_err: Exception | None = None
+    errs: list[str] = []
     for path in endpoints:
         try:
             d = _get(path, {"search_word": keyword, "region": region})
-            node: Any = d
-            for k in ("data", "data", "data"):
-                node = node.get(k) if isinstance(node, dict) else None
-            comp = (node or {}).get("component_data") if isinstance(node, dict) else None
-            prods = (comp or {}).get("products") or []
-            result = [_normalize_product(p) for p in prods[:limit]]
+            comp = _dig(d, "data.data.component_data", "data.data.data.component_data")
+            prods = (comp or {}).get("products") if isinstance(comp, dict) else None
+            if not prods:  # 有的版本商品列表直接在 data.data.products
+                prods = _dig(d, "data.data.products", "data.products") or []
+            result = [_normalize_product(p) for p in prods[:limit] if isinstance(p, dict)]
             if result:
                 return result
         except Exception as e:  # noqa: BLE001
-            last_err = e
-    if last_err:
-        raise last_err
+            errs.append(f"{path}: {e}")
+    if errs:
+        raise TikHubError("; ".join(errs)[:300])
     return []
 
 
 def _product_list_node(d: Any) -> list:
-    """分类榜 / 热销榜的商品列表都在 data.data.data.productList。"""
-    node: Any = d
-    for k in ("data", "data", "data"):
-        node = node.get(k) if isinstance(node, dict) else None
-    if isinstance(node, dict):
-        return node.get("productList") or node.get("products") or []
-    return []
+    """分类榜 / 热销榜的商品列表。层级随端点不同：两层 data.data.productList
+    （实测当前版本）或三层 data.data.data.productList（旧版本），两者兼容。"""
+    node = _dig(d, "data.data.productList", "data.data.data.productList",
+                "data.data.products", "data.data.data.products")
+    return node if isinstance(node, list) else []
 
 
 def fetch_products_category_list(region: str = "US") -> list[dict]:
     """TikTok Shop 一级品类树（每个一级类带二级子类）。用于「按品类」选品的导航。"""
     d = _get("/api/v1/tiktok/shop/web/fetch_products_category_list", {"region": region})
-    cats = ((d or {}).get("data") or {}).get("data") or []
+    # 实测当前版本 data 直接是一级类目 list；旧版包两层 data.data，兼容两者
+    cats = d.get("data") if isinstance(d, dict) else None
+    if isinstance(cats, dict):
+        cats = cats.get("data") or []
+    if not isinstance(cats, list):
+        cats = []
 
     def _norm_cat(node: dict) -> dict:
         s = node.get("self") or {}
@@ -229,33 +251,28 @@ def fetch_hot_selling_products(region: str = "US", limit: int = 20) -> list[dict
     全部失败时回退到 shop_search 热度排序。
     """
     endpoints = [
-        # v2 新端点
-        ("/api/v1/tiktok_shop/web/fetch_hot_selling_products_list", {"region": region}),
-        ("/api/v1/tiktok_shop/app/fetch_hot_selling_products_list",
-         {"region": region, "count": str(limit)}),
-        # v1 旧端点（可能已废弃但保留兼容）
+        # 当前有效端点（2026-08 实测 200）；tiktok_shop 命名旧端点已 404，移除避免浪费计费请求
         ("/api/v1/tiktok/shop/web/fetch_hot_selling_products_list", {"region": region}),
-        ("/api/v1/tiktok/shop/app/fetch_hot_selling_products_list",
-         {"region": region, "count": str(limit)}),
     ]
-    last_err: Exception | None = None
+    errs: list[str] = []
     for path, params in endpoints:
         try:
             d = _get(path, params)
-            prods = [_normalize_product(p) for p in _product_list_node(d)[:limit]]
+            prods = [_normalize_product(p) for p in _product_list_node(d)[:limit] if isinstance(p, dict)]
             if prods:
                 return prods
         except Exception as e:  # noqa: BLE001
-            last_err = e
-    # 全部端点失败时，回退到 shop_search（空词=热门）作为替代
-    try:
-        prods = shop_search("", region=region, limit=limit)
-        if prods:
-            return prods
-    except Exception as e:  # noqa: BLE001
-        last_err = last_err or e
-    if last_err:
-        raise last_err
+            errs.append(f"{path}: {e}")
+    # 全部端点失败时，回退到 shop_search（通用热词=热门）作为替代
+    if not errs:
+        try:
+            prods = shop_search("", region=region, limit=limit)
+            if prods:
+                return prods
+        except Exception as e:  # noqa: BLE001
+            errs.append(f"fallback shop_search: {e}")
+    if errs:
+        raise TikHubError("; ".join(errs)[:300])
     return []
 
 
@@ -403,10 +420,11 @@ def shop_reviews(product_id: str, region: str = "US", limit: int = 20) -> list[d
     """实时抓 TikTok Shop 某商品的真实评论。区域不匹配 / 无评论时返回空列表（不编造）。"""
     d = _get("/api/v1/tiktok/shop/web/fetch_product_reviews_v2",
              {"product_id": product_id, "region": region})
-    inner = ((d or {}).get("data") or {}).get("data") or {}
-    if inner.get("error_code"):  # 如 region 不匹配
+    inner = _dig(d, "data.data", "data.data.data") or {}
+    if not isinstance(inner, dict) or inner.get("error_code"):  # 如 region 不匹配
         return []
-    reviews = inner.get("reviews") or inner.get("review_list") or inner.get("items") or []
+    reviews = (inner.get("product_reviews") or inner.get("reviews")
+               or inner.get("review_list") or inner.get("items") or [])
     out: list[dict] = []
     for r in reviews[:limit]:
         if not isinstance(r, dict):
@@ -499,11 +517,15 @@ def weibo_hot_search(limit: int = 30) -> list[dict]:
 
 
 def xhs_trending(limit: int = 30) -> list[dict]:
-    """小红书热词 / 热搜。"""
-    d = _get("/api/v1/xiaohongshu/web_v3/fetch_trending")
-    queries = (((d or {}).get("data") or {}).get("data") or {}).get("queries") or []
-    out = [{"keyword": q.get("searchWord") or q.get("title"), "desc": q.get("desc", "")}
-           for q in queries if isinstance(q, dict) and (q.get("searchWord") or q.get("title"))]
+    """小红书热榜。旧端点 fetch_trending 已 404（2026-08），改用官方 fetch_hot_list。"""
+    d = _get("/api/v1/xiaohongshu/web_v3/fetch_hot_list")
+    items = _dig(d, "data.items", "data.data.items", "data.hot_list", "data.data.hot_list",
+                 "data.list", "data.data.list") or []
+    out = [{"keyword": it.get("title") or it.get("searchWord") or it.get("word") or it.get("name"),
+            "heat": it.get("heat") or it.get("hot_value") or it.get("score"),
+            "desc": it.get("desc", "")}
+           for it in items if isinstance(it, dict)
+           and (it.get("title") or it.get("searchWord") or it.get("word") or it.get("name"))]
     return out[:limit]
 
 
@@ -587,10 +609,18 @@ def shop_search_suggestions(keyword: str, region: str = "US", limit: int = 10) -
     """TikTok Shop 搜索联想词（买家输入时的热门补全建议）。用于关键词扩展和选品发散。"""
     d = _get("/api/v1/tiktok/shop/web/fetch_search_word_suggestion_v2",
              {"search_word": keyword, "region": region})
-    inner = ((d or {}).get("data") or {}).get("data") or {}
-    items = inner.get("data") if isinstance(inner.get("data"), list) else []
+    # 实测当前版本 data.data 直接是联想词 list；旧版为 data.data.data，兼容两者
+    items = _dig(d, "data.data", "data.data.data")
+    if isinstance(items, dict):
+        items = items.get("data") or []
+    if not isinstance(items, list):
+        items = []
     out: list[dict] = []
     for it in items[:limit]:
+        if isinstance(it, str):  # 实测当前版本直接返回字符串数组
+            if it.strip():
+                out.append({"keyword": it.strip(), "raw": it})
+            continue
         if not isinstance(it, dict):
             continue
         word = it.get("search_word") or it.get("word") or ""
@@ -603,20 +633,18 @@ def shop_seller_products(seller_id: str, region: str = "US", limit: int = 30) ->
     """获取某 TikTok Shop 店铺的所有在售商品。用于竞品店铺分析。"""
     d = _get("/api/v1/tiktok/shop/web/fetch_seller_products_list_v2",
              {"seller_id": seller_id, "region": region})
-    node: Any = d
-    for k in ("data", "data", "data"):
-        node = node.get(k) if isinstance(node, dict) else None
-    prods = (node or {}).get("products") or [] if isinstance(node, dict) else []
-    return [_normalize_product(p) for p in prods[:limit]]
+    node = _dig(d, "data.data", "data.data.data") or {}
+    prods = node.get("products") if isinstance(node, dict) else None
+    if not isinstance(prods, list):
+        prods = []
+    return [_normalize_product(p) for p in prods[:limit] if isinstance(p, dict)]
 
 
 def shop_product_detail(product_id: str, region: str = "US") -> dict:
     """获取 TikTok Shop 单个商品的详细信息（含完整 SKU / 描述 / 图片列表）。"""
     d = _get("/api/v1/tiktok/shop/web/fetch_product_detail_v2",
              {"product_id": product_id, "region": region})
-    node: Any = d
-    for k in ("data", "data", "data"):
-        node = node.get(k) if isinstance(node, dict) else None
+    node = _dig(d, "data.data", "data.data.data")
     if isinstance(node, dict):
         return _normalize_product(node)
     return {}

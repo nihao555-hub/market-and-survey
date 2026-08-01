@@ -24,6 +24,32 @@ from loguru import logger
 
 _HF_BASE = ("https://huggingface.co/datasets/McAuley-Lab/Amazon-Reviews-2023/"
             "resolve/main/raw/meta_categories/meta_{cat}.jsonl")
+# 国内网络不可直连 huggingface.co 时的镜像（2026-08 实测可用）。
+# 可用环境变量 OPEN_DATASET_BASE_URL 完全覆盖（{cat} 占位）。
+_HF_MIRROR_BASE = ("https://hf-mirror.com/datasets/McAuley-Lab/Amazon-Reviews-2023/"
+                   "resolve/main/raw/meta_categories/meta_{cat}.jsonl")
+
+_resolved_base: Optional[str] = None
+
+
+def _base_url() -> str:
+    """选数据源基址：环境变量 > 原站（3s 连通性探测）> 镜像。进程内缓存结果。"""
+    global _resolved_base
+    if _resolved_base:
+        return _resolved_base
+    import os
+    env = (os.getenv("OPEN_DATASET_BASE_URL") or "").strip()
+    if env:
+        _resolved_base = env
+        return _resolved_base
+    try:
+        import socket
+        with socket.create_connection(("huggingface.co", 443), timeout=3):
+            _resolved_base = _HF_BASE
+    except OSError:
+        _resolved_base = _HF_MIRROR_BASE
+        logger.info(f"open_dataset: huggingface.co 不可达，改用镜像 hf-mirror.com")
+    return _resolved_base
 
 # 跨境选品常见的大类（按命中概率排序；每个词会在这些已扫描的品类里找匹配）
 DEFAULT_CATEGORIES = [
@@ -125,7 +151,7 @@ def search_category(category: str, terms: list[str], *,
     """
     terms_lc = [(t, t.lower()) for t in terms]
     found: dict[str, list[dict]] = {t: [] for t in terms}
-    url = _HF_BASE.format(cat=category)
+    url = _base_url().format(cat=category)
     t0 = time.time()
     scanned = 0
     try:
