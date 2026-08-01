@@ -75,6 +75,26 @@ _OPEN_CACHE_KEY = "open_dataset:cache:{tenant}"
 _RUN_LOCK = threading.Lock()
 _STATE_KEY = "daily_refresh:state:{tenant}"
 
+# ── 卡死自愈：防止单次刷新永久阻塞（线上曾出现 startup 卡 8 小时、锁不释放）──
+# 单次刷新总时限（秒）：超过则中断后续采集、写 timeout_partial 并释放锁。
+MAX_REFRESH_SECONDS = int(os.getenv("DAILY_REFRESH_MAX_SECONDS", "1500"))  # 默认 25 分钟
+# 僵尸判定（秒）：状态停在 running 超过该时长即视为僵尸（上次卡死/实例休眠冻结）。
+ZOMBIE_AFTER_SECONDS = int(os.getenv("DAILY_REFRESH_ZOMBIE_SECONDS", "1800"))  # 默认 30 分钟
+
+
+def _is_zombie_state(state: dict) -> bool:
+    """状态停在 running 但 started_at 已超过 ZOMBIE_AFTER_SECONDS → 上次刷新卡死。"""
+    if not isinstance(state, dict) or state.get("status") != "running":
+        return False
+    started = state.get("started_at")
+    if not started:
+        return False
+    try:
+        age = (datetime.now(timezone.utc) - datetime.fromisoformat(started)).total_seconds()
+        return age > ZOMBIE_AFTER_SECONDS
+    except Exception:
+        return False
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -548,13 +568,16 @@ def run_daily_refresh(tenant_id: str = "dev_tenant", terms: Optional[list[str]] 
             else:
                 terms = collect_terms(tenant_id)
         channel_ok = tier2_channel_ok()
-        ds_products = open_dataset_products(tenant_id, terms)
+        # 关键修复：先登记 running 状态，再做可能耗时的 open_dataset。
+        # 否则一旦 open_dataset（或其它前置步骤）卡住/抛错，状态会永远停在
+        # never_run，前端“每日数据”面板与 triggerDailyRefresh 都会误判。
         st.set_config(_state_key(tenant_id), {
             "run_id": run_id, "status": "running", "trigger": trigger,
             "started_at": started, "finished_at": None, "geo": ",".join(geo_list),
             "terms": terms, "tier2_channel_ok": channel_ok, "counts": {},
         })
         logger.info(f"daily_refresh start run={run_id} geos={geo_list} terms={terms} tier2_ok={channel_ok}")
+        ds_products = open_dataset_products(tenant_id, terms)
 
         counts = {"total": 0, "ok": 0, "empty": 0, "error": 0, "unavailable": 0,
                   "real": 0, "terms": len(terms)}
@@ -574,7 +597,16 @@ def run_daily_refresh(tenant_id: str = "dev_tenant", terms: Optional[list[str]] 
         _skip_tikhub_categories = (trigger in ("startup", "schedule")
                                    and has_fresh_data(tenant_id))
 
+        timed_out = False
+
+        def _over_budget() -> bool:
+            return (time.time() - t0) > MAX_REFRESH_SECONDS
+
         for current_geo in geo_list:
+            if _over_budget():
+                timed_out = True
+                logger.warning(f"daily_refresh 超过总时限 {MAX_REFRESH_SECONDS}s，中断后续采集")
+                break
             logger.info(f"daily_refresh geo={current_geo} collecting... skip_cats={_skip_tikhub_categories}")
             if _skip_tikhub_categories:
                 logger.info("品类数据仍然新鲜（24h 内），跳过 TikHub 品类/热销/话题抓取")
@@ -587,13 +619,18 @@ def run_daily_refresh(tenant_id: str = "dev_tenant", terms: Optional[list[str]] 
                 _persist(HASHTAG_TREND_TERM, [_collect_hashtag_trends(current_geo)], current_geo)
 
             for term in terms:
+                if _over_budget():
+                    timed_out = True
+                    logger.warning(f"daily_refresh 超过总时限，已落库 {counts['total']} 条，中断剩余 term")
+                    break
                 rows = (_collect_tier1(term, current_geo)
                         + [_dataset_row(term, ds_products.get(term, []))]
                         + _collect_tier2(term, current_geo, channel_ok))
                 _persist(term, rows, current_geo)
 
+        final_status = "timeout_partial" if timed_out else "done"
         summary = {
-            "run_id": run_id, "status": "done", "trigger": trigger,
+            "run_id": run_id, "status": final_status, "trigger": trigger,
             "started_at": started, "finished_at": _now_iso(),
             "elapsed_sec": round(time.time() - t0, 1), "geo": ",".join(geo_list),
             "terms": terms, "tier2_channel_ok": channel_ok, "counts": counts,
@@ -652,7 +689,24 @@ def run_in_background(tenant_id: str = "dev_tenant", terms: Optional[list[str]] 
 
 
 def get_refresh_state(tenant_id: str = "dev_tenant") -> dict:
-    return st.get_config(_state_key(tenant_id)) or {"status": "never_run"}
+    """读刷新状态；若发现 running 卡成僵尸（超时未完成），自动改写为 failed 以便恢复。
+
+    线上曾出现 startup 卡 8 小时：状态一直 running、锁不释放、定时刷新全被挡。
+    前端/定时器每次读状态时顺手自愈，避免状态机永久卡死。
+    """
+    state = st.get_config(_state_key(tenant_id)) or {"status": "never_run"}
+    if _is_zombie_state(state):
+        logger.warning(f"检测到僵尸刷新 run={state.get('run_id')} started={state.get('started_at')}，标记 failed")
+        state = dict(state)
+        state["status"] = "failed"
+        state["finished_at"] = _now_iso()
+        state["error"] = f"刷新卡死超过 {ZOMBIE_AFTER_SECONDS}s 未完成（实例休眠或采集阻塞），已自动标记失败"
+        state["zombie_recovered"] = True
+        try:
+            st.set_config(_state_key(tenant_id), state)
+        except Exception:
+            pass
+    return state
 
 
 if __name__ == "__main__":
