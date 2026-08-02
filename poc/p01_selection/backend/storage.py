@@ -152,7 +152,14 @@ def _resolve_db_url() -> tuple[str, bool]:
 
 DB_URL, _IS_SQLITE = _resolve_db_url()
 _engine_kwargs: dict = {"future": True}
-if not _IS_SQLITE:
+if _IS_SQLITE:
+    # SQLite 用 NullPool：每次请求新建连接（本地文件连接开销≈0）。
+    # 默认 QueuePool(5+10, timeout=30s) 会在每日刷新期间被「网络抓取期间一直持有连接」
+    # 的写入线程全部占满，导致读查询排队约 30s（界面再次假空白）。NullPool 下读查询
+    # 永远立刻拿到连接，配合 WAL + busy_timeout 由 SQLite 自身串行化写入。
+    from sqlalchemy.pool import NullPool as _NullPool
+    _engine_kwargs.update(poolclass=_NullPool)
+else:
     _engine_kwargs.update(pool_pre_ping=True, pool_size=5, max_overflow=10,
                           pool_recycle=300)
     # MySQL/OceanBase 跨区域连接需更长超时
