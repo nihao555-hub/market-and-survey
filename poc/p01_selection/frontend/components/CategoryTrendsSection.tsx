@@ -777,7 +777,8 @@ export function CategoryTrendsSection() {
   const load = useCallback(async () => {
     try {
       // Fetch social data by individual source for better coverage
-      const [status, catSnaps, sparks, gSnaps, ...socialResults] = await Promise.all([
+      // allSettled：任一源超时/失败不拖垮整个区块（修复界面长期骨架屏）
+      const settled = await Promise.allSettled([
         fetchDailyRefreshStatus(),
         fetchAllSnapshots({ source: "category_rank", limit: 300 }),
         fetchCategorySparklines(),
@@ -785,6 +786,13 @@ export function CategoryTrendsSection() {
         // Fetch each social platform separately
         ...SOCIAL_PLATFORMS.map((p) => fetchAllSnapshots({ source: p.source, limit: 500 })),
       ]);
+      const val = <T,>(r: PromiseSettledResult<T> | undefined, fb: T): T =>
+        r && r.status === "fulfilled" ? r.value : fb;
+      const status = val(settled[0] as any, null as any);
+      const catSnaps = val(settled[1] as any, [] as any[]);
+      const sparks = val(settled[2] as any, [] as any[]);
+      const gSnaps = val(settled[3] as any, [] as any[]);
+      const socialResults = settled.slice(4).map((r) => val(r as any, [] as any[]));
       setLastUpdate(status?.finishedAt ?? null);
       setTierOk(status?.tier2ChannelOk ?? false);
       setLatestCats(catSnaps);
@@ -802,9 +810,14 @@ export function CategoryTrendsSection() {
   useEffect(() => { load(); }, [load]);
 
   // Auto-backfill if no historical data exists after initial load
+  // 防抖：24h 内只触发一次（后端另有熔断），避免每次打开工作台都拖慢全站
   const autoBackfillDone = React.useRef(false);
   useEffect(() => {
     if (loading || autoBackfillDone.current || backfilling) return;
+    try {
+      const last = Number(localStorage.getItem("gt_backfill_last") || 0);
+      if (Date.now() - last < 24 * 3600 * 1000) return;
+    } catch { /* ignore */ }
     // Check if we have very little history (< 3 days of data)
     const sparkDays = catSparks.length > 0 ? (catSparks[0].points?.length ?? 0) : 0;
     const socialDates = new Set(historySocial.map((s) => s.capturedAt?.slice(0, 10)));
@@ -827,6 +840,7 @@ export function CategoryTrendsSection() {
   const handleBackfill = React.useCallback(async () => {
     setBackfilling(true);
     try {
+      localStorage.setItem("gt_backfill_last", String(Date.now()));
       await backfillGoogleTrends();
       // Wait for backfill to complete in background, then reload
       setTimeout(() => { load(); setBackfilling(false); }, 15000);

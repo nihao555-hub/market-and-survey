@@ -184,6 +184,19 @@ def _create_engine_with_retry(url: str, kwargs: dict, max_retries: int = 5):
 
 
 _engine = _create_engine_with_retry(DB_URL, _engine_kwargs)
+
+# SQLite：WAL + busy_timeout——每日刷新/回填写入期间读查询不再被锁死（修复界面长时间骨架屏）
+if _IS_SQLITE:
+    from sqlalchemy import event as _sa_event
+
+    @_sa_event.listens_for(_engine, "connect")
+    def _sqlite_pragmas(dbapi_conn, _record):
+        cur = dbapi_conn.cursor()
+        cur.execute("PRAGMA journal_mode=WAL")
+        cur.execute("PRAGMA busy_timeout=15000")
+        cur.execute("PRAGMA synchronous=NORMAL")
+        cur.close()
+
 SessionLocal = sessionmaker(bind=_engine, future=True)
 
 # 轻量迁移：给已存在的旧 threads 表补新增列。仅 SQLite 需要（PRAGMA/ALTER 幂等）；

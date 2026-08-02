@@ -25,16 +25,29 @@ export const BACKEND_API_KEY = process.env.NEXT_PUBLIC_BACKEND_API_KEY || "";
 
 const GRAPHQL_HTTP = `${BACKEND_BASE}/graphql`;
 
-/** 普通 query / mutation（fetch POST） */
+/** 普通 query / mutation（fetch POST）；45s 超时，避免后端忙时界面永久骨架屏 */
 export async function gqlRequest<T = any>(
   query: string,
   variables?: Record<string, unknown>
 ): Promise<T> {
-  const res = await fetch(GRAPHQL_HTTP, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, variables }),
-  });
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 45_000);
+  let res: Response;
+  try {
+    res = await fetch(GRAPHQL_HTTP, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, variables }),
+      signal: ctrl.signal,
+    });
+  } catch (e: any) {
+    clearTimeout(timer);
+    if (e?.name === "AbortError") {
+      throw new Error("数据加载超时，请稍后重试");
+    }
+    throw e;
+  }
+  clearTimeout(timer);
   const json = await res.json();
   if (json.errors) {
     throw new Error(json.errors.map((e: any) => e.message).join("; "));

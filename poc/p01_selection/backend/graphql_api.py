@@ -429,6 +429,11 @@ class Query:
 
 
 # ─────────── Mutation ───────────
+
+# 回填并发锁 + 熔断（模块级，进程内共享）
+_BACKFILL_RUNNING = False
+_BACKFILL_BLOCKED_UNTIL = 0.0
+
 @strawberry.type
 class Mutation:
     @strawberry.mutation
@@ -547,8 +552,16 @@ class Mutation:
     @strawberry.mutation
     def backfill_google_trends(self, tenant_id: str = "dev_tenant") -> bool:
         """回填过去一个月的真实趋势数据。后台线程运行，立即返回。
-        所有数据均来自真实 API（Google Trends / TikHub），不生成任何模拟数据。"""
-        import threading
+        所有数据均来自真实 API（Google Trends / TikHub），不生成任何模拟数据。
+        熔断：Google Trends 连续不可达时 24h 内不再自动重试，避免拖垮全站查询。"""
+        import threading, time as _time
+
+        global _BACKFILL_RUNNING, _BACKFILL_BLOCKED_UNTIL
+        now = _time.time()
+        if _BACKFILL_RUNNING:
+            return False  # 已有回填在跑，直接拒绝（前端幂等）
+        if now < _BACKFILL_BLOCKED_UNTIL:
+            return False  # 熔断中：Google Trends 不可达，24h 内不再重试
 
         def _do_backfill():
             import sys, uuid
@@ -558,14 +571,17 @@ class Mutation:
             from datetime import datetime, timezone
             from loguru import logger
 
+            global _BACKFILL_RUNNING, _BACKFILL_BLOCKED_UNTIL
+            _BACKFILL_RUNNING = True
             run_id = f"real_backfill_{uuid.uuid4().hex[:8]}"
             logger.info(f"真实数据回填开始: run_id={run_id}")
 
             # ── 1. Google Trends 真实回填（30 天每日搜索热度）──
             saved_gt = 0
+            gt_fail_streak = 0
             try:
                 from modules.trends import get_keyword_trend
-                # 回填所有种子词 + DB 中品类英文名
+                # 回填所有种子词 + DB 中品类英文名（最多 20 个，避免长时占用）
                 keywords = list(DEFAULT_SEED_TERMS)
                 existing_cats = st.list_latest_snapshots(tenant_id, source="category_rank", limit=500)
                 for cat in existing_cats:
@@ -573,11 +589,18 @@ class Mutation:
                     en_name = p.get("category_name_en") or ""
                     if en_name and en_name not in keywords:
                         keywords.append(en_name)
+                keywords = keywords[:20]
                 logger.info(f"Google Trends 回填: {len(keywords)} 个关键词")
                 for kw in keywords:
+                    if gt_fail_streak >= 3:
+                        # 熔断：连续 3 个词失败 → Google Trends 当前不可达，24h 内不再自动回填
+                        _BACKFILL_BLOCKED_UNTIL = _time.time() + 24 * 3600
+                        logger.warning("Google Trends 连续失败，熔断 24h（不造假数据，明日自动重试）")
+                        break
                     try:
                         df = get_keyword_trend([kw], timeframe="today 1-m", geo="US")
                         if df.empty:
+                            gt_fail_streak += 1
                             continue
                         col = kw if kw in df.columns else df.columns[0]
                         for ts_idx, val in zip(df.index, df[col]):
@@ -600,8 +623,10 @@ class Mutation:
                                 captured_at=ts_dt,
                             )
                             saved_gt += 1
+                        gt_fail_streak = 0
                         logger.info(f"Google Trends OK: {kw} ({len(df)} 点)")
                     except Exception as e:
+                        gt_fail_streak += 1
                         logger.warning(f"Google Trends 失败: {kw}: {e}")
             except Exception as e:
                 logger.warning(f"Google Trends 模块不可用: {e}")
@@ -650,7 +675,15 @@ class Mutation:
 
             logger.info(f"真实数据回填完成: Google Trends {saved_gt} 条, TikTok {saved_social} 条")
 
-        threading.Thread(target=_do_backfill, daemon=True).start()
+        def _guarded_backfill():
+            try:
+                _do_backfill()
+            finally:
+                global _BACKFILL_RUNNING
+                _BACKFILL_RUNNING = False
+
+        _BACKFILL_RUNNING = True
+        threading.Thread(target=_guarded_backfill, daemon=True).start()
         return True
 
     # ── API Key ──
